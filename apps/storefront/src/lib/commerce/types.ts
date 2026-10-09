@@ -171,14 +171,34 @@ export type Attribute = { key: string; value: string };
  */
 export type CartCost = {
   subtotalAmount: MoneyV2;
+  /** Subtotal plus tax when a ship-to province is set; otherwise equals the subtotal. */
   totalAmount: MoneyV2;
+  /** Null until the shopper picks a ship-to province (taxes depend on it). */
   totalTaxAmount: MoneyV2 | null;
+  /** Crater addition: per-tax breakdown for the chosen province (e.g. GST 5%, PST 6%). Empty when unknown. */
+  taxLines: TaxLine[];
   checkoutChargeAmount: MoneyV2;
+};
+
+/** Canadian province/territory code (ISO 3166-2 suffix). */
+export type ProvinceCode = 'AB' | 'BC' | 'MB' | 'NB' | 'NL' | 'NS' | 'NT' | 'NU' | 'ON' | 'PE' | 'QC' | 'SK' | 'YT';
+
+/** Crater addition: one tax component, computed by Crater and charged by Stripe with a fixed tax rate. */
+export type TaxLine = {
+  /** Stable key, e.g. "CA_GST", "CA_HST_ON", "SK_PST". */
+  key: string;
+  /** Shopper-facing label, e.g. "GST", "HST (Ontario)", "PST (Saskatchewan)". */
+  title: string;
+  /** Percentage as a decimal string, e.g. "5", "9.975". */
+  ratePercent: string;
+  amount: MoneyV2;
 };
 
 export type CartBuyerIdentity = {
   email: string | null;
   countryCode: string | null;
+  /** Crater addition: ship-to province chosen in the bag; drives tax. Checkout requires it. */
+  provinceCode: ProvinceCode | null;
 };
 
 export type Cart = {
@@ -258,7 +278,8 @@ export type CheckoutSessionResult =
   | {
       ok: false;
       /** PRICE_CHANGED: a line's price changed since the shopper saw it; they must review it first. */
-      code: 'FIXTURE_MODE' | 'EMPTY_CART' | 'CART_INVALID' | 'PRICE_CHANGED' | 'PAYMENT_PROVIDER_UNAVAILABLE';
+      /** PROVINCE_REQUIRED: the shopper must pick a ship-to province (tax depends on it) before checkout. */
+      code: 'FIXTURE_MODE' | 'EMPTY_CART' | 'CART_INVALID' | 'PRICE_CHANGED' | 'PROVINCE_REQUIRED' | 'PAYMENT_PROVIDER_UNAVAILABLE';
       message: string;
     };
 

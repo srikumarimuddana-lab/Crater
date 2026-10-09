@@ -8,7 +8,7 @@
  * Coordinator-owned shared file. Change it only through the coordinator.
  */
 
-import type { DateTime, ID, MoneyV2 } from '@/lib/commerce/types';
+import type { DateTime, ID, MoneyV2, ProvinceCode, TaxLine } from '@/lib/commerce/types';
 
 // ---------------------------------------------------------------------------
 // Staff, roles, sessions
@@ -159,6 +159,11 @@ export type AdminOrder = {
   lines: AdminOrderLine[];
   /** Null when the viewer lacks `orders:read_prices`. */
   totals: { subtotal: MoneyV2; shipping: MoneyV2; tax: MoneyV2; total: MoneyV2 } | null;
+  /** Tax components Stripe collected (e.g. GST, PST). Null when the viewer lacks `orders:read_prices`. */
+  taxLines: TaxLine[] | null;
+  /** Province chosen in the bag (tax basis) vs. province of the address Stripe collected. */
+  taxProvince: ProvinceCode | null;
+  shippingProvince: string | null;
   packingInstructions: string | null;
   /** Null when the viewer lacks `orders:internal_notes`. */
   internalNotes: string | null;
@@ -199,7 +204,7 @@ export type AdminVariant = {
 };
 
 export type PublishCheck = {
-  key: 'NOT_SAMPLE' | 'HAS_INGREDIENTS' | 'HAS_PRECAUTIONS' | 'HAS_DIRECTIONS' | 'IMAGES_HAVE_ALT' | 'HAS_ACTIVE_VARIANT';
+  key: 'NOT_SAMPLE' | 'HAS_INGREDIENTS' | 'HAS_PRECAUTIONS' | 'HAS_DIRECTIONS' | 'IMAGES_HAVE_ALT' | 'HAS_ACTIVE_VARIANT' | 'HAS_COST';
   passed: boolean;
 };
 
@@ -227,7 +232,21 @@ export type ProductUpdateInput = {
   variants?: { id: ID; price?: string; cost?: string | null; lowStockThreshold?: number }[];
 };
 
-export type StockAdjustmentReason = 'RECEIVED' | 'COUNT_CORRECTION' | 'DAMAGED' | 'RETURN_RESTOCK' | 'OTHER';
+/**
+ * Owner decision (2026-10-09): reasons chosen by the architect for a herbal-products shop.
+ * Sign rules: RECEIVED, RETURN_RESTOCK positive; DAMAGED, EXPIRED, SAMPLES_GIFTS, LOST_STOLEN negative;
+ * COUNT_CORRECTION and OTHER either way (OTHER needs a note). Fulfilment may use RECEIVED,
+ * COUNT_CORRECTION, DAMAGED, EXPIRED.
+ */
+export type StockAdjustmentReason =
+  | 'RECEIVED' // new stock arrived from production or a supplier
+  | 'COUNT_CORRECTION' // a physical count differs from the system
+  | 'DAMAGED' // broken, leaking or unsellable
+  | 'EXPIRED' // past its best-before or lot expiry
+  | 'RETURN_RESTOCK' // a customer return put back on the shelf
+  | 'SAMPLES_GIFTS' // given away as samples, gifts or for marketing
+  | 'LOST_STOLEN' // missing or stolen
+  | 'OTHER';
 
 export type InventoryMovement = {
   id: ID;
@@ -249,3 +268,22 @@ export type AdminUserError = {
 };
 
 export type AdminMutationResult<T> = { data: T | null; userErrors: AdminUserError[] };
+
+// ---------------------------------------------------------------------------
+// Settings (read-only in this slice)
+
+export type TaxSettings = {
+  /** Registrations the store collects for, e.g. ["CA_GST", "SK_PST"]. */
+  registrations: string[];
+  /** Effective rates per province, as charged at checkout. */
+  provinces: { code: ProvinceCode; name: string; lines: { key: string; title: string; ratePercent: string }[] }[];
+  /** Source and date of the rate table, shown to staff. */
+  source: string;
+  notice: string;
+};
+
+export type StoreSettings = {
+  timezone: string;
+  currency: 'CAD';
+  tax: TaxSettings;
+};

@@ -385,6 +385,7 @@ export const checkoutErrors: Record<CheckoutFailureCode, string> = {
   EMPTY_CART: 'Your bag is empty. Add an item before checking out.',
   CART_INVALID: 'Some items in your bag are no longer available in the quantity requested. Please review your bag and try again.',
   PRICE_CHANGED: 'A price in your bag has changed since you added it. Please review the new subtotal, then continue to checkout.',
+  PROVINCE_REQUIRED: 'Choose the province you are shipping to. Taxes depend on it, so we need it before checkout.',
   PAYMENT_PROVIDER_UNAVAILABLE: 'Checkout is temporarily unavailable. Your bag is saved. Please try again in a moment.',
   FORBIDDEN: 'We could not start checkout from here. Please open your bag on this site and try again.',
 };
@@ -470,4 +471,34 @@ export const recovery = {
   pageNotFoundAction: 'Shop all',
   /** Inline recovery when a bag action could not reach the server. */
   checkBag: 'Check your bag',
+} as const;
+
+// ---------------------------------------------------------------------------
+// Ship-to province and taxes (bag, /cart). Tax rules: docs/tax.md.
+
+export const taxCopy = {
+  provinceLabel: 'Ship to province',
+  provinceHint: 'Taxes are calculated for the province you are shipping to. We ship within Canada only.',
+  provincePlaceholder: 'Choose a province',
+  provinceSave: 'Update',
+  taxesPending: 'Choose a province to see taxes.',
+  taxesLabel: 'Taxes',
+  totalLabel: 'Total',
+  provinceMismatchNote:
+    'Taxes are based on the province you choose here. If your Stripe shipping address is in a different province, we will contact you before shipping.',
+  provinces: {
+    AB: 'Alberta',
+    BC: 'British Columbia',
+    MB: 'Manitoba',
+    NB: 'New Brunswick',
+    NL: 'Newfoundland and Labrador',
+    NS: 'Nova Scotia',
+    NT: 'Northwest Territories',
+    NU: 'Nunavut',
+    ON: 'Ontario',
+    PE: 'Prince Edward Island',
+    QC: 'Quebec',
+    SK: 'Saskatchewan',
+    YT: 'Yukon',
+  },
 } as const;
