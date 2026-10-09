@@ -9,7 +9,7 @@ import { home, previewCopy, stripeTestModeBanner } from '@/lib/content/shop-copy
 export function PreviewBanner({ mode }: { mode: CommerceMode }) {
   return (
     <section aria-label="Preview notice" className="on-dark bg-espresso text-ivory">
-      <div className="page-gutter text-small flex flex-col items-center justify-center gap-x-4 py-2 text-center lg:flex-row">
+      <div className="page-gutter text-small flex flex-col items-center justify-center gap-x-4 py-2 text-center leading-snug lg:flex-row">
         <p>{home.announcement}</p>
         <p className="text-ivory/80">{previewCopy.bannerSample}</p>
       </div>
