@@ -93,8 +93,11 @@ The contract is `apps/storefront/src/lib/commerce/types.ts` (`Storefront`,
   transaction. The success page shows the recorded order or "processing".
 - **Persistence:** repository interface with `memory` (development, tests) and
   `postgres` implementations (`COMMERCE_DB`, `DATABASE_URL`); migrations in
-  `apps/storefront/db/migrations`. A free hosted Postgres (e.g. Supabase or Neon)
-  is connected only when the owner asks.
+  `apps/storefront/db/migrations`. **Owner plan: Supabase Postgres** (connected
+  only when the owner asks). Tables live in a dedicated `commerce` schema with row
+  level security enabled and no policies, so Supabase's public REST API cannot read
+  carts or orders. The app connects through the transaction pooler with a small
+  pool, and migrations use `DIRECT_DATABASE_URL`.
 - **Business settings are owner decisions:** sales tax (Stripe Tax is a paid
   add-on), shipping rates, returns policy, markets, and live keys. Do not invent
   them. Order management starts in the Stripe dashboard; an admin UI is a later
