@@ -31,6 +31,14 @@ const illustration = (handle: string, title: string): Image => ({
   placeholder: true,
 });
 
+const detailIllustration = (handle: string, title: string): Image => ({
+  url: `/products/${handle}/detail.svg`,
+  altText: `Illustration placeholder: ${title} texture`,
+  width: 800,
+  height: 1000,
+  placeholder: true,
+});
+
 const specs: Spec[] = [
   {
     id: 1,
@@ -128,7 +136,7 @@ const buildProduct = (spec: Spec, index: number): ProductRecord => {
       },
     ],
     featuredImage: image,
-    images: [image],
+    images: [image, detailIllustration(spec.handle, spec.title)],
     details: {
       benefits: ['Preview copy — pending approved claims'],
       ingredients: ['Ingredient list pending — not yet supplied'],

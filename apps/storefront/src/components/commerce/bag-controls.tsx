@@ -55,7 +55,13 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
 
   const triggerClass =
     'focus-ring inline-flex min-h-11 items-center px-2 text-[0.9375rem] font-semibold text-espresso underline-offset-[0.45em] hover:underline hover:decoration-1';
-  const triggerInner = <span aria-hidden="true">{count > 0 ? `Bag (${count})` : 'Bag'}</span>;
+  // Visible text stays in the accessible name (WCAG 2.5.3); only extra words are visually hidden.
+  const triggerInner = (
+    <>
+      {bag.triggerVisible(count)}
+      <span className="sr-only">{bag.triggerHiddenSuffix(count)}</span>
+    </>
+  );
 
   return (
     <>
@@ -67,7 +73,6 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
           }}
           onClick={open}
           aria-haspopup="dialog"
-          aria-label={bag.openLabel(count)}
           className={triggerClass}
         >
           {triggerInner}
@@ -78,7 +83,6 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
           ref={(el) => {
             triggerRef.current = el;
           }}
-          aria-label={bag.openLabel(count)}
           className={triggerClass}
         >
           {triggerInner}

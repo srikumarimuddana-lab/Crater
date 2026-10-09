@@ -11,8 +11,8 @@ export type CommerceConfig = {
 type Env = Record<string, string | undefined>;
 
 /** Restricted keys (rk_) work like secret keys for Checkout Sessions. */
-const TEST_KEY = /^(sk|rk)_test_[A-Za-z0-9]+$/;
-const LIVE_KEY = /^(sk|rk)_live_[A-Za-z0-9]+$/;
+const TEST_KEY = /^(sk|rk)_test_[A-Za-z0-9_]+$/;
+const LIVE_KEY = /^(sk|rk)_live_[A-Za-z0-9_]+$/;
 
 export function commerceModeFrom(env: Env): CommerceMode {
   if (env.COMMERCE_PROVIDER !== 'stripe') return 'fixture';
@@ -43,7 +43,8 @@ export function readConfig(env: Env = process.env): CommerceConfig {
     stripeSecretKey: mode === 'fixture' ? null : (env.STRIPE_SECRET_KEY ?? null),
     webhookSecret: env.STRIPE_WEBHOOK_SECRET || null,
     allowLive: env.STRIPE_ALLOW_LIVE === 'true',
-    siteUrl: siteOrigin(env.NEXT_PUBLIC_SITE_URL),
+    // SITE_URL (server-only, read at runtime) wins: NEXT_PUBLIC_* values are inlined at build time.
+    siteUrl: env.SITE_URL ? siteOrigin(env.SITE_URL) : siteOrigin(env.NEXT_PUBLIC_SITE_URL),
   };
 }
 

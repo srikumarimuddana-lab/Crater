@@ -25,6 +25,7 @@ import { POST as webhookPOST, GET as webhookGET } from '@/app/api/webhooks/strip
 import { GET as productsGET } from '@/app/api/storefront/products/route';
 import { GET as productGET } from '@/app/api/storefront/products/[handle]/route';
 import { GET as cartGET, POST as cartPOST } from '@/app/api/storefront/cart/route';
+import { POST as ackPOST, GET as ackGET } from '@/app/api/storefront/cart/price-changes/acknowledge/route';
 import { POST as linesPOST, PATCH as linesPATCH, DELETE as linesDELETE } from '@/app/api/storefront/cart/lines/route';
 
 const ENV_KEYS = ['COMMERCE_PROVIDER', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_ALLOW_LIVE', 'NEXT_PUBLIC_SITE_URL', 'COMMERCE_DB'];
@@ -320,5 +321,66 @@ describe('POST /api/webhooks/stripe', () => {
     expect((await post('{}', sign('{}'))).status).toBe(503);
     const get = await webhookGET();
     expect(get.status).toBe(405);
+  });
+});
+
+describe('price changes: acknowledge route and checkout redirect', () => {
+  const fill = () => linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.serum30 }] }));
+  const ack = (headers: Record<string, string> = {}, body: unknown = undefined) =>
+    ackPOST(json('POST', '/api/storefront/cart/price-changes/acknowledge', body, headers));
+  const checkout = () => checkoutPOST(new Request('http://localhost:3000/api/checkout', { method: 'POST' }));
+
+  it('POST acknowledge: private/no-store, cookie cart, clears hasPriceChanges', async () => {
+    const created = (await (await fill()).json()).cart;
+    const { getRepository } = await import('@/lib/commerce/repository-factory');
+    await (await getRepository()).updateVariant(V.serum30, { priceMinor: 7200 });
+    const before = await (await cartGET()).json();
+    expect(before.cart.hasPriceChanges).toBe(true);
+    expect(before.cart.lines.nodes[0].priceAtAdd.amount).toBe('68.00');
+
+    const res = await ack({ 'sec-fetch-site': 'same-origin' });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe(PRIVATE);
+    const payload = await res.json();
+    expect(payload.userErrors).toEqual([]);
+    expect(payload.cart.id).toBe(created.id);
+    expect(payload.cart.hasPriceChanges).toBe(false);
+    expect(payload.cart.lines.nodes[0].priceAtAdd.amount).toBe('72.00');
+    // Retrying is harmless.
+    expect((await (await ack()).json()).cart.hasPriceChanges).toBe(false);
+  });
+
+  it('rejects cross-site, non-JSON, non-empty bodies and other methods', async () => {
+    await fill();
+    expect((await ack({ 'sec-fetch-site': 'cross-site' })).status).toBe(403);
+    expect((await ackPOST(new Request('http://localhost:3000/x', { method: 'POST', headers: { 'content-type': 'text/plain' }, body: '{}' }))).status).toBe(400);
+    expect((await ack({}, { cartId: 'gid://crater/Cart/other' })).status).toBe(400);
+    expect((await ack({}, [1])).status).toBe(400);
+    const get = ackGET();
+    expect(get.status).toBe(405);
+  });
+
+  it('without a cart cookie, or with an expired cart, reports MISSING_CART and clears the dead cookie', async () => {
+    const none = await (await ack()).json();
+    expect(none).toMatchObject({ cart: null, userErrors: [{ code: 'MISSING_CART' }] });
+    jar.values.set(CART_COOKIE, 'gid://crater/Cart/' + 'A'.repeat(32));
+    const dead = await (await ack()).json();
+    expect(dead).toMatchObject({ cart: null, userErrors: [{ code: 'MISSING_CART' }] });
+    expect(jar.values.has(CART_COOKIE)).toBe(false);
+  });
+
+  it('POST /api/checkout redirects to PRICE_CHANGED without calling Stripe, then proceeds once acknowledged', async () => {
+    const stripe = useStripe();
+    await fill();
+    const { getRepository } = await import('@/lib/commerce/repository-factory');
+    await (await getRepository()).updateVariant(V.serum30, { priceMinor: 7200 });
+    const blocked = await checkout();
+    expect(blocked.status).toBe(303);
+    expect(blocked.headers.get('location')).toBe('/cart?checkout_error=PRICE_CHANGED');
+    expect(stripe.create).not.toHaveBeenCalled();
+    await ack();
+    const ok = await checkout();
+    expect(ok.headers.get('location')).toBe(STRIPE_URL);
+    expect(stripe.create).toHaveBeenCalledTimes(1);
   });
 });

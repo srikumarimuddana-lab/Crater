@@ -4,6 +4,7 @@ import { commerceMode, getStorefront } from '@/lib/commerce';
 import type { Collection } from '@/lib/commerce/types';
 import { productPage } from '@/lib/content/shop-copy';
 import { BagControls } from './commerce/bag-controls';
+import { MobileMenu } from './mobile-menu';
 
 const linkClass =
   'focus-ring inline-flex min-h-11 items-center text-[0.9375rem] font-semibold text-espresso underline-offset-[0.45em] hover:underline hover:decoration-1';
@@ -41,23 +42,17 @@ export async function SiteHeader() {
           </ul>
         </nav>
         <div className="flex items-center gap-1">
-          <details className="relative lg:hidden">
-            <summary className={`${linkClass} cursor-pointer list-none px-2 [&::-webkit-details-marker]:hidden`}>Menu</summary>
-            <nav
-              aria-label="Menu"
-              className="absolute right-0 z-20 mt-2 w-64 border border-espresso/15 bg-ivory p-2 shadow-sm"
-            >
-              <ul>
-                {links.map((l) => (
-                  <li key={l.href}>
-                    <Link href={l.href} className={`${linkClass} w-full px-2`}>
-                      {l.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          </details>
+          <MobileMenu>
+            <ul>
+              {links.map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} className={`${linkClass} w-full px-2`}>
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </MobileMenu>
           <BagControls cart={cart} mode={mode} />
         </div>
       </div>

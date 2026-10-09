@@ -66,6 +66,9 @@ export const browse = {
 // Product page
 
 export const productPage = {
+  galleryImage: 'Image',
+  galleryThumbnails: 'Choose an image',
+  galleryJump: (n: number, total: number) => `Show image ${n} of ${total}`,
   priceLabel: 'Price',
   /** `optionName` comes from the product ("Size", "Shade"). */
   optionLegend: (optionName: string) => `Choose a ${optionName.toLowerCase()}`,
@@ -149,6 +152,10 @@ export const bag = {
   title: 'Your bag',
   /** Header trigger button name. */
   openLabel: (totalQuantity: number) => (totalQuantity > 0 ? `Open bag, ${items(totalQuantity)}` : 'Open bag, empty'),
+  /** Visible trigger text. The accessible name must contain it (WCAG 2.5.3), so extra words are visually hidden. */
+  triggerVisible: (totalQuantity: number) => (totalQuantity > 0 ? `Bag (${totalQuantity})` : 'Bag'),
+  triggerHiddenSuffix: (totalQuantity: number) =>
+    totalQuantity === 0 ? ', empty' : totalQuantity === 1 ? ' item' : ' items',
   countBadgeLabel: (totalQuantity: number) => items(totalQuantity),
   closeLabel: 'Close bag',
   emptyHeading: 'Your bag is empty',

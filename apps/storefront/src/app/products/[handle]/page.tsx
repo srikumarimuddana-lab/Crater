@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AddToBag } from '@/components/commerce/add-to-bag';
+import { ProductGallery } from '@/components/commerce/product-gallery';
 import { Price } from '@/components/commerce/price';
 import { PageShell } from '@/components/page-shell';
 import { getStorefront } from '@/lib/commerce';
@@ -53,7 +53,11 @@ export default async function ProductPage({ params, searchParams }: Props) {
   if (!product) notFound();
 
   const { variant, notFound: variantMissing } = resolveVariant(product, sp);
-  const image = variant.image ?? product.featuredImage;
+  // The variant's own image leads when it has one; the rest follow in catalog order.
+  const lead = variant.image ?? product.featuredImage;
+  const gallery = lead
+    ? [lead, ...product.images.filter((i) => i.url !== lead.url)]
+    : product.images;
   const low = lowStockText(variant.quantityAvailable);
   const anyAvailable = product.variants.some((v) => v.availableForSale);
 
@@ -115,25 +119,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
         </nav>
 
         <div className="mt-2 grid grid-cols-1 gap-x-12 gap-y-8 lg:grid-cols-12">
-          <figure className="lg:col-span-7">
-            <div className="relative aspect-square overflow-hidden rounded-xs border border-espresso/15 bg-parchment sm:aspect-[4/5]">
-              {image ? (
-                <Image
-                  src={image.url}
-                  alt={image.altText}
-                  width={image.width}
-                  height={image.height}
-                  sizes="(min-width: 64rem) 700px, 100vw"
-                  unoptimized
-                  preload
-                  className="h-full w-full object-cover object-[50%_60%]"
-                />
-              ) : null}
-            </div>
-            {image?.placeholder ? (
-              <figcaption className="text-small mt-3 text-walnut">{previewCopy.imagePlaceholderCaption}</figcaption>
-            ) : null}
-          </figure>
+          <ProductGallery images={gallery} />
 
           <div className="flex flex-col gap-6 lg:col-span-5 lg:sticky lg:top-6 lg:self-start">
             <header>

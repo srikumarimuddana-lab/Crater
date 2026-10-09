@@ -76,6 +76,7 @@ describe.each(REPO_KINDS)('createCheckoutSession [%s repository]', (kind) => {
     const h = await setup();
     const cart = await cartWith(h, [{ merchandiseId: V.serum30, quantity: 2 }, { merchandiseId: V.cleanser }]);
     await h.repo.updateVariant(V.serum30, { priceMinor: 7000 }); // catalog changed after the cart was filled
+    await h.storefront.cartPriceChangesAcknowledge({ cartId: cart.id }); // the shopper reviewed the new price
     let snapshotSeenBeforeCall: unknown = null;
     h.stripe.create.mockImplementationOnce((async (params: { client_reference_id: string }) => {
       snapshotSeenBeforeCall = await h.repo.getCheckout(params.client_reference_id);

@@ -14,6 +14,7 @@ import {
   quantity as quantityCopy,
   recovery,
 } from '@/lib/content/shop-copy';
+import { ActionBoundary } from './action-boundary';
 import { initialCartActionState, MAX_LINE_QUANTITY, OPEN_BAG_EVENT, type OpenBagDetail } from './cart-types';
 
 const QUANTITY_CODES = new Set(['LESS_THAN', 'GREATER_THAN', 'INVALID_QUANTITY']);
@@ -22,7 +23,25 @@ const QUANTITY_CODES = new Set(['LESS_THAN', 'GREATER_THAN', 'INVALID_QUANTITY']
  * Quantity and Add to bag. The form posts to a Server Action, so it works before hydration;
  * useActionState supplies pending, added and error states, announced in one polite live region.
  */
-export function AddToBag({
+export function AddToBag(props: AddToBagProps) {
+  // A failed (rejected) action is caught here and shown inline; the form itself still posts without JavaScript.
+  return (
+    <ActionBoundary kind="add">
+      <AddToBagForm {...props} />
+    </ActionBoundary>
+  );
+}
+
+type AddToBagProps = {
+  variantId: string;
+  productHandle: string;
+  productTitle: string;
+  variantTitle: string;
+  available: boolean;
+  price: MoneyV2;
+};
+
+function AddToBagForm({
   variantId,
   productHandle,
   productTitle,

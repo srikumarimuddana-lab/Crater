@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type Stripe from 'stripe';
-import { isCartDead } from './cart-logic';
+import { isCartDead, lineHasPriceChange } from './cart-logic';
 import { readConfig, stripeUsable, type CommerceConfig } from './config';
 import { isCartId, isCheckoutId, isStripeSessionId, newCheckoutId } from './ids';
 import { logger, redactSession, ref } from './log';
@@ -99,6 +99,10 @@ export function createCheckoutService(deps: CheckoutDeps) {
         });
       }
       if (lines.length === 0) return CHECKOUT_FAIL('EMPTY_CART', 'Your cart is empty.');
+      // The shopper must have seen the current prices. Checked before any snapshot or Stripe call.
+      if (record.lines.some((l) => lineHasPriceChange(l, index))) {
+        return CHECKOUT_FAIL('PRICE_CHANGED', 'A price in your cart changed since you added it. Review your cart and try again.');
+      }
       const subtotalMinor = sumMinor(lines.map((l) => multiplyMinor(l.unitMinor, l.quantity)));
       if (subtotalMinor <= 0) return CHECKOUT_FAIL('CART_INVALID', 'Your cart total is not valid.');
 

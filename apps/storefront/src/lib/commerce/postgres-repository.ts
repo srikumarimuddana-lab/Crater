@@ -78,6 +78,7 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
       variantId: gidOf('ProductVariant', l.variant_id),
       quantity: num(l.quantity),
       attributes: (l.attributes as CartRecord['attributes']) ?? [],
+      priceAtAddMinor: num(l.price_at_add_minor),
     })),
   });
 
@@ -129,8 +130,8 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
     await client.query('delete from commerce.cart_lines where cart_id = $1', [cart.id]);
     for (const [position, l] of cart.lines.entries()) {
       await client.query(
-        'insert into commerce.cart_lines (cart_id, line_number, variant_id, quantity, attributes, position) values ($1,$2,$3,$4,$5::jsonb,$6)',
-        [cart.id, l.n, numericId(l.variantId, 'ProductVariant'), l.quantity, json(l.attributes), position],
+        'insert into commerce.cart_lines (cart_id, line_number, variant_id, quantity, attributes, position, price_at_add_minor) values ($1,$2,$3,$4,$5::jsonb,$6,$7)',
+        [cart.id, l.n, numericId(l.variantId, 'ProductVariant'), l.quantity, json(l.attributes), position, l.priceAtAddMinor],
       );
     }
   }

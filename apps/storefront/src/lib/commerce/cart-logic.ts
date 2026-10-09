@@ -134,10 +134,12 @@ function addInto(
     let line: CartLineRecord;
     if (existing) {
       existing.quantity = stock.quantity;
+      // The shopper just saw the current price on the product page: re-baseline it.
+      existing.priceAtAddMinor = variant.priceMinor;
       if (input.attributes !== undefined) existing.attributes = attributes;
       line = existing;
     } else {
-      line = { n: ++next.lineSeq, variantId: variant.id, quantity: stock.quantity, attributes };
+      line = { n: ++next.lineSeq, variantId: variant.id, quantity: stock.quantity, attributes, priceAtAddMinor: variant.priceMinor };
       next.lines.push(line);
     }
     if (stock.shortage !== 'NONE') {
@@ -232,6 +234,8 @@ export function applyLinesUpdate(cart: CartRecord, lines: CartLineUpdateInput[],
     } else {
       line.variantId = target.variant.id;
       line.quantity = stock.quantity;
+      // A different variant was chosen on screen; its current price is what the shopper saw.
+      if (switching) line.priceAtAddMinor = target.variant.priceMinor;
       if (attributes) line.attributes = attributes;
     }
     if (stock.shortage !== 'NONE') {
@@ -296,6 +300,22 @@ export function validateNote(note: unknown, path: string[], errors: CartUserErro
   return note;
 }
 
+/** True when the catalog price of this line differs from the price the shopper last saw. */
+export function lineHasPriceChange(line: CartLineRecord, index: CatalogIndex): boolean {
+  const found = index.variants.get(line.variantId);
+  return Boolean(found) && found!.variant.priceMinor !== line.priceAtAddMinor;
+}
+
+/** The shopper has seen the current prices: re-baseline every line. Extends the cart's life like any mutation. */
+export function applyPriceAcknowledge(cart: CartRecord, index: CatalogIndex, now: Date): Outcome {
+  const next = cloneCart(cart);
+  for (const line of next.lines) {
+    const found = index.variants.get(line.variantId);
+    if (found) line.priceAtAddMinor = found.variant.priceMinor;
+  }
+  return finish(next, now, [], []);
+}
+
 export function applyBuyerIdentity(cart: CartRecord, identity: Partial<CartBuyerIdentity>, now: Date): Outcome {
   const next = cloneCart(cart);
   const userErrors: CartUserError[] = [];
@@ -349,12 +369,14 @@ export function buildNewCart(
 export function buildCart(record: CartRecord, index: CatalogIndex): Cart {
   const nodes: CartLine[] = [];
   let subtotal = 0;
+  let hasPriceChanges = false;
   for (const line of record.lines) {
     const found = index.variants.get(line.variantId);
     if (!found) continue; // variant removed from the catalog: not purchasable, not shown
     const unit = found.variant.priceMinor;
     const total = multiplyMinor(unit, line.quantity);
     subtotal = sumMinor([subtotal, total]);
+    if (unit !== line.priceAtAddMinor) hasPriceChanges = true;
     nodes.push({
       id: lineId(line.n),
       quantity: line.quantity,
@@ -366,6 +388,7 @@ export function buildCart(record: CartRecord, index: CatalogIndex): Cart {
         totalAmount: toMoney(total),
       },
       attributes: line.attributes.map((a) => ({ ...a })),
+      priceAtAdd: toMoney(line.priceAtAddMinor),
     });
   }
   return {
@@ -387,6 +410,7 @@ export function buildCart(record: CartRecord, index: CatalogIndex): Cart {
     buyerIdentity: { email: record.buyerEmail, countryCode: record.buyerCountry },
     note: record.note,
     attributes: record.attributes.map((a) => ({ ...a })),
+    hasPriceChanges,
   };
 }
 

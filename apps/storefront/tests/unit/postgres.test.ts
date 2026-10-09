@@ -78,10 +78,10 @@ describe.skipIf(!TEST_DATABASE_URL)('postgres schema and locking', () => {
       await resetDatabase(pool);
       expect(await migrate(pool)).toEqual([]); // second run applies nothing
       const rows = (await pool.query('select name from commerce.schema_migrations')).rows;
-      expect(rows).toEqual([{ name: '0001_init.sql' }]);
+      expect(rows).toEqual([{ name: '0001_init.sql' }, { name: '0002_price_at_add.sql' }]);
       // Concurrent runners serialize on the transaction-scoped lock and do not conflict.
       await Promise.all([migrate(pool), migrate(pool), migrate(pool)]);
-      expect((await pool.query('select count(*)::int as n from commerce.schema_migrations')).rows[0].n).toBe(1);
+      expect((await pool.query('select count(*)::int as n from commerce.schema_migrations')).rows[0].n).toBe(2);
     } finally {
       await pool.end();
     }

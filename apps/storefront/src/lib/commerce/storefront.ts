@@ -11,6 +11,7 @@ import {
   applyLinesRemove,
   applyLinesUpdate,
   applyNote,
+  applyPriceAcknowledge,
   buildCart,
   buildNewCart,
   isCartDead,
@@ -96,5 +97,6 @@ export function createStorefront(deps: StorefrontDeps): Storefront {
     cartLinesRemove: ({ cartId, lineIds }) => mutate(cartId, (c, _i, at) => applyLinesRemove(c, lineIds, at)),
     cartBuyerIdentityUpdate: ({ cartId, buyerIdentity }) => mutate(cartId, (c, _i, at) => applyBuyerIdentity(c, buyerIdentity, at)),
     cartNoteUpdate: ({ cartId, note }) => mutate(cartId, (c, _i, at) => applyNote(c, note, at)),
+    cartPriceChangesAcknowledge: ({ cartId }) => mutate(cartId, (c, i, at) => applyPriceAcknowledge(c, i, at)),
   };
 }

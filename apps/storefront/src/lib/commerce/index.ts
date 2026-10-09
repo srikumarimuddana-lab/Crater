@@ -31,6 +31,7 @@ export function getStorefront(): Storefront {
     cartLinesRemove: lazy('cartLinesRemove'),
     cartBuyerIdentityUpdate: lazy('cartBuyerIdentityUpdate'),
     cartNoteUpdate: lazy('cartNoteUpdate'),
+    cartPriceChangesAcknowledge: lazy('cartPriceChangesAcknowledge'),
   };
 }
 

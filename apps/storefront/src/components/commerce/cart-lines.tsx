@@ -14,6 +14,7 @@ import {
   recovery,
 } from '@/lib/content/shop-copy';
 import { buttonClassName } from '@/components/ui/button';
+import { ActionBoundary } from './action-boundary';
 import { initialCartActionState, type CartActionState, type CartLineView, type CartView } from './cart-types';
 import { Price } from './price';
 
@@ -45,7 +46,23 @@ type Touched = { title: string; variantTitle: string };
  * (plain form posts to the Server Actions); once hydrated the forms use useActionState.
  * `focusId` is the id of a tabIndex=-1 heading that receives focus after a line is removed.
  */
-export function CartLines({
+export function CartLines(props: CartLinesProps) {
+  // A rejected update/remove (network failure) is caught here and shown inline with Try again.
+  return (
+    <ActionBoundary kind="bag">
+      <CartLinesInner {...props} />
+    </ActionBoundary>
+  );
+}
+
+type CartLinesProps = {
+  cart: CartView | null;
+  expired?: boolean;
+  focusId: string;
+  onContinue?: () => void;
+};
+
+function CartLinesInner({
   cart,
   expired = false,
   focusId,

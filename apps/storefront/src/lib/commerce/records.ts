@@ -53,6 +53,8 @@ export type CartLineRecord = {
   variantId: ID;
   quantity: number;
   attributes: Attribute[];
+  /** Unit price (minor units) the shopper was last shown; compared with the catalog price on every read. */
+  priceAtAddMinor: number;
 };
 
 export type CartRecord = {

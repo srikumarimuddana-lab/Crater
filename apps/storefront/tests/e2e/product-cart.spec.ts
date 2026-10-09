@@ -3,7 +3,8 @@ import { expect, test, type Page } from '@playwright/test';
 
 /** Fixture-mode shop journeys. Carts live in an HTTP-only cookie, so each test's fresh context is its own shopper. */
 
-const bagButton = (page: Page) => page.getByRole('button', { name: /^open bag/i });
+// The visible text is "Bag (n)"; the accessible name keeps it first and adds visually hidden words (WCAG 2.5.3).
+const bagButton = (page: Page) => page.getByRole('button', { name: /^bag\b/i });
 const drawer = (page: Page) => page.getByRole('dialog', { name: /your bag/i });
 
 async function addToBag(page: Page) {
@@ -93,7 +94,7 @@ test('J2.5 / J6.3 low stock shows the real count and an add of 5 is clamped to 2
   await expect(drawer(page)).toBeVisible();
   await expect(drawer(page).getByRole('listitem').filter({ hasText: 'Cloud Cream' })).toContainText('2');
   await expect(drawer(page).getByText(/limited quantity of Cloud Cream/i)).toBeVisible();
-  await expect(bagButton(page)).toHaveAccessibleName('Open bag, 2 items');
+  await expect(bagButton(page)).toHaveAccessibleName('Bag (2) items');
 });
 
 test('J2.6 / J6.1 out-of-range quantity is explained inline and nothing is added', async ({ page }) => {
@@ -117,7 +118,7 @@ test('J2.7 / J3.2 add opens the drawer with focus inside; Escape closes it and r
   await expect.poll(() => dlg.evaluate((el) => el.contains(document.activeElement))).toBe(true);
   await expect(dlg.getByRole('link', { name: 'Mineral Serum' })).toBeVisible();
   await expect(dlg.getByText('$68.00 CAD').first()).toBeVisible();
-  await expect(bagButton(page)).toHaveAccessibleName('Open bag, 1 item');
+  await expect(bagButton(page)).toHaveAccessibleName('Bag (1) item');
 
   // Tab stays inside the modal.
   for (let i = 0; i < 12; i++) {
@@ -144,13 +145,13 @@ test('J3.3 / J3.4 drawer quantity update and remove, then the empty state', asyn
   await expect(dlg).toBeVisible();
 
   await dlg.getByRole('button', { name: /increase quantity of mineral serum/i }).click();
-  await expect(bagButton(page)).toHaveAccessibleName('Open bag, 2 items');
+  await expect(bagButton(page)).toHaveAccessibleName('Bag (2) items');
   await expect(dlg.getByText('$136.00 CAD').first()).toBeVisible();
   await expect(dlg.getByRole('button', { name: /increase quantity/i })).toBeFocused();
   await expect(dlg.getByText('Taxes and shipping are confirmed at checkout.')).toBeVisible();
 
   await dlg.getByRole('button', { name: /decrease quantity/i }).click();
-  await expect(bagButton(page)).toHaveAccessibleName('Open bag, 1 item');
+  await expect(bagButton(page)).toHaveAccessibleName('Bag (1) item');
 
   await dlg.getByRole('button', { name: /remove mineral serum/i }).click();
   await expect(dlg.getByText('Your bag is empty')).toBeVisible();
@@ -202,7 +203,7 @@ test.describe('without JavaScript', () => {
     await page.goto('/cart');
     const main = page.locator('main');
     await expect(main.getByText('$42.00 CAD').first()).toBeVisible();
-    await expect(page.getByRole('link', { name: /open bag, 1 item/i })).toHaveAttribute('href', '/cart');
+    await expect(page.getByRole('link', { name: /^bag \(1\) item/i })).toHaveAttribute('href', '/cart');
 
     const checkout = page.locator('main form[action="/api/checkout"]');
     await expect(checkout).toHaveAttribute('method', 'post');
@@ -310,4 +311,213 @@ test('J2.8 on small screens the sticky add-to-bag bar appears only after scrolli
   await expect(sticky.getByRole('button', { name: /add to bag/i })).toBeVisible();
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect(sticky).toHaveCount(0);
+});
+
+test('WCAG 2.5.3 the bag button name contains its visible text', async ({ page }) => {
+  await page.goto('/products/mineral-serum');
+  await expect(bagButton(page)).toBeVisible();
+  await expect(bagButton(page)).toHaveText('Bag, empty');
+  await expect(bagButton(page)).toHaveAccessibleName('Bag, empty');
+  await addToBag(page);
+  await expect(drawer(page)).toBeVisible();
+  await page.keyboard.press('Escape');
+  // Visible text first, hidden words after: the name starts with exactly what sighted users read.
+  await expect(bagButton(page)).toHaveAccessibleName(/^Bag \(1\)/);
+  expect(await bagButton(page).evaluate((el) => (el.firstChild as Text).textContent)).toBe('Bag (1)');
+});
+
+test('J6.4 a bag action that cannot reach the server shows an inline message, re-enables controls and never replays', async ({ page }) => {
+  await page.goto('/products/mineral-serum');
+  await expect(bagButton(page)).toBeVisible(); // hydrated: the trigger is a button only after hydration
+
+  let blocked = true;
+  let aborted = 0;
+  await page.route('**/products/mineral-serum*', (route) => {
+    const request = route.request();
+    if (blocked && request.method() === 'POST' && request.headers()['next-action']) {
+      aborted += 1;
+      return route.abort('failed');
+    }
+    return route.continue();
+  });
+
+  const form = page.locator('#add-to-bag-form');
+  await form.getByRole('button', { name: /^add to bag/i }).click();
+
+  const recovery = page.getByTestId('action-recovery');
+  await expect(recovery.getByRole('alert')).toContainText('We could not reach the store');
+  await expect(recovery.getByRole('alert')).toContainText('could not confirm that this item was added');
+  expect(aborted).toBe(1);
+  // Nothing was added, nothing replayed, the route error page did not take over.
+  await expect(page.getByRole('heading', { level: 1, name: 'Mineral Serum' })).toBeVisible();
+  await expect(bagButton(page)).toHaveAccessibleName('Bag, empty');
+  await expect(form.getByRole('button', { name: /^add to bag/i })).toBeEnabled();
+  await expect(form.getByRole('button', { name: /^add to bag/i })).not.toHaveAttribute('aria-disabled', 'true');
+  await expect(recovery.getByRole('button', { name: 'Try again' })).toBeFocused();
+
+  // "Check your bag" opens the drawer, which shows what the server really holds.
+  await recovery.getByRole('button', { name: 'Check your bag' }).click();
+  await expect(drawer(page)).toBeVisible();
+  await expect(drawer(page).getByText('Your bag is empty')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(drawer(page)).toBeHidden();
+
+  // Network back: Try again clears the message and a fresh add works.
+  blocked = false;
+  await recovery.getByRole('button', { name: 'Try again' }).click();
+  await expect(recovery).toHaveCount(0);
+  await form.getByRole('button', { name: /^add to bag/i }).click();
+  await expect(drawer(page)).toBeVisible();
+  await expect(bagButton(page)).toHaveAccessibleName('Bag (1) item');
+  expect(aborted).toBe(1);
+});
+
+test('J6.4 a failed bag update shows Try again in the drawer and the quantity stays as the server has it', async ({ page }) => {
+  await page.goto('/products/mineral-serum');
+  await expect(bagButton(page)).toBeVisible();
+  await addToBag(page);
+  const dlg = drawer(page);
+  await expect(dlg).toBeVisible();
+
+  let blocked = true;
+  await page.route('**/products/mineral-serum*', (route) => {
+    const request = route.request();
+    return blocked && request.method() === 'POST' && request.headers()['next-action'] ? route.abort('failed') : route.continue();
+  });
+
+  await dlg.getByRole('button', { name: /increase quantity of mineral serum/i }).click();
+  const recovery = dlg.getByTestId('action-recovery');
+  await expect(recovery.getByRole('alert')).toContainText('We could not reach the store');
+  // The add-uncertain wording is for adds only.
+  await expect(recovery.getByText(/could not confirm/i)).toHaveCount(0);
+  await expect(bagButton(page)).toHaveAccessibleName('Bag (1) item');
+  await expect(dlg.getByRole('button', { name: /increase quantity/i })).not.toHaveAttribute('aria-disabled', 'true');
+
+  blocked = false;
+  await recovery.getByRole('button', { name: 'Try again' }).click();
+  await expect(recovery).toHaveCount(0);
+  await dlg.getByRole('button', { name: /increase quantity of mineral serum/i }).click();
+  await expect(bagButton(page)).toHaveAccessibleName('Bag (2) items');
+});
+
+test('J6.4 without JavaScript the add form still posts as a plain form', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
+  await page.goto('/products/mineral-serum');
+  // The Server Action form renders a hidden action id and posts to the page itself.
+  await expect(page.locator('#add-to-bag-form input[name^="$ACTION_"]').first()).toBeAttached();
+  await context.close();
+});
+
+test('motion: with reduced motion the bag drawer has no transition and is open immediately after Add', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/products/mineral-serum');
+  await expect(bagButton(page)).toBeVisible();
+  await addToBag(page);
+  const dlg = drawer(page);
+  await expect(dlg).toBeVisible();
+  expect(await dlg.evaluate((el) => getComputedStyle(el).transitionDuration)).toBe('0s');
+  // No slide-in: the panel is already in place when it first reports visible.
+  expect(await dlg.evaluate((el) => el.getBoundingClientRect().right <= window.innerWidth + 1)).toBe(true);
+  expect(await dlg.evaluate((el) => getComputedStyle(el, '::backdrop').transitionDuration)).toBe('0s');
+});
+
+test('product gallery: reserved ratios, alt text, only the first image eager, and a position label per slide', async ({ page }, testInfo) => {
+  await page.goto('/products/mineral-serum');
+  const gallery = page.getByRole('region', { name: /product images/i });
+  const imgs = gallery.locator('ul').first().locator('img');
+  const n = await imgs.count();
+  expect(n).toBeGreaterThanOrEqual(1);
+
+  for (let i = 0; i < n; i++) {
+    const img = imgs.nth(i);
+    expect(((await img.getAttribute('alt')) ?? '').length).toBeGreaterThan(3);
+    // Fixed box (aspect-ratio on the wrapper), so nothing shifts when the image decodes.
+    const box = await img.evaluate((el) => {
+      const r = el.parentElement!.getBoundingClientRect();
+      return { w: r.width, h: r.height };
+    });
+    expect(box.w).toBeGreaterThan(200);
+    expect(box.h).toBeGreaterThan(200);
+    if (i === 0) expect(await img.getAttribute('loading')).not.toBe('lazy');
+    else expect(await img.getAttribute('loading')).toBe('lazy');
+  }
+
+  if (n === 1) {
+    await expect(gallery.getByText(/^1 \/ 1$/)).toHaveCount(0);
+    await expect(gallery.getByRole('list', { name: /choose an image/i })).toHaveCount(0);
+    return;
+  }
+
+  const strip = gallery.locator('ul').first();
+  if (testInfo.project.name === 'desktop-1440') {
+    // Stacked in the column: each image sits below the previous one, no horizontal scroller.
+    const tops = await imgs.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
+    expect(tops[1]).toBeGreaterThan(tops[0]);
+    expect(await strip.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    await expect(gallery.getByRole('list', { name: /choose an image/i })).toBeHidden();
+    return;
+  }
+
+  if (testInfo.project.name === 'mobile-390') {
+    // A scroll-snap strip with a static "i / n" label on each slide and thumbnail anchors.
+    expect(await strip.evaluate((el) => getComputedStyle(el).scrollSnapType)).toContain('x');
+    expect(await strip.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+    await expect(gallery.getByText(`1 / ${n}`, { exact: true })).toBeVisible();
+    await gallery.getByRole('link', { name: `Show image 2 of ${n}` }).click();
+    await expect(gallery.getByText(`2 / ${n}`, { exact: true })).toBeInViewport();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+  }
+});
+
+test('J1.4 an address outside the shop renders the styled global 404', async ({ page }) => {
+  const response = await page.goto('/no-such-page');
+  expect(response?.status()).toBe(404);
+  await expect(page.getByRole('heading', { level: 1, name: /could not find that page/i })).toBeVisible();
+  await page.locator('main').getByRole('link', { name: 'Shop all' }).click();
+  await expect(page).toHaveURL(/\/#collection$/);
+});
+
+test.describe('mobile menu', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile-390', 'The Menu disclosure is a small-screen control.');
+  });
+
+  const menu = (page: Page) => page.locator('details', { has: page.locator('summary', { hasText: 'Menu' }) });
+
+  test('is closed on the next page after following a link, and for same-page links', async ({ page }) => {
+    await page.goto('/products/mineral-serum');
+    await expect(bagButton(page)).toBeVisible(); // hydrated
+    await menu(page).locator('summary').click();
+    await expect(menu(page)).toHaveJSProperty('open', true);
+    await menu(page).getByRole('link', { name: 'Shop all' }).click();
+    await expect(page).toHaveURL(/\/#collection$/);
+    await expect(menu(page)).toHaveJSProperty('open', false);
+
+    // A link that only changes the query on the same page.
+    await menu(page).locator('summary').click();
+    const category = menu(page).getByRole('link').nth(1);
+    await category.click();
+    await expect(page).toHaveURL(/\?category=/);
+    await expect(menu(page)).toHaveJSProperty('open', false);
+
+    // Back and Forward do not restore an open menu.
+    await menu(page).locator('summary').click();
+    await page.goBack();
+    await expect(menu(page)).toHaveJSProperty('open', false);
+  });
+
+  test.describe('without JavaScript', () => {
+    test.use({ javaScriptEnabled: false });
+
+    test('a full navigation starts with the menu closed', async ({ page }) => {
+      await page.goto('/products/mineral-serum');
+      await menu(page).locator('summary').click();
+      await expect(menu(page)).toHaveJSProperty('open', true);
+      await menu(page).getByRole('link').nth(1).click();
+      await expect(page).toHaveURL(/\?category=/);
+      await expect(menu(page)).toHaveJSProperty('open', false);
+    });
+  });
 });
