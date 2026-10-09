@@ -86,6 +86,19 @@ db/migrations/0003_admin.sql  admin schema + commerce additions
   - The paid-order webhook stores the shipping address Stripe collected and writes inventory movements.
   - The admin "open bags" count on a price edit uses the existing `priceAtAdd` mechanism.
 
+### Admin backend (as built)
+
+Code: `src/lib/admin/**`, migration `db/migrations/0004_admin.sql` (the plan's "0003_admin" is 0004 because 0003 already existed), `db/admin-create-owner.mjs`. UI entry point: `@/lib/admin` (`getAdmin()`, `requireAdmin()`).
+
+- **Auth (`builtin`):** scrypt N=2^15 r=8 p=1 with a 16-byte salt, 12-character minimum. TOTP per RFC 6238 (SHA1, 6 digits, 30 s, +/-1 step), with the RFC vectors in the unit tests. A used time-step is never accepted again (atomic compare-and-set per staff row). TOTP seeds are AES-256-GCM encrypted with `ADMIN_SECRET_KEY`, bound to the staff id; admin refuses to start without a 32-byte key. Two cookies: `crater_admin` (session) and `crater_admin_pending` (password accepted, second factor to come, 5 minutes); they get a `__Host-` prefix when Secure. Both are HttpOnly, SameSite=Strict, Path `/` (the plan said `/admin`; `__Host-` requires `/`). Only the SHA-256 of each token is stored. The session has a 30-minute sliding idle limit, a 12-hour absolute limit, rotation at every sign-in, and step-up valid for 10 minutes. Rate limits are per email (5 free failures) and per IP (20), then 30 s doubling to 15 min, with the same generic message either way. `ADMIN_AUTH_PROVIDER=supabase` is a typed stub (`auth/supabase.ts`) with migration notes.
+- **Roles:** the matrix is in `permissions.ts`, deny by default, with a table-driven test. Two narrowings, because `types.ts` cannot express price-free products or a money-free overview: **Fulfilment has no `products:read` and no `overview:read`.** They work from Orders (price-free) and Inventory. Cost price is visible to Owner, Admin and Bookkeeper only; order email is full for Owner, Admin and Support, masked for Bookkeeper, absent for Fulfilment.
+- **Services** re-check capabilities themselves. Reads throw `AdminAuthError`; mutations return `AdminMutationResult`, and a denial is audited as `access.denied`. Every state change writes its audit row in the same transaction. Audit `changes` carry ids, statuses, money and counts only: notes and tracking numbers are never logged, personal-data keys throw, and email-looking text is redacted.
+- **Product status** is one source of truth: `products.status`. `archived_at` stays as the archive timestamp, and a CHECK constraint keeps the two in lockstep. The storefront reads `status = 'ACTIVE'` only. The seed sets sample products ACTIVE.
+- **Stock:** `variants.inventory_quantity` stays "available". Committed = units on paid (PAID or PARTIALLY_REFUNDED), unfulfilled order lines, and on hand = available + committed. Every change writes an append-only `inventory_movements` row (the webhook writes `ORDER_PAID` in its own transaction). The audit log and movements are append-only by trigger (UPDATE, DELETE and TRUNCATE are refused, owner included).
+- **Webhook:** stores the address from `collected_information.shipping_details` (API 2026-08-26.dahlia) and logs each verified event's outcome (`PROCESSED`, `DUPLICATE`, `REJECTED`, `FAILED`) in `commerce.webhook_events`. Events with a bad signature are not logged.
+- **Overview:** paid = PAID, PARTIALLY_REFUNDED or REFUNDED, by `processed_at`. Periods are calendar days in `TIMEZONE`. Net sales equals gross sales until Slice 2 adds refunds. Webhook health counts FAILED and REJECTED events in the last 24 hours.
+- **Dev bootstrap:** `ADMIN_DEV_STAFF` seeds MFA-enrolled staff only with `COMMERCE_DB=memory`. It is refused at config time and at seeding time otherwise (unit-tested).
+
 ## 4. Slice 1 scope (build now)
 
 1. Sign-in, TOTP enrolment, sign-out, session handling, rate limit, `admin:create-owner`.

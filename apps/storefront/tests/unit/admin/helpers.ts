@@ -37,10 +37,11 @@ export const makeClock = (iso = '2026-03-01T12:00:00.000Z'): Clock => {
 
 export async function makeEnv(kind: RepoKind) {
   const h = await makeHarness({ repo: await makeRepo(kind) });
+  const clock = Object.assign(h.clock, { advance(ms: number) { h.clock.now = new Date(h.clock.now.getTime() + ms); } });
   const admin = adminRepositoryFor(h.repo);
   const jar = fakeJar();
   const auth = createAuth({ repo: admin, config: { secretKey: SECRET_KEY, secureCookies: false }, cookies: async () => jar, now: () => h.clock.now });
-  return { h, admin, jar, auth, clock: h.clock, kind };
+  return { h, admin, jar, auth, clock, kind };
 }
 export type Env = Awaited<ReturnType<typeof makeEnv>>;
 
@@ -95,7 +96,7 @@ export async function makeServices(env: Env) {
     as(role: StaffRole | null) {
       current = role ? sessionFor(staff.get(role) as { id: number; email: string; role: StaffRole }) : null;
     },
-    staff,
+    staffByRole: staff,
   };
 }
 

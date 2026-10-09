@@ -14,6 +14,7 @@ import type { AdminAuthProvider } from '../types';
  */
 export type SupabaseAdminAuthOptions = { url: string; anonKey: string };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function createSupabaseAuth(_options: SupabaseAdminAuthOptions): AdminAuthProvider {
   throw new AdminConfigError('ADMIN_AUTH_PROVIDER=supabase is not implemented yet. Use "builtin".');
 }

@@ -1,6 +1,6 @@
 import 'server-only';
 import { getAdminRepository } from './repository-factory';
-import { getAdminAuth, getAdminConfig } from './auth';
+import { getAdminConfig } from './auth';
 import { getAdminSession } from './session';
 import { createAdminServices, type AdminServices } from './services';
 
