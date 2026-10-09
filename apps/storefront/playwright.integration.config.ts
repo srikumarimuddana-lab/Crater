@@ -21,7 +21,8 @@ const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined;
 
 export default defineConfig({
   testDir: './tests/integration',
-  outputDir: './test-results/integration',
+  // Not under test-results/: the default e2e config cleans that directory concurrently.
+  outputDir: './.next-integration/test-results',
   // The specs share one database and one fake Stripe, so they run one at a time.
   fullyParallel: false,
   workers: 1,

@@ -96,6 +96,157 @@ export const productPage = {
   keyFacts: 'Key facts',
   sizeFact: 'Size',
   categoryFact: 'Category',
+  /** Shown on every product page while products are samples. No health claims anywhere. */
+  npnNotice: 'Sample product. Not a licensed natural health product. No health claims are made.',
+} as const;
+
+// ---------------------------------------------------------------------------
+// Navigation, homepage and footer (herbal catalogue; see docs/catalogue.md)
+//
+// Every string is PREVIEW placeholder copy. No health, efficacy or disease claims, reviews,
+// discounts or certifications. Items marked OWNER need facts only the business can supply.
+// Hrefs use the homepage category filter until dedicated collection routes exist.
+
+const categoryHref = (handle: string) => `/?category=${handle}#collection`;
+
+export const nav = {
+  shop: 'Shop',
+  megaMenuLabel: 'Shop menu',
+  pendingSuffix: 'content pending',
+  columns: [
+    {
+      heading: 'Formats',
+      items: [
+        { label: 'Tinctures', href: categoryHref('tinctures'), pending: false },
+        { label: 'Body oils', href: categoryHref('body-oils'), pending: false },
+        { label: 'Single herbs', href: categoryHref('single-herbs'), pending: false },
+        { label: 'Kits & gifts', href: categoryHref('kits-gifts'), pending: false },
+      ],
+    },
+    {
+      heading: 'Rituals',
+      items: [
+        { label: 'Daily', href: categoryHref('daily-ritual'), pending: false },
+        { label: 'Evening', href: categoryHref('evening-ritual'), pending: false },
+        { label: 'Seasonal', href: categoryHref('seasonal'), pending: false },
+        { label: 'Body care', href: categoryHref('body-care'), pending: false },
+      ],
+    },
+    {
+      heading: 'Explore',
+      items: [
+        { label: 'About', href: '/about', pending: true },
+        { label: 'Ingredients & sourcing', href: '/ingredients-sourcing', pending: true },
+        { label: 'Journal', href: '/journal', pending: true },
+      ],
+    },
+  ],
+} as const;
+
+export const home = {
+  /** OWNER: final wording. States only true, neutral facts. */
+  announcement: 'Preview store. Sample products only. Shipping within Canada.',
+  hero: {
+    headline: 'Liquid herbal extracts and body oils',
+    subline: 'Tinctures, single herbs, body oils and kits, shown here as sample products.',
+    primaryAction: { label: 'Shop tinctures', href: categoryHref('tinctures') },
+    secondaryAction: { label: 'Browse all products', href: '/#collection' },
+    /** The first seed product is the hero product. */
+    productHandle: 'lemon-balm-oat-extract',
+  },
+  /** Only true or neutral facts. OWNER: any further tile (origin, packaging, returns) needs confirmed facts. */
+  valueTiles: [
+    { title: 'Secure checkout with Stripe', body: 'Payment is taken on a Stripe-hosted page. Card details are never entered on this site.' },
+    { title: 'Ships within Canada', body: 'Shipping is currently limited to Canadian addresses. Costs are confirmed at checkout.' },
+    { title: 'Prices in Canadian dollars', body: 'Every price on this site is shown in CAD.' },
+  ],
+  featured: {
+    title: 'Featured formulas',
+    /** Seed order, products 1 to 6. This is not a sales ranking. */
+    productHandles: [
+      'lemon-balm-oat-extract',
+      'peppermint-ginger-extract',
+      'chamomile-linden-extract',
+      'hawthorn-rose-hip-extract',
+      'dandelion-root-extract',
+      'nettle-leaf-extract',
+    ],
+    previousLabel: 'Previous products',
+    nextLabel: 'Next products',
+    viewAll: 'View all products',
+  },
+  shopByRitual: {
+    title: 'Shop by ritual',
+    tiles: [
+      { label: 'Daily ritual', description: 'Extracts for a regular routine.', href: categoryHref('daily-ritual') },
+      { label: 'Evening ritual', description: 'Formats for the end of the day.', href: categoryHref('evening-ritual') },
+      { label: 'Seasonal', description: 'Herbs grouped by time of year.', href: categoryHref('seasonal') },
+      { label: 'Body care', description: 'Body oils in 100 mL bottles.', href: categoryHref('body-care') },
+    ],
+  },
+  /** OWNER: the story (who, why, where) is pending. */
+  story: {
+    title: 'Our story',
+    body: 'Placeholder. The owner’s story will be added before launch.',
+    pendingNote: 'Content pending',
+  },
+  /** OWNER: every factual statement in these rows must be confirmed before launch. */
+  values: {
+    title: 'What we care about',
+    rows: [
+      { title: 'Sourcing', body: 'Placeholder. Owner to confirm where the herbs are grown and sourced.' },
+      { title: 'Making', body: 'Placeholder. Owner to confirm how and by whom the products are made.' },
+      { title: 'Packaging', body: 'Placeholder. Owner to confirm packaging materials and recycling guidance.' },
+    ],
+  },
+  /** Hidden until at least one real article exists. */
+  journal: {
+    enabled: false,
+    title: 'From the journal',
+    viewAll: 'Read the journal',
+  },
+} as const;
+
+export const footer = {
+  /** Landmark name for the footer navigation. */
+  label: 'Footer',
+  columns: [
+    {
+      heading: 'Shop',
+      items: [
+        { label: 'Tinctures', href: categoryHref('tinctures'), pending: false },
+        { label: 'Body oils', href: categoryHref('body-oils'), pending: false },
+        { label: 'Single herbs', href: categoryHref('single-herbs'), pending: false },
+        { label: 'Kits & gifts', href: categoryHref('kits-gifts'), pending: false },
+        { label: 'Shop all', href: '/#collection', pending: false },
+      ],
+    },
+    {
+      heading: 'About',
+      items: [
+        { label: 'About', href: '/about', pending: true },
+        { label: 'Ingredients & sourcing', href: '/ingredients-sourcing', pending: true },
+        { label: 'Journal', href: '/journal', pending: true },
+      ],
+    },
+    {
+      heading: 'Help',
+      items: [
+        /** OWNER: shipping and returns policy is not drafted. */
+        { label: 'Shipping & returns', href: '/shipping-returns', pending: true },
+        /** OWNER: support email is not chosen; never print a made-up address. */
+        { label: 'Contact', href: '/contact', pending: true },
+      ],
+    },
+  ],
+  pendingSuffix: 'content pending',
+  /** Hidden until an email provider and CASL-compliant consent text are chosen. OWNER decision. */
+  newsletter: {
+    enabled: false,
+    heading: 'Stay in touch',
+    body: 'Placeholder. Sign-up opens once consent wording is approved.',
+  },
+  note: 'Preview store. All products are samples.',
 } as const;
 
 /**

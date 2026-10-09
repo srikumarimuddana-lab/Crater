@@ -32,37 +32,62 @@ async function addSerumToBag(page: Page) {
   await expect(page.getByRole('dialog', { name: /your bag/i })).toBeVisible();
 }
 
-/** Intercepts hosted Checkout: records the request and answers with a stand-in page. */
-async function interceptStripeCheckout(page: Page) {
-  const reached: string[] = [];
+type Interception = {
+  /** URLs the browser requested on checkout.stripe.com (all fulfilled locally; nothing leaves the machine). */
+  reached: string[];
+  /** What POST /api/checkout answered, as the server sent it. */
+  checkoutResponses: { status: number; location: string | null; cacheControl: string | null }[];
+};
+
+/**
+ * Intercepts hosted Checkout so the suite never touches the real Stripe. Chromium does not hand
+ * redirect-chained requests to page.route, so the 303 from POST /api/checkout is fetched with
+ * redirects disabled (and asserted), then the browser is sent to the same Location with a normal
+ * navigation, which the checkout.stripe.com route fulfils with a stand-in page.
+ */
+async function interceptStripeCheckout(page: Page): Promise<Interception> {
+  const state: Interception = { reached: [], checkoutResponses: [] };
   await page.route('https://checkout.stripe.com/**', async (route) => {
-    reached.push(route.request().url());
+    state.reached.push(route.request().url());
     await route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>Fake Stripe Checkout</title><h1>Fake hosted checkout</h1>' });
   });
-  return reached;
+  await page.route('**/api/checkout', async (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    const response = await route.fetch({ maxRedirects: 0 });
+    const location = response.headers()['location'] ?? null;
+    state.checkoutResponses.push({ status: response.status(), location, cacheControl: response.headers()['cache-control'] ?? null });
+    if (response.status() === 303 && location && new URL(location).host === 'checkout.stripe.com') {
+      await route.fulfill({ status: 200, contentType: 'text/html', body: `<!doctype html><script>location.replace(${JSON.stringify(location)})</script>` });
+    } else {
+      await route.fulfill({ response });
+    }
+  });
+  return state;
 }
 
-async function startCheckoutFromCart(page: Page, reached: string[]): Promise<FakeSession> {
+async function startCheckoutFromCart(page: Page, intercepted: Interception): Promise<FakeSession> {
   await page.goto('/cart');
-  await expect(page.locator('#bag-lines').getByText('Mineral Serum')).toBeVisible();
+  await expect(page.locator('#bag-lines').getByRole('link', { name: 'Mineral Serum' })).toBeVisible();
   await page.getByRole('complementary').getByRole('button', { name: /^checkout/i }).click();
   await expect(page.getByRole('heading', { name: 'Fake hosted checkout' })).toBeVisible();
-  expect(reached).toHaveLength(1);
+  const { reached, checkoutResponses } = intercepted;
   const sessions = await fakeSessions();
   expect(sessions).toHaveLength(1);
   const session = sessions[0];
+  // The server answered 303 -> the Stripe-hosted URL, uncached, and the browser really requested that host.
+  expect(checkoutResponses).toEqual([{ status: 303, location: session.url, cacheControl: 'no-store' }]);
+  expect(reached).toEqual([session.url]);
   expect(new URL(reached[0]).host).toBe('checkout.stripe.com');
-  expect(reached[0]).toBe(session.url); // the browser was sent to exactly the URL Stripe returned
   return session;
 }
 
 test('buys the serum: redirect to hosted checkout, signed webhook, confirmed order, stock and bag updated', async ({ page }) => {
-  const reached = await interceptStripeCheckout(page);
+  const intercepted = await interceptStripeCheckout(page);
   await addSerumToBag(page);
   const before = await getInventory(SERUM_30);
   expect(before).toBe(40);
 
-  const session = await startCheckoutFromCart(page, reached);
+  const session = await startCheckoutFromCart(page, intercepted);
   // Server-authoritative money, and return URLs on the integration origin (not a dev default).
   expect(session).toMatchObject({ amount_subtotal: 6800, amount_total: 6800, currency: 'cad', payment_status: 'unpaid' });
   expect(session.line_items_requested).toEqual([{ quantity: 1, unit_amount: 6800, name: 'Mineral Serum — 30 mL' }]);
@@ -102,15 +127,18 @@ test('buys the serum: redirect to hosted checkout, signed webhook, confirmed ord
 
   // The completed cart is closed: the bag is empty and the old cookie cart is not reusable.
   await page.goto('/cart');
-  await expect(page.locator('#bag-lines').getByText('Your bag is empty')).toBeVisible();
+  // (The /cart page currently words a closed cart as "expired"; see the handoff. Either way nothing is left to buy.)
+  await expect(page.locator('#bag-lines').getByRole('link', { name: 'Mineral Serum' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^checkout/i })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /^bag/i }).first()).toHaveAccessibleName(/empty/i);
   const cart = await (await page.request.get('/api/storefront/cart')).json();
   expect(cart.cart).toBeNull();
 });
 
 test('an unsigned, wrongly signed or tampered webhook is rejected with 400 and creates no order', async ({ page }) => {
-  const reached = await interceptStripeCheckout(page);
+  const intercepted = await interceptStripeCheckout(page);
   await addSerumToBag(page);
-  const session = await startCheckoutFromCart(page, reached);
+  const session = await startCheckoutFromCart(page, intercepted);
   const paid = await payFakeSession(session.id);
 
   expect((await sendSignedWebhook('checkout.session.completed', paid, { signed: false })).status).toBe(400);
@@ -127,9 +155,9 @@ test('an unsigned, wrongly signed or tampered webhook is rejected with 400 and c
 });
 
 test('a duplicate webhook delivery, or a new event for the same session, still yields one order and one stock decrement', async ({ page }) => {
-  const reached = await interceptStripeCheckout(page);
+  const intercepted = await interceptStripeCheckout(page);
   await addSerumToBag(page);
-  const session = await startCheckoutFromCart(page, reached);
+  const session = await startCheckoutFromCart(page, intercepted);
   const paid = await payFakeSession(session.id);
 
   const first = await sendSignedWebhook('checkout.session.completed', paid, { eventId: 'evt_integration_dup_1' });
@@ -149,10 +177,10 @@ test('a duplicate webhook delivery, or a new event for the same session, still y
 test('the bag is a Postgres-backed cookie cart that survives reload and a fresh page in the same browser', async ({ page, context }) => {
   await addSerumToBag(page);
   await page.goto('/cart');
-  await expect(page.locator('#bag-lines').getByText('Mineral Serum')).toBeVisible();
+  await expect(page.locator('#bag-lines').getByRole('link', { name: 'Mineral Serum' })).toBeVisible();
 
   await page.reload();
-  await expect(page.locator('#bag-lines').getByText('Mineral Serum')).toBeVisible();
+  await expect(page.locator('#bag-lines').getByRole('link', { name: 'Mineral Serum' })).toBeVisible();
   await expect(page.locator('#bag-lines').getByText('Your bag is empty')).toHaveCount(0);
 
   const cookies = await context.cookies();
@@ -162,7 +190,7 @@ test('the bag is a Postgres-backed cookie cart that survives reload and a fresh 
   // A second tab shares the cookie and sees the same cart; a different shopper does not.
   const tab = await context.newPage();
   await tab.goto('/cart');
-  await expect(tab.locator('#bag-lines').getByText('Mineral Serum')).toBeVisible();
+  await expect(tab.locator('#bag-lines').getByRole('link', { name: 'Mineral Serum' })).toBeVisible();
   const other = await page.context().browser()!.newContext();
   const stranger = await other.newPage();
   await stranger.goto(new URL('/cart', page.url()).toString());

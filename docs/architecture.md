@@ -98,6 +98,14 @@ The contract is `apps/storefront/src/lib/commerce/types.ts` (`Storefront`,
   level security enabled and no policies, so Supabase's public REST API cannot read
   carts or orders. The app connects through the transaction pooler with a small
   pool, and migrations use `DIRECT_DATABASE_URL`.
+- **Price tracking:** each cart line stores `priceAtAdd` (integer minor units; set when the
+  line is created or an add merges into it, never by quantity updates). `Cart.hasPriceChanges`
+  is true when any current catalog price differs; checkout then fails with `PRICE_CHANGED`
+  (before any snapshot or Stripe call) until `cartPriceChangesAcknowledge` re-baselines the lines.
+- **Integration suite:** `npm run test:integration:pg` starts a throwaway Postgres 16, builds into
+  `.next-integration` with a fake Stripe (`tests/integration/fake-stripe.mjs`, port 12111, reached
+  via the test-only `STRIPE_API_BASE`, honoured only for `sk_test_` keys and loopback hosts) and
+  drives the real UI/webhook on port 3300. Return URLs use the server-only `SITE_URL`.
 - **Business settings are owner decisions:** sales tax (Stripe Tax is a paid
   add-on), shipping rates, returns policy, markets, and live keys. Do not invent
   them. Order management starts in the Stripe dashboard; an admin UI is a later
