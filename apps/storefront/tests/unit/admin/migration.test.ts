@@ -97,7 +97,7 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 0004 (admin) on Postgres', () => 
          values (90, 'new-one', 't', 'd', 'v', 'p', '{}'::jsonb, now(), now())`,
       );
       expect((await pool.query('select status from commerce.products where id = 90')).rows[0].status).toBe('DRAFT');
-      expect((await pool.query('select cost_minor, low_stock_threshold from commerce.variants where id = 12')).rows[0]).toEqual({ cost_minor: null, low_stock_threshold: 5 });
+      expect((await pool.query('select cost_minor, low_stock_threshold from commerce.variants where id = 12')).rows[0]).toEqual({ cost_minor: 1330, low_stock_threshold: 5 });
       await rejects(pool, 'update commerce.variants set low_stock_threshold = -1 where id = 12', /check/);
       await rejects(pool, 'update commerce.variants set cost_minor = -1 where id = 12', /check/);
     } finally {
@@ -120,7 +120,7 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 0004 (admin) on Postgres', () => 
         );
       }
       await pool.query("insert into commerce.variants (id, product_id, position, sku, title, price_minor, selected_options, inventory_quantity) values (1, 2, 0, 'S1', 'v', 100, '[]', 3)");
-      expect(await migrate(pool)).toEqual(['0004_admin.sql']);
+      expect(await migrate(pool)).toEqual(['0004_admin.sql', '0005_tax.sql']);
       expect((await pool.query('select id, status, archived_at is not null as archived from commerce.products order by id')).rows).toEqual([
         { id: 1, status: 'ARCHIVED', archived: true }, { id: 2, status: 'ACTIVE', archived: false },
       ]);
@@ -147,6 +147,29 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 0004 (admin) on Postgres', () => 
       await rejects(pool, "insert into admin.staff_users (email, name, role) values ('c@example.test', 'C', 'GOD')", /check/);
       await rejects(pool, "update admin.staff_users set totp_secret_enc = 'v1.a.b.c'", /check/);
       await rejects(pool, "insert into admin.staff_sessions (staff_id, token_hash, created_at, last_seen_at, absolute_expires_at) values (1, 'plaintext-token', now(), now(), now())", /check/);
+    } finally {
+      await pool.end();
+    }
+  });
+});
+
+describe.skipIf(!TEST_DATABASE_URL)('migration 0005 (tax, stock reasons) on Postgres', () => {
+  it('constrains provinces, widens the movement reasons, and re-running the file is harmless', async () => {
+    const pool = new pg.Pool({ connectionString: TEST_DATABASE_URL, max: 2 });
+    try {
+      await resetDatabase(pool);
+      const rejects = (sql: string, re: RegExp) => expect(pool.query(sql)).rejects.toThrow(re);
+      await rejects("insert into commerce.carts (id, created_at, updated_at, attributes, line_seq, buyer_province) values ('gid://crater/Cart/" + 'A'.repeat(32) + "', now(), now(), '[]', 0, 'XX')", /check/);
+      for (const reason of ['EXPIRED', 'SAMPLES_GIFTS', 'LOST_STOLEN']) {
+        await pool.query("insert into commerce.inventory_movements (variant_id, sku, delta, reason, available_after) values (11, 'S', -1, $1, 1)", [reason]);
+      }
+      await rejects("insert into commerce.inventory_movements (variant_id, sku, delta, reason, available_after) values (11, 'S', -1, 'MAGIC', 1)", /check/);
+      const sql = await readFile(path.join(MIGRATIONS_DIR, '0005_tax.sql'), 'utf8');
+      await pool.query(sql);
+      await pool.query(sql);
+      expect((await pool.query('select count(*)::int as n from commerce.inventory_movements')).rows[0].n).toBe(3);
+      const cols = (await pool.query("select column_name from information_schema.columns where table_schema='commerce' and column_name in ('buyer_province','tax_province','tax_lines','shipping_province')")).rows;
+      expect(cols).toHaveLength(6); // carts.buyer_province; checkouts and orders: tax_province, tax_lines; orders.shipping_province
     } finally {
       await pool.end();
     }

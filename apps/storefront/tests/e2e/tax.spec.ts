@@ -17,7 +17,9 @@ const provinceSelect = (page: Page) => page.locator('main').getByLabel('Ship to 
 
 async function chooseProvince(page: Page, root: ReturnType<Page['locator']>, code: string) {
   await expect(root.locator('form[data-province-form][data-enhanced]')).toBeVisible();
-  await root.getByLabel('Ship to province').selectOption(code);
+  const select = root.getByLabel('Ship to province');
+  await select.focus(); // selectOption does not focus, a keyboard user would have
+  await select.selectOption(code);
 }
 
 test('SK: GST and PST lines and the total appear under the subtotal on /cart', async ({ page }) => {

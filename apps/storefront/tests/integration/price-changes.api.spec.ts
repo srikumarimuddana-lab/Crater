@@ -29,6 +29,7 @@ test('a price change blocks checkout with PRICE_CHANGED until acknowledged, then
   expect(setCookie).toMatch(/HttpOnly/i);
   cookie = setCookie.split(';')[0];
   expect((await added.json()).cart.hasPriceChanges).toBe(false);
+  expect((await request.patch('/api/storefront/cart', { ...withCookie(), data: { buyerIdentity: { provinceCode: 'ON' } } })).status()).toBe(200);
 
   await setVariantPrice('SAMPLE-LBO-30', 2800);
   const read = (await (await request.get('/api/storefront/cart', withCookie())).json()).cart;
@@ -56,7 +57,7 @@ test('a price change blocks checkout with PRICE_CHANGED until acknowledged, then
   expect(ok.headers()['location']).toMatch(/^https:\/\/checkout\.stripe\.com\/c\/pay\/cs_test_/);
   const [session] = await fakeSessions();
   expect(session.amount_subtotal).toBe(5600); // 2 x $28.00, from the server's catalog
-  expect(session.line_items_requested).toEqual([{ quantity: 2, unit_amount: 2800, name: 'Lemon Balm & Oat Extract — 30 mL' }]);
+  expect(session.line_items_requested).toEqual([{ quantity: 2, unit_amount: 2800, name: 'Lemon Balm & Oat Extract — 30 mL', tax_rates: [expect.stringMatching(/^txr_/)] }]);
 });
 
 test('acknowledge without a cart reports MISSING_CART and rejects cross-site requests', async ({ request }) => {

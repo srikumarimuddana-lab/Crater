@@ -83,10 +83,11 @@ describe.skipIf(!TEST_DATABASE_URL)('postgres schema and locking', () => {
       const rows = (await pool.query('select name from commerce.schema_migrations')).rows;
       expect(rows).toEqual([
         { name: '0001_init.sql' }, { name: '0002_price_at_add.sql' }, { name: '0003_product_archive.sql' }, { name: '0004_admin.sql' },
+        { name: '0005_tax.sql' },
       ]);
       // Concurrent runners serialize on the transaction-scoped lock and do not conflict.
       await Promise.all([migrate(pool), migrate(pool), migrate(pool)]);
-      expect((await pool.query('select count(*)::int as n from commerce.schema_migrations')).rows[0].n).toBe(4);
+      expect((await pool.query('select count(*)::int as n from commerce.schema_migrations')).rows[0].n).toBe(5);
     } finally {
       await pool.end();
     }
@@ -131,7 +132,7 @@ describe.skipIf(!TEST_DATABASE_URL)('postgres schema and locking', () => {
     const cart = await cartWith(h, [{ merchandiseId: V.hero30 }]);
     await h.checkout.createCheckoutSession(cart.id);
     const good = paidSession(h);
-    const swapped = { ...good, id: 'cs_test_notmysession001' }; // checkout already bound to another session
+    const swapped = { ...good, id: 'cs_test_notmysession001', total_details: (h.stripe.known.get(good.id)!.full as { total_details: unknown }).total_details }; // checkout already bound to another session
     await h.repo.attachSession((good.metadata as { checkout_id: string }).checkout_id, good.id, new Date().toISOString());
     expect((await deliver(h, sessionEvent('checkout.session.completed', swapped, 'evt_swap'))).status).toBe(200);
     const pool = connect();

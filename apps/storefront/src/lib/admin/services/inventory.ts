@@ -5,7 +5,7 @@ import { gidTail, adminGid } from '../ids';
 import { ADJUST_REASONS, REASON_SIGN, allowedAdjustReasons } from '../permissions';
 import type { MovementWithActor } from '../records';
 import type { AdjustStockInput, InventoryLevel, InventoryQuery, MovementsQuery } from '../service-types';
-import type { AdminMutationResult, InventoryMovement, StockAdjustmentReason } from '../types';
+import type { AdminMutationResult, InventoryMovement } from '../types';
 import { auditDraft, cleanText, clampFirst, decodeIdCursor, encodeIdCursor, fail, mutateAs, ok, page, readAs, userError, type Ctx } from './shared';
 
 const MAX_DELTA = 100_000;

@@ -40,6 +40,13 @@ export function ProvinceForm({
   const hintId = `${uid}-hint`;
   const errorId = `${uid}-error`;
 
+  // React resets the form's fields when the action finishes, which would blank a controlled select's DOM
+  // value; put the shown value back. Runs after every commit and only writes when the DOM differs.
+  useEffect(() => {
+    const el = selectRef.current;
+    if (el && el.value !== value) el.value = value;
+  });
+
   useEffect(() => {
     if (focusOnMount) selectRef.current?.focus();
   }, [focusOnMount]);

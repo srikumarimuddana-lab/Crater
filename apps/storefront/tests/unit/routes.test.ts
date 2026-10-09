@@ -481,3 +481,45 @@ describe('price changes: acknowledge route and checkout redirect', () => {
     expect(stripe.create).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('PATCH /api/storefront/cart (ship-to province)', () => {
+  const patch = (body: unknown, headers: Record<string, string> = {}) => cartPATCH(json('PATCH', '/api/storefront/cart', body, headers));
+
+  it('sets the province on the cookie cart, returns tax lines, and is never cached', async () => {
+    await fillWithProvince(null);
+    const res = await patch({ buyerIdentity: { provinceCode: 'SK' } });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe(PRIVATE);
+    const body = await res.json();
+    expect(body.userErrors).toEqual([]);
+    expect(body.cart.cost.taxLines.map((l: { key: string }) => l.key)).toEqual(['CA_GST', 'SK_PST']);
+    expect(body.cart.cost.totalTaxAmount.amount).toBe('2.64');
+    expect(body.cart.cost.totalAmount.amount).toBe('26.64');
+    expect(body.cart.buyerIdentity.provinceCode).toBe('SK');
+    expect((await (await cartGET()).json()).cart.buyerIdentity.provinceCode).toBe('SK');
+    // Retrying the same absolute value is harmless; null clears it.
+    expect((await (await patch({ buyerIdentity: { provinceCode: 'SK' } })).json()).cart.cost.totalTaxAmount.amount).toBe('2.64');
+    expect((await (await patch({ buyerIdentity: { provinceCode: null } })).json()).cart.cost.totalTaxAmount).toBeNull();
+  });
+
+  it('an invalid province is a userError (INVALID at buyerIdentity.provinceCode), not an HTTP error, and changes nothing', async () => {
+    await fillWithProvince('ON');
+    const body = await (await patch({ buyerIdentity: { provinceCode: 'XX' } })).json();
+    expect(body.userErrors).toEqual([{ code: 'INVALID', field: ['buyerIdentity', 'provinceCode'], message: expect.any(String) }]);
+    expect(body.cart.buyerIdentity.provinceCode).toBe('ON');
+  });
+
+  it('rejects malformed bodies (400), cross-site requests (403) and a missing cart (MISSING_CART)', async () => {
+    await fillWithProvince('ON');
+    for (const bad of [{}, { buyerIdentity: 'SK' }, { buyerIdentity: { provinceCode: 5 } }, { buyerIdentity: { price: 1 } }, { buyerIdentity: {}, extra: 1 }, '{nope']) {
+      expect((await patch(bad)).status, JSON.stringify(bad)).toBe(400);
+    }
+    expect((await patch({ buyerIdentity: { provinceCode: 'SK' } }, { 'sec-fetch-site': 'cross-site' })).status).toBe(403);
+    expect((await cartPATCH(new Request('http://localhost:3000/api/storefront/cart', { method: 'PATCH', headers: { 'content-type': 'text/plain' }, body: '{}' }))).status).toBe(400);
+    jar.values.clear();
+    expect(await (await patch({ buyerIdentity: { provinceCode: 'SK' } })).json()).toMatchObject({ cart: null, userErrors: [{ code: 'MISSING_CART' }] });
+    jar.values.set(CART_COOKIE, 'gid://crater/Cart/' + 'A'.repeat(32));
+    expect(await (await patch({ buyerIdentity: { provinceCode: 'SK' } })).json()).toMatchObject({ cart: null, userErrors: [{ code: 'MISSING_CART' }] });
+    expect(jar.values.has(CART_COOKIE)).toBe(false);
+  });
+});

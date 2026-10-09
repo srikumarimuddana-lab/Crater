@@ -1,8 +1,12 @@
 import Stripe from 'stripe';
 import pg from 'pg';
 import { catalogSeed } from '../../src/lib/commerce/catalog-seed';
+import { TAX_RATES } from '../../src/lib/commerce/tax';
+import { ensureTaxRates } from '../../src/lib/commerce/tax-rates';
 import {
   FAKE_STRIPE_ORIGIN,
+  FAKE_STRIPE_PORT,
+  INTEGRATION_STRIPE_KEY,
   INTEGRATION_ORIGIN,
   INTEGRATION_WEBHOOK_SECRET,
   requireTestDatabaseUrl,
@@ -59,6 +63,35 @@ export async function resetCommerceData(): Promise<void> {
     }
   }
   await fetch(`${FAKE_STRIPE_ORIGIN}/__test/reset`, { method: 'POST' });
+  await ensureFakeTaxRates();
+}
+
+/**
+ * Runs the real `npm run stripe:tax-rates` logic against the fake Stripe, so checkout finds its rates by metadata
+ * exactly as it would on a real account. Idempotent; the fake keeps rates across resets.
+ */
+export async function ensureFakeTaxRates(): Promise<void> {
+  const stripe = new Stripe(INTEGRATION_STRIPE_KEY, { host: '127.0.0.1', port: FAKE_STRIPE_PORT, protocol: 'http', maxNetworkRetries: 0 });
+  await ensureTaxRates(stripe as never, TAX_RATES);
+}
+
+/**
+ * Sets the ship-to province on the bag in this browser (same call the bag UI makes). It runs inside the page because
+ * the cart cookie is Secure and the Node-side request jar drops Secure cookies received over plain http.
+ */
+export async function setBagProvince(page: import('@playwright/test').Page, provinceCode: string | null): Promise<void> {
+  if (page.url() === 'about:blank') await page.goto('/');
+  const result = await page.evaluate(async (code) => {
+    const res = await fetch('/api/storefront/cart', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ buyerIdentity: { provinceCode: code } }),
+    });
+    return { status: res.status, body: (await res.json()) as { userErrors: unknown[] } };
+  }, provinceCode);
+  if (result.status !== 200 || result.body.userErrors.length) {
+    throw new Error(`setting the bag province failed: ${result.status} ${JSON.stringify(result.body.userErrors)}`);
+  }
 }
 
 const tail = (gid: string) => Number(gid.split('/').pop());
@@ -86,6 +119,10 @@ export async function getInventory(skuOrGid: string): Promise<number | null> {
 
 export type OrderRow = {
   order_number: number;
+  tax_minor: number;
+  tax_lines: { key: string; title: string; ratePercent: string; amount: { amount: string } }[];
+  tax_province: string | null;
+  shipping_province: string | null;
   financial_status: string;
   stripe_session_id: string;
   email: string | null;
@@ -97,7 +134,7 @@ export type OrderRow = {
 
 export async function getOrders(): Promise<OrderRow[]> {
   const { rows } = await db().query(
-    `select o.order_number, o.financial_status, o.stripe_session_id, o.email, o.subtotal_minor, o.total_minor, o.review_flags,
+    `select o.order_number, o.tax_minor, o.tax_lines, o.tax_province, o.shipping_province, o.financial_status, o.stripe_session_id, o.email, o.subtotal_minor, o.total_minor, o.review_flags,
             coalesce((select json_agg(json_build_object('sku', l.sku, 'quantity', l.quantity, 'unit_minor', l.unit_minor) order by l.position)
                         from commerce.order_lines l where l.order_id = o.id), '[]') as lines
        from commerce.orders o order by o.order_number`,
@@ -119,7 +156,9 @@ export type FakeSession = {
   metadata: Record<string, string>;
   success_url: string | null;
   cancel_url: string | null;
-  line_items_requested: { quantity: number; unit_amount: number; name: string | null }[];
+  total_details: { amount_tax: number; amount_shipping: number; amount_discount: number };
+  line_items_requested: { quantity: number; unit_amount: number; name: string | null; tax_rates: string[] }[];
+  shipping_address_collection: { allowed_countries: string[] } | null;
 };
 
 export async function fakeSessions(): Promise<FakeSession[]> {
@@ -127,8 +166,8 @@ export async function fakeSessions(): Promise<FakeSession[]> {
 }
 
 /** Marks a session paid on the fake Stripe (the buyer finished paying) and returns it. */
-export async function payFakeSession(id: string): Promise<FakeSession> {
-  const res = await fetch(`${FAKE_STRIPE_ORIGIN}/__test/sessions/${id}/pay`, { method: 'POST' });
+export async function payFakeSession(id: string, address: { state?: string } = {}): Promise<FakeSession> {
+  const res = await fetch(`${FAKE_STRIPE_ORIGIN}/__test/sessions/${id}/pay`, { method: 'POST', body: JSON.stringify(address) });
   if (!res.ok) throw new Error(`fake stripe pay failed: ${res.status}`);
   return (await res.json()) as FakeSession;
 }

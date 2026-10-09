@@ -1,5 +1,5 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import { closeDb, fakeSessions, resetCommerceData, setVariantPrice } from './helpers';
+import { closeDb, fakeSessions, resetCommerceData, setBagProvince, setVariantPrice } from './helpers';
 
 /**
  * Price-changed banner (J6.2) in a real browser against Postgres and a fake Stripe: the banner in the
@@ -55,6 +55,7 @@ async function interceptStripe(page: Page) {
 test('/cart: banner with old and new price, checkout blocked, accept, then the Stripe redirect', async ({ page }, testInfo) => {
   const stripe = await interceptStripe(page);
   await add(page, 'lemon-balm-oat-extract');
+  await setBagProvince(page, 'ON');
 
   // No change yet: no banner.
   await page.goto('/cart');
@@ -106,6 +107,7 @@ test('/cart: banner with old and new price, checkout blocked, accept, then the S
 test('drawer: banner shown, checkout from the drawer lands on /cart blocked, accept in the drawer', async ({ page }, testInfo) => {
   const stripe = await interceptStripe(page);
   await add(page, 'lemon-balm-oat-extract');
+  await setBagProvince(page, 'ON');
   await setVariantPrice(HERO_30, 2000); // a decrease also counts as a change
 
   await page.goto('/products/lemon-balm-oat-extract');

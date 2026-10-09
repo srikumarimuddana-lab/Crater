@@ -8,6 +8,7 @@ import {
   payFakeSession,
   resetCommerceData,
   sendSignedWebhook,
+  setBagProvince,
   type FakeSession,
 } from './helpers';
 
@@ -66,7 +67,8 @@ async function interceptStripeCheckout(page: Page): Promise<Interception> {
   return state;
 }
 
-async function startCheckoutFromCart(page: Page, intercepted: Interception): Promise<FakeSession> {
+async function startCheckoutFromCart(page: Page, intercepted: Interception, province = 'ON'): Promise<FakeSession> {
+  await setBagProvince(page, province); // tax depends on the ship-to province; checkout requires it
   await page.goto('/cart');
   await expect(page.locator('#bag-lines').getByRole('link', { name: HERO_NAME })).toBeVisible();
   await page.getByRole('complementary').getByRole('button', { name: /^checkout/i }).click();
@@ -90,8 +92,11 @@ test('buys the hero product: redirect to hosted checkout, signed webhook, confir
 
   const session = await startCheckoutFromCart(page, intercepted);
   // Server-authoritative money, and return URLs on the integration origin (not a dev default).
-  expect(session).toMatchObject({ amount_subtotal: 2400, amount_total: 2400, currency: 'cad', payment_status: 'unpaid' });
-  expect(session.line_items_requested).toEqual([{ quantity: 1, unit_amount: 2400, name: `${HERO_NAME} — 30 mL` }]);
+  // Ontario bag: HST 13% of $24.00 = $3.12, charged through a fixed tax rate on the line item.
+  expect(session).toMatchObject({ amount_subtotal: 2400, amount_total: 2712, currency: 'cad', payment_status: 'unpaid', total_details: { amount_tax: 312 } });
+  expect(session.line_items_requested).toEqual([{ quantity: 1, unit_amount: 2400, name: `${HERO_NAME} — 30 mL`, tax_rates: [expect.stringMatching(/^txr_/)] }]);
+  expect(session.shipping_address_collection).toEqual({ allowed_countries: ['CA'] });
+  expect(session.metadata.tax_province).toBe('ON');
   // Stripe returns the buyer to /api/checkout/complete, which reconciles the cart cookie and 303s to the confirmation.
   expect(session.success_url).toBe('http://127.0.0.1:3300/api/checkout/complete?session_id={CHECKOUT_SESSION_ID}');
   expect(session.cancel_url).toBe('http://127.0.0.1:3300/cart?checkout=cancelled');
@@ -128,7 +133,10 @@ test('buys the hero product: redirect to hosted checkout, signed webhook, confir
     order_number: 1001,
     financial_status: 'PAID',
     subtotal_minor: 2400,
-    total_minor: 2400,
+    tax_minor: 312,
+    total_minor: 2712,
+    tax_province: 'ON',
+    shipping_province: 'ON',
     review_flags: [],
     lines: [{ sku: HERO_30, quantity: 1, unit_minor: 2400 }],
   });

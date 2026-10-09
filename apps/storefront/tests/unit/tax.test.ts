@@ -256,7 +256,7 @@ describe.each(REPO_KINDS)('tax in the cart and checkout [%s repository]', (kind)
     const h = await setup();
     const cart = await cartWith(h, [{ merchandiseId: V.hero30, quantity: 2 }, { merchandiseId: V.peppermint30 }], 'SK');
     expect(await h.checkout.createCheckoutSession(cart.id)).toMatchObject({ ok: true });
-    const params = h.stripe.create.mock.calls[0][0] as unknown as {
+    const params = (h.stripe.create.mock.calls as unknown as unknown[][])[0][0] as unknown as {
       line_items: { tax_rates: string[] }[]; metadata: Record<string, string>; shipping_address_collection: unknown;
     };
     expect(params.line_items).toHaveLength(2);
@@ -269,7 +269,7 @@ describe.each(REPO_KINDS)('tax in the cart and checkout [%s repository]', (kind)
     // ON gets HST only.
     const on = await cartWith(h, [{ merchandiseId: V.hero30 }], 'ON');
     await h.checkout.createCheckoutSession(on.id);
-    const onParams = h.stripe.create.mock.calls[1][0] as unknown as { line_items: { tax_rates: string[] }[] };
+    const onParams = (h.stripe.create.mock.calls as unknown as unknown[][])[1][0] as unknown as { line_items: { tax_rates: string[] }[] };
     expect(onParams.line_items[0].tax_rates).toEqual(['txr_test_CA_HST_ON']);
   });
 
@@ -340,7 +340,7 @@ describe.each(REPO_KINDS)('tax in the cart and checkout [%s repository]', (kind)
   });
 
   describe('webhook: Stripe\'s tax is recorded and checked', () => {
-    const started = async (h: Harness, province: ProvinceCode, lines = [{ merchandiseId: V.hero30, quantity: 2 }, { merchandiseId: V.peppermint30 }]) => {
+    const started = async (h: Harness, province: ProvinceCode, lines: { merchandiseId: string; quantity?: number }[] = [{ merchandiseId: V.hero30, quantity: 2 }, { merchandiseId: V.peppermint30 }]) => {
       const cart = await cartWith(h, lines, province);
       expect(await h.checkout.createCheckoutSession(cart.id)).toMatchObject({ ok: true });
       return cart;
@@ -479,7 +479,7 @@ describe.each(REPO_KINDS)('tax in the cart and checkout [%s repository]', (kind)
       const cart = await cartWith(h, [{ merchandiseId: V.hero30 }], 'ON');
       await h.checkout.createCheckoutSession(cart.id);
       // A snapshot from before province tax existed (no province): nothing to compare, nothing flagged.
-      const params = h.stripe.create.mock.calls[0][0] as unknown as { metadata: { checkout_id: string } };
+      const params = (h.stripe.create.mock.calls as unknown as unknown[][])[0][0] as unknown as { metadata: { checkout_id: string } };
       const snap = (await h.repo.getCheckout(params.metadata.checkout_id))!;
       expect(snap.province).toBe('ON');
       const s = paidSession(h, { amount_total: 2400, total_details: { amount_shipping: 0, amount_tax: 0, amount_discount: 0 } });
