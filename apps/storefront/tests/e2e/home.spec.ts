@@ -28,6 +28,9 @@ test('home renders shopping content without WebGL', async ({ page }) => {
   await disableWebGL(page);
   await page.goto('/');
 
+  // The stylesheet applied (an unstyled page would still pass the role checks below).
+  await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(247, 242, 232)');
+
   // Sample status is unmistakable while fixtures are in use.
   await expect(page.getByRole('region', { name: /preview notice/i })).toContainText(/sample products/i);
 

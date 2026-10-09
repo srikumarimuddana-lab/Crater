@@ -1,15 +1,17 @@
 @import 'tailwindcss';
 
-/* Mineral Atelier preview tokens — see docs/visual-contract.md for contrast data. */
+/* Forest & Gilt luxury preview tokens — see docs/visual-contract.md for contrast data. */
 @theme {
-  --color-porcelain: #f3f4ee;
-  --color-mineral: #d8e6d7;
-  --color-chalk: #ffffff;
-  --color-pine: #202c25;
-  --color-pine-hover: #34473c;
-  --color-pine-muted: #4a5a4f;
-  --color-sage: #738979; /* graphics only: never text */
-  --color-bronze: #917254; /* packaging detail only: never small text */
+  --color-ivory: #f7f2e8; /* page background */
+  --color-parchment: #ede3d1; /* light surfaces, image frames, hover fills */
+  --color-forest: #14301f; /* hero band, primary actions */
+  --color-forest-hover: #1f4430;
+  --color-forest-deep: #0e2417; /* header, deepest band */
+  --color-espresso: #2a1d15; /* body text on light, footer band */
+  --color-walnut: #5c4330; /* secondary text on light (8.2:1 on ivory) */
+  --color-gold: #c9a86a; /* text/rules on forest or espresso only; decorative on light */
+  --color-gold-light: #e2cb97; /* text and focus ring on dark bands */
+  --color-gold-deep: #8c6a2f; /* hairlines on light; text only at >=24px */
 
   --container-content: 80rem;
 }
@@ -21,8 +23,8 @@
 
 @layer base {
   html {
-    background: var(--color-porcelain);
-    color: var(--color-pine);
+    background: var(--color-ivory);
+    color: var(--color-espresso);
     -webkit-text-size-adjust: 100%;
   }
 
@@ -70,8 +72,13 @@
   }
 
   :focus-visible {
-    outline: 3px solid var(--color-pine);
+    outline: 3px solid var(--color-forest);
     outline-offset: 3px;
+  }
+
+  /* Dark bands (forest, espresso): switch the ring to gold-light (≥9:1). */
+  .on-dark :focus-visible {
+    outline-color: var(--color-gold-light);
   }
 
   @media (forced-colors: active) {
@@ -83,8 +90,27 @@
 
 @utility focus-ring {
   &:focus-visible {
-    outline: 3px solid var(--color-pine);
+    outline-width: 3px;
+    outline-style: solid;
     outline-offset: 3px;
+  }
+}
+
+/* Thin gilt rule with a centered lozenge; purely decorative. */
+@utility ornament {
+  position: relative;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-gold) 18%, var(--color-gold) 82%, transparent);
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    background: var(--color-gold);
+    transform: translate(-50%, -50%) rotate(45deg);
   }
 }
 
@@ -131,8 +157,8 @@
   z-index: 50;
   padding: 0.75rem 1rem;
   min-height: 44px;
-  background: var(--color-pine);
-  color: var(--color-porcelain);
+  background: var(--color-forest);
+  color: var(--color-gold-light);
   font-weight: 600;
   border-radius: 2px;
   transform: translateY(-200%);
@@ -140,5 +166,5 @@
 
 .skip-link:focus-visible {
   transform: none;
-  outline-color: var(--color-pine);
+  outline-color: var(--color-gold-light);
 }

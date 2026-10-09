@@ -71,6 +71,11 @@ Shared commerce types live in `fixtures.ts` until Phase 2 moves them to
 `src/lib/commerce/types.ts`. Remaining inputs: real brand name, product records,
 photography, approved copy, and font licence confirmation.
 
+**Update (2026-10-09).** At the user's request the preview now uses the Forest &
+Gilt palette (green, brown, gold); see `visual-contract.md`. Correction: the
+earlier "lint passes" was masked by a pipe; the packshot generator's `require()`
+calls failed lint. It is now an ES module and lint exits 0.
+
 ## Phase 2: product page and cart interface in fixture mode
 
 **Owner:** Frontend engineer; product strategist prepares content records.

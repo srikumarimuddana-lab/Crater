@@ -11,11 +11,16 @@ library has been supplied. Use the working direction below to build a preview;
 replace fixture content with verified brand material before launch. Canada/CAD
 is a preview assumption, not a restriction on the eventual selling markets.
 
-## Working direction: Mineral Atelier
+## Working direction: Forest & Gilt (user decision, 2026-10-09)
+
+The user asked for a premium luxury look in green, brown and gold. Deep forest
+bands, espresso brown and antique gold replace the original Mineral Atelier
+palette; `visual-contract.md` holds the current tokens and contrast data. The
+table below records the original Mineral Atelier direction for reference.
 
 Present skincare as carefully formulated objects in a quiet studio. Make one
 serum bottle, its actual label, and the light passing through it the memorable
-element. Use ingredient photography and a limestone plinth to connect the scene
+element. Use ingredient photography and a stone plinth to connect the scene
 to materials. Keep shopping controls familiar and immediate.
 
 | Token | Value | Use |

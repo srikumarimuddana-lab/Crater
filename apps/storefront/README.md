@@ -19,5 +19,5 @@ Chromium.
 
 - Fixture data: `src/lib/content/fixtures.ts` (all names, prices, and copy are placeholders).
 - Placeholder packshots: `public/products/<handle>/packshot.svg`, regenerated with
-  `node scripts/generate-placeholder-packshots.cjs public/products`.
+  `node scripts/generate-placeholder-packshots.mjs public/products`.
 - Design tokens and composition: `../../docs/visual-contract.md`.

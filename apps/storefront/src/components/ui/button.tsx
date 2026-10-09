@@ -1,15 +1,18 @@
 import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
 
-type Variant = 'primary' | 'secondary';
+/** `gold`/`outline-light` are for dark (forest/espresso) bands; the others for light surfaces. */
+type Variant = 'primary' | 'secondary' | 'gold' | 'outline-light';
 
 const base =
-  'inline-flex min-h-13 items-center justify-center gap-2 rounded-xs px-7 text-base font-semibold ' +
-  'tracking-[0.01em] transition-colors duration-180 motion-reduce:transition-none focus-ring';
+  'inline-flex min-h-13 items-center justify-center gap-2 rounded-xs px-8 text-[0.9375rem] font-semibold ' +
+  'uppercase tracking-[0.12em] transition-colors duration-180 motion-reduce:transition-none focus-ring';
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-pine text-porcelain hover:bg-pine-hover',
-  secondary: 'border-2 border-pine text-pine hover:bg-mineral',
+  primary: 'bg-forest text-gold-light hover:bg-forest-hover',
+  secondary: 'border border-espresso text-espresso hover:bg-parchment',
+  gold: 'bg-gold text-forest-deep hover:bg-gold-light',
+  'outline-light': 'border border-gold-light text-ivory hover:bg-forest-hover',
 };
 
 export function buttonClassName(variant: Variant = 'primary', extra = '') {
