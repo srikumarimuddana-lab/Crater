@@ -1,6 +1,7 @@
 // Generates marked SVG placeholder packshots (no real photography exists yet).
 // Usage: node scripts/generate-placeholder-packshots.mjs public/products
-// Palette: Forest & Gilt (see docs/visual-contract.md). Illustrations only — not approved packaging.
+// Palette: Forest & Gilt products on a flat studio backdrop (see docs/visual-contract.md).
+// Illustrations only — not approved packaging.
 import fs from 'node:fs';
 import path from 'node:path';
 const out = process.argv[2];
@@ -10,8 +11,8 @@ const c = {
   forestDeep: '#0E2417', forest: '#14301F', forestHover: '#1F4430',
   glassGreen: '#2F5A43', glassAmber: '#7A4A22',
   gold: '#C9A86A', goldLight: '#E2CB97', goldDeep: '#8C6A2F',
-  ivory: '#F7F2E8', espresso: '#2A1D15',
-  stoneTop: '#8A6A4F', stoneFace: '#6A4A32', stoneShade: '#4E3523',
+  ivory: '#F7F2E8', espresso: '#2A1D15', walnut: '#5C4330',
+  studio: '#EEE8DD', studioFloor: '#E6DED0',
 };
 const esc = (s) => s.replace(/&/g, '&amp;');
 
@@ -71,22 +72,15 @@ for (const [handle, draw] of Object.entries(shapes)) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000" role="img" aria-label="Illustration placeholder: ${esc(name)}">
   <title>Illustration placeholder: ${esc(name)}</title>
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.forestHover}"/><stop offset="0.7" stop-color="${c.forest}"/><stop offset="1" stop-color="${c.forestDeep}"/></linearGradient>
-    <radialGradient id="glow" cx="0.5" cy="0.48" r="0.42"><stop offset="0" stop-color="${c.gold}" stop-opacity="0.34"/><stop offset="1" stop-color="${c.gold}" stop-opacity="0"/></radialGradient>
     <linearGradient id="gilt" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c.goldDeep}"/><stop offset="0.45" stop-color="${c.goldLight}"/><stop offset="1" stop-color="${c.goldDeep}"/></linearGradient>
-    <linearGradient id="glassShade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity="0.25"/><stop offset="0.35" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.35"/></linearGradient>
-    <linearGradient id="stone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c.stoneShade}"/><stop offset="0.4" stop-color="${c.stoneFace}"/><stop offset="1" stop-color="${c.stoneShade}"/></linearGradient>
+    <linearGradient id="glassShade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity="0.22"/><stop offset="0.35" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.3"/></linearGradient>
+    <radialGradient id="floorShadow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#2A1D15" stop-opacity="0.22"/><stop offset="1" stop-color="#2A1D15" stop-opacity="0"/></radialGradient>
   </defs>
-  <rect width="800" height="1000" fill="url(#bg)"/>
-  <rect width="800" height="1000" fill="url(#glow)"/>
-  <rect x="150" y="672" width="500" height="150" fill="url(#stone)"/>
-  <ellipse cx="400" cy="822" rx="250" ry="40" fill="${c.stoneShade}"/>
-  <ellipse cx="400" cy="672" rx="250" ry="40" fill="${c.stoneTop}"/>
-  <ellipse cx="400" cy="672" rx="250" ry="40" fill="none" stroke="${c.gold}" stroke-opacity="0.6" stroke-width="2"/>
-  <ellipse cx="400" cy="668" rx="140" ry="14" fill="#000" opacity="0.28"/>
+  <rect width="800" height="1000" fill="${c.studio}"/>
+  <rect y="668" width="800" height="332" fill="${c.studioFloor}"/>
+  <ellipse cx="400" cy="672" rx="230" ry="26" fill="url(#floorShadow)"/>
   ${draw(name)}
-  <rect x="24" y="22" width="752" height="44" rx="4" fill="${c.forestDeep}" opacity="0.85" stroke="${c.gold}" stroke-opacity="0.5"/>
-  <text x="400" y="51" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="19" letter-spacing="2" fill="${c.goldLight}">ILLUSTRATION PLACEHOLDER — NOT A PRODUCT PHOTO</text>
+  <text x="40" y="958" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="${c.walnut}">Placeholder illustration</text>
 </svg>
 `;
   fs.mkdirSync(path.join(out, handle), { recursive: true });
