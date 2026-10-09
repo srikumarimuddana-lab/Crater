@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000" role="img" aria-label="Illustration placeholder: Cloud Cream">
+  <title>Illustration placeholder: Cloud Cream</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#D8E6D7"/></linearGradient>
+    <radialGradient id="light" cx="0.7" cy="0.2" r="0.7"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.9"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#bg)"/>
+  <rect width="800" height="1000" fill="url(#light)"/>
+  <ellipse cx="400" cy="672" rx="250" ry="40" fill="#E4E2D8"/>
+  <rect x="150" y="672" width="500" height="150" fill="#E4E2D8"/>
+  <ellipse cx="400" cy="822" rx="250" ry="40" fill="#D3D0C4"/>
+  <ellipse cx="400" cy="672" rx="250" ry="40" fill="#ECEAE2"/>
+  <ellipse cx="400" cy="668" rx="140" ry="16" fill="#202C25" opacity="0.12"/>
+  
+    <rect x="250" y="470" width="300" height="70" rx="14" fill="#202C25"/>
+    <rect x="240" y="530" width="320" height="140" rx="30" fill="#FFFFFF" stroke="#202C25" stroke-opacity="0.2" stroke-width="2"/>
+    
+  <rect x="320" y="552" width="160" height="99" rx="4" fill="#FFFFFF" opacity="0.92"/>
+  <text x="400" y="584" text-anchor="middle" font-family="Georgia, serif" font-size="19" letter-spacing="3" fill="#202C25">CRATER</text>
+  <line x1="360" y1="596.8" x2="440" y2="596.8" stroke="#917254" stroke-width="1.5"/>
+  <text x="400" y="619.2" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#202C25">Cloud Cream</text>
+  <rect x="24" y="22" width="752" height="44" rx="6" fill="#FFFFFF" opacity="0.85"/>
+  <text x="400" y="51" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="20" letter-spacing="2" fill="#202C25">ILLUSTRATION PLACEHOLDER — NOT A PRODUCT PHOTO</text>
+</svg>

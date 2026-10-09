@@ -4,8 +4,8 @@ A Claude Code development kit for a premium cosmetics/skincare ecommerce site
 with an editorial design, cinematic 3D product storytelling, and a clear purchase
 journey.
 
-**Status:** the skills, agents, hooks, and build plan are ready. The storefront
-application is the next development milestone.
+**Status:** Phase 1 (static foundation, fixture data) is implemented in
+`apps/storefront`; see `apps/storefront/README.md`. Phases 2–6 are not started.
 
 ## Included
 

@@ -44,17 +44,32 @@ lockfile, `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/globals.css`,
 copy, image, variants, size, and `{amount: string, currencyCode: string}` money.
 Create a rendered hero and collection without WebGL or live credentials.
 
-- [ ] Select compatible stable versions and record the selected versions in the
+- [x] Select compatible stable versions and record the selected versions in the
   lockfile. Keep root toolkit commands available.
-- [ ] Add `home renders shopping content without WebGL` and `home preserves layout
+- [x] Add `home renders shopping content without WebGL` and `home preserves layout
   during delayed image and font loading` in the Playwright home spec. Assert the
   hero heading, product image, shopping action, and collection links are usable.
-- [ ] Implement the static design at 390px, 768px, and 1440px with marked fixtures,
+- [x] Implement the static design at 390px, 768px, and 1440px with marked fixtures,
   semantic headings, focus states, and responsive images.
-- [ ] Run app typecheck/lint/build and the scoped home spec. Inspect screenshots
+- [x] Run app typecheck/lint/build and the scoped home spec. Inspect screenshots
   at each width; record the result and commit the phase.
 
 **Exit:** The site is useful and visually coherent before animation is added.
+
+**Phase 1 record (2026-10-09).** Goal met in fixture mode. Owned files:
+`apps/storefront/**` (coordinator) and `docs/visual-contract.md` (art director).
+Pinned: Next.js 16.3.8, React 19.2.8, TypeScript 5.9.3, Tailwind 4.3.3, ESLint
+9.39.5, Playwright 1.56.1 (matches the preinstalled Chromium), axe 4.11.3; exact
+`package-lock.json` committed. Evidence: typecheck, lint, and build pass; the home
+spec passes 4 tests × 3 viewports (390/768/1440): no-WebGL shopping content and
+filter, skip link/focus, axe serious/critical = 0, and delayed image/font loading
+with stable hero box and CLS < 0.1. Screenshots inspected at each width; they
+caught and fixed an unreserved desktop hero, a font-swap heading shift, and an
+invalid balm SVG. Known: `npm audit` reports 5 high advisories in dev-only lint
+tooling (micromatch via `@next/eslint-plugin-next`); production deps report 0.
+Shared commerce types live in `fixtures.ts` until Phase 2 moves them to
+`src/lib/commerce/types.ts`. Remaining inputs: real brand name, product records,
+photography, approved copy, and font licence confirmation.
 
 ## Phase 2: product page and cart interface in fixture mode
 

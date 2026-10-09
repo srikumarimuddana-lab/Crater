@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000" role="img" aria-label="Illustration placeholder: Gel Cleanser">
+  <title>Illustration placeholder: Gel Cleanser</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#D8E6D7"/></linearGradient>
+    <radialGradient id="light" cx="0.7" cy="0.2" r="0.7"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.9"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#bg)"/>
+  <rect width="800" height="1000" fill="url(#light)"/>
+  <ellipse cx="400" cy="672" rx="250" ry="40" fill="#E4E2D8"/>
+  <rect x="150" y="672" width="500" height="150" fill="#E4E2D8"/>
+  <ellipse cx="400" cy="822" rx="250" ry="40" fill="#D3D0C4"/>
+  <ellipse cx="400" cy="672" rx="250" ry="40" fill="#ECEAE2"/>
+  <ellipse cx="400" cy="668" rx="140" ry="16" fill="#202C25" opacity="0.12"/>
+  
+    <rect x="360" y="580" width="80" height="85" rx="10" fill="#202C25"/>
+    <path d="M320 250 L480 250 L470 590 Q400 610 330 590 Z" fill="#D8E6D7" stroke="#202C25" stroke-opacity="0.25" stroke-width="2"/>
+    <rect x="318" y="240" width="164" height="18" rx="4" fill="#738979"/>
+    
+  <rect x="340" y="380" width="120" height="74" rx="4" fill="#FFFFFF" opacity="0.92"/>
+  <text x="400" y="404" text-anchor="middle" font-family="Georgia, serif" font-size="14" letter-spacing="3" fill="#202C25">CRATER</text>
+  <line x1="370" y1="413.6" x2="430" y2="413.6" stroke="#917254" stroke-width="1.5"/>
+  <text x="400" y="430.4" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#202C25">Gel Cleanser</text>
+  <rect x="24" y="22" width="752" height="44" rx="6" fill="#FFFFFF" opacity="0.85"/>
+  <text x="400" y="51" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="20" letter-spacing="2" fill="#202C25">ILLUSTRATION PLACEHOLDER — NOT A PRODUCT PHOTO</text>
+</svg>

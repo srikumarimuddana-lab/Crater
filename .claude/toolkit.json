@@ -32,6 +32,7 @@
     "docs/asset-brief.md",
     "docs/implementation-plan.md",
     "docs/claude-code-setup.md",
-    "docs/sources.md"
+    "docs/sources.md",
+    "docs/visual-contract.md"
   ]
 }

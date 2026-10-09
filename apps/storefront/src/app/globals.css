@@ -1,0 +1,144 @@
+@import 'tailwindcss';
+
+/* Mineral Atelier preview tokens — see docs/visual-contract.md for contrast data. */
+@theme {
+  --color-porcelain: #f3f4ee;
+  --color-mineral: #d8e6d7;
+  --color-chalk: #ffffff;
+  --color-pine: #202c25;
+  --color-pine-hover: #34473c;
+  --color-pine-muted: #4a5a4f;
+  --color-sage: #738979; /* graphics only: never text */
+  --color-bronze: #917254; /* packaging detail only: never small text */
+
+  --container-content: 80rem;
+}
+
+@theme inline {
+  --font-display: var(--font-bodoni), 'Bodoni Moda', Georgia, serif;
+  --font-sans: var(--font-manrope), 'Manrope', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    background: var(--color-porcelain);
+    color: var(--color-pine);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: clamp(1rem, 0.96rem + 0.15vw, 1.0625rem);
+    line-height: 1.6;
+    min-height: 100dvh;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    text-wrap: balance;
+  }
+
+  h1 {
+    font-size: clamp(2.5rem, 1.6rem + 3.6vw, 4.75rem);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+  }
+
+  h2 {
+    font-size: clamp(1.875rem, 1.3rem + 2.2vw, 3rem);
+    line-height: 1.1;
+    letter-spacing: -0.005em;
+  }
+
+  h3 {
+    font-size: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
+    line-height: 1.2;
+  }
+
+  /* Anchored sections clear the top edge when jumped to. */
+  [id] {
+    scroll-margin-top: 1.5rem;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-pine);
+    outline-offset: 3px;
+  }
+
+  @media (forced-colors: active) {
+    :focus-visible {
+      outline-color: Highlight;
+    }
+  }
+}
+
+@utility focus-ring {
+  &:focus-visible {
+    outline: 3px solid var(--color-pine);
+    outline-offset: 3px;
+  }
+}
+
+@utility text-small {
+  font-size: clamp(0.875rem, 0.85rem + 0.1vw, 0.9375rem);
+  line-height: 1.5;
+  letter-spacing: 0.005em;
+}
+
+@utility text-eyebrow {
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+@utility text-price {
+  font-size: clamp(1.125rem, 1rem + 0.5vw, 1.5rem);
+  line-height: 1.2;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+@utility page-gutter {
+  margin-inline: auto;
+  width: 100%;
+  max-width: calc(var(--container-content) + 2 * 5rem);
+  padding-inline: 1.25rem;
+
+  @media (width >= 48rem) {
+    padding-inline: 2rem;
+  }
+
+  @media (width >= 80rem) {
+    padding-inline: 5rem;
+  }
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: 0.5rem;
+  z-index: 50;
+  padding: 0.75rem 1rem;
+  min-height: 44px;
+  background: var(--color-pine);
+  color: var(--color-porcelain);
+  font-weight: 600;
+  border-radius: 2px;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus-visible {
+  transform: none;
+  outline-color: var(--color-pine);
+}
