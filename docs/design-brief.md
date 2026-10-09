@@ -11,6 +11,18 @@ library has been supplied. Use the working direction below to build a preview;
 replace fixture content with verified brand material before launch. Canada/CAD
 is a preview assumption, not a restriction on the eventual selling markets.
 
+## Catalogue and layout (user decisions, 2026-10-09)
+
+- The sample catalogue is herbal: liquid herbal extracts (tinctures), single-herb
+  extracts, body oils and kits (`catalogue.md`). All names and copy are original
+  samples; no health claims until licensed (NPN) claims are supplied.
+- The storefront layout follows patterns common to established herbal stores
+  (announcement bar, mega menu, hero with two actions, value tiles, featured
+  carousel, shop-by-ritual tiles, story and values sections, rich footer). Patterns
+  only: no copied text, images, names, certifications or reviews.
+- The 3D hero (Phase 3) now features an amber glass dropper bottle instead of a
+  serum bottle.
+
 ## Working direction: Forest & Gilt (user decision, 2026-10-09)
 
 The user asked for a premium luxury look in green, brown and gold. Deep forest

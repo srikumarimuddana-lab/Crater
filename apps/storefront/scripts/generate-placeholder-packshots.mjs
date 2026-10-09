@@ -1,131 +1,149 @@
 // Generates marked SVG placeholder packshots (no real photography exists yet).
 // Usage: node scripts/generate-placeholder-packshots.mjs public/products
-// Palette: Forest & Gilt products on a flat studio backdrop (see docs/visual-contract.md).
-// Illustrations only — not approved packaging.
+// Herbal catalogue (docs/catalogue.md): amber glass dropper bottles, pump body oils and a kit box,
+// on a flat studio backdrop. Illustrations only — not approved packaging or labels.
 import fs from 'node:fs';
 import path from 'node:path';
+
 const out = process.argv[2];
 if (!out) throw new Error('Pass the output directory, e.g. public/products');
 
 const c = {
-  forestDeep: '#0E2417', forest: '#14301F', forestHover: '#1F4430',
-  glassGreen: '#2F5A43', glassAmber: '#7A4A22',
-  gold: '#C9A86A', goldLight: '#E2CB97', goldDeep: '#8C6A2F',
-  ivory: '#F7F2E8', espresso: '#2A1D15', walnut: '#5C4330',
   studio: '#EEE8DD', studioFloor: '#E6DED0',
+  amber: '#7A4A1E', amberDeep: '#4E2E12', amberLight: '#A8692E',
+  forest: '#14301F', forestHover: '#1F4430', espresso: '#2A1D15', walnut: '#5C4330',
+  gold: '#C9A86A', goldLight: '#E2CB97', goldDeep: '#8C6A2F', ivory: '#F7F2E8',
+  kraft: '#C9A57A', kraftDeep: '#A88457', leaf: '#4F6B4A',
 };
 const esc = (s) => s.replace(/&/g, '&amp;');
 
-const label = (cx, y, name, w) => `
-  <rect x="${cx - w / 2}" y="${y}" width="${w}" height="${Math.round(w * 0.66)}" rx="3" fill="${c.ivory}"/>
-  <rect x="${cx - w / 2 + 5}" y="${y + 5}" width="${w - 10}" height="${Math.round(w * 0.66) - 10}" rx="2" fill="none" stroke="${c.gold}" stroke-width="1.5"/>
-  <text x="${cx}" y="${y + w * 0.24}" text-anchor="middle" font-family="Didot, 'Bodoni 72', Georgia, serif" font-size="${Math.round(w * 0.12)}" letter-spacing="4" fill="${c.espresso}">CRATER</text>
-  <path d="M${cx - w * 0.22} ${y + w * 0.32} H${cx + w * 0.22}" stroke="${c.goldDeep}" stroke-width="1.5"/>
-  <text x="${cx}" y="${y + w * 0.47}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="${Math.round(w * 0.075)}" letter-spacing="1" fill="${c.espresso}">${esc(name)}</text>`;
-
-// Glass body with a soft vertical highlight and gilt outline.
-const glass = (x, y, w, h, r, tint) => `
-  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${tint}" opacity="0.92"/>
-  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="url(#glassShade)"/>
-  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="none" stroke="${c.gold}" stroke-opacity="0.55" stroke-width="2"/>
-  <rect x="${x + w * 0.1}" y="${y + 18}" width="${Math.max(10, w * 0.09)}" height="${h - 36}" rx="6" fill="${c.ivory}" opacity="0.22"/>`;
-
-const shapes = {
-  'mineral-serum': (n) => `
-    <rect x="376" y="250" width="48" height="60" rx="22" fill="${c.espresso}"/>
-    <rect x="350" y="302" width="100" height="66" rx="6" fill="url(#gilt)"/>
-    ${glass(300, 365, 200, 300, 26, c.glassGreen)}
-    ${label(400, 455, n, 150)}`,
-  'cloud-cream': (n) => `
-    <rect x="245" y="470" width="310" height="66" rx="8" fill="url(#gilt)"/>
-    ${glass(238, 532, 324, 136, 26, c.glassAmber)}
-    ${label(400, 548, n, 160)}`,
-  'gel-cleanser': (n) => `
-    <rect x="356" y="584" width="88" height="82" rx="8" fill="url(#gilt)"/>
-    <path d="M320 250 L480 250 L470 590 Q400 606 330 590 Z" fill="${c.glassGreen}"/>
-    <path d="M320 250 L480 250 L470 590 Q400 606 330 590 Z" fill="none" stroke="${c.gold}" stroke-opacity="0.55" stroke-width="2"/>
-    <rect x="316" y="238" width="168" height="16" rx="3" fill="url(#gilt)"/>
-    ${label(400, 380, n, 122)}`,
-  'balancing-toner': (n) => `
-    <rect x="362" y="250" width="76" height="82" rx="6" fill="url(#gilt)"/>
-    ${glass(310, 326, 180, 340, 20, c.glassAmber)}
-    ${label(400, 450, n, 140)}`,
-  'facial-mist': (n) => `
-    <rect x="382" y="232" width="36" height="40" rx="6" fill="${c.espresso}"/>
-    <rect x="358" y="268" width="84" height="62" rx="8" fill="url(#gilt)"/>
-    ${glass(325, 326, 150, 340, 68, c.glassGreen)}
-    ${label(400, 440, n, 120)}`,
-  'lip-cheek-balm': (n) => `
-    <ellipse cx="400" cy="640" rx="150" ry="28" fill="${c.goldDeep}"/>
-    <rect x="250" y="560" width="300" height="80" fill="url(#gilt)"/>
-    <ellipse cx="400" cy="560" rx="150" ry="32" fill="${c.goldLight}"/>
-    <ellipse cx="400" cy="558" rx="116" ry="22" fill="${c.ivory}"/>
-    <text x="400" y="564" text-anchor="middle" font-family="Didot, 'Bodoni 72', Georgia, serif" font-size="15" letter-spacing="3" fill="${c.espresso}">CRATER · ${esc(n.toUpperCase())}</text>`,
-};
-const names = {
-  'mineral-serum': 'Mineral Serum', 'cloud-cream': 'Cloud Cream', 'gel-cleanser': 'Gel Cleanser',
-  'balancing-toner': 'Balancing Toner', 'facial-mist': 'Facial Mist', 'lip-cheek-balm': 'Lip & Cheek Balm',
+// Each product: format, label band colour, short label line.
+const products = {
+  'lemon-balm-oat-extract': { title: 'Lemon Balm & Oat Extract', format: 'tincture', band: c.forest },
+  'peppermint-ginger-extract': { title: 'Peppermint & Ginger Extract', format: 'tincture', band: c.forestHover },
+  'chamomile-linden-extract': { title: 'Chamomile & Linden Extract', format: 'tincture', band: c.goldDeep },
+  'hawthorn-rose-hip-extract': { title: 'Hawthorn & Rose Hip Extract', format: 'tincture', band: c.walnut },
+  'dandelion-root-extract': { title: 'Dandelion Root Extract', format: 'single', band: c.leaf },
+  'nettle-leaf-extract': { title: 'Nettle Leaf Extract', format: 'single', band: c.leaf },
+  'calendula-almond-body-oil': { title: 'Calendula & Almond Body Oil', format: 'oil', band: c.goldDeep },
+  'lavender-jojoba-body-oil': { title: 'Lavender & Jojoba Body Oil', format: 'oil', band: c.forest },
+  'evening-ritual-kit': { title: 'Evening Ritual Kit', format: 'kit', band: c.forest },
 };
 
-for (const [handle, draw] of Object.entries(shapes)) {
-  const name = names[handle];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000" role="img" aria-label="Illustration placeholder: ${esc(name)}">
-  <title>Illustration placeholder: ${esc(name)}</title>
+const defs = `
   <defs>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c.amberDeep}"/><stop offset="0.35" stop-color="${c.amberLight}"/><stop offset="0.6" stop-color="${c.amber}"/><stop offset="1" stop-color="${c.amberDeep}"/></linearGradient>
     <linearGradient id="gilt" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c.goldDeep}"/><stop offset="0.45" stop-color="${c.goldLight}"/><stop offset="1" stop-color="${c.goldDeep}"/></linearGradient>
-    <linearGradient id="glassShade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity="0.22"/><stop offset="0.35" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.3"/></linearGradient>
-    <radialGradient id="floorShadow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#2A1D15" stop-opacity="0.22"/><stop offset="1" stop-color="#2A1D15" stop-opacity="0"/></radialGradient>
-  </defs>
+    <radialGradient id="floorShadow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#2A1D15" stop-opacity="0.24"/><stop offset="1" stop-color="#2A1D15" stop-opacity="0"/></radialGradient>
+  </defs>`;
+
+const backdrop = `
   <rect width="800" height="1000" fill="${c.studio}"/>
   <rect y="668" width="800" height="332" fill="${c.studioFloor}"/>
-  <ellipse cx="400" cy="672" rx="230" ry="26" fill="url(#floorShadow)"/>
-  ${draw(name)}
-  <text x="40" y="958" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="${c.walnut}">Placeholder illustration</text>
+  <ellipse cx="400" cy="672" rx="240" ry="26" fill="url(#floorShadow)"/>`;
+
+const marker = `<text x="40" y="958" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="${c.walnut}">Placeholder illustration</text>`;
+
+// Paper label with a coloured band and the product name (wrapped onto two lines when long).
+function label(cx, y, w, h, title, band) {
+  const words = title.split(' ');
+  const mid = Math.ceil(words.length / 2);
+  const lines = title.length > 18 ? [words.slice(0, mid).join(' '), words.slice(mid).join(' ')] : [title];
+  const fs1 = Math.round(w * 0.085);
+  return `
+  <rect x="${cx - w / 2}" y="${y}" width="${w}" height="${h}" rx="3" fill="${c.ivory}"/>
+  <rect x="${cx - w / 2}" y="${y + h * 0.72}" width="${w}" height="${h * 0.12}" fill="${band}"/>
+  <text x="${cx}" y="${y + h * 0.2}" text-anchor="middle" font-family="Didot, 'Bodoni 72', Georgia, serif" font-size="${Math.round(w * 0.11)}" letter-spacing="4" fill="${c.espresso}">CRATER</text>
+  ${lines.map((l, i) => `<text x="${cx}" y="${y + h * (0.4 + i * 0.13)}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="${fs1}" fill="${c.espresso}">${esc(l)}</text>`).join('')}
+  <text x="${cx}" y="${y + h * 0.95}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="${Math.round(w * 0.07)}" fill="${c.walnut}">SAMPLE</text>`;
+}
+
+function dropperBottle(cx, base, scale, title, band) {
+  const w = 170 * scale, h = 250 * scale;
+  const top = base - h;
+  return `
+  <rect x="${cx - 22 * scale}" y="${top - 150 * scale}" width="${44 * scale}" height="${70 * scale}" rx="${20 * scale}" fill="${c.espresso}"/>
+  <rect x="${cx - 38 * scale}" y="${top - 86 * scale}" width="${76 * scale}" height="${62 * scale}" rx="${6 * scale}" fill="url(#gilt)"/>
+  <rect x="${cx - 30 * scale}" y="${top - 28 * scale}" width="${60 * scale}" height="${34 * scale}" fill="${c.amberDeep}"/>
+  <rect x="${cx - w / 2}" y="${top}" width="${w}" height="${h}" rx="${30 * scale}" fill="url(#glass)"/>
+  <rect x="${cx - w / 2 + 14 * scale}" y="${top + 18 * scale}" width="${12 * scale}" height="${h - 40 * scale}" rx="${6 * scale}" fill="#FFFFFF" opacity="0.18"/>
+  ${label(cx, top + h * 0.22, w * 0.8, h * 0.6, title, band)}`;
+}
+
+function pumpBottle(cx, base, scale, title, band) {
+  const w = 160 * scale, h = 340 * scale;
+  const top = base - h;
+  return `
+  <rect x="${cx - 8 * scale}" y="${top - 150 * scale}" width="${16 * scale}" height="${70 * scale}" fill="${c.espresso}"/>
+  <path d="M${cx - 8 * scale} ${top - 150 * scale} h${-50 * scale} v${18 * scale} h${58 * scale} z" fill="${c.espresso}"/>
+  <rect x="${cx - 30 * scale}" y="${top - 84 * scale}" width="${60 * scale}" height="${46 * scale}" rx="${6 * scale}" fill="${c.espresso}"/>
+  <rect x="${cx - 36 * scale}" y="${top - 40 * scale}" width="${72 * scale}" height="${40 * scale}" rx="${5 * scale}" fill="url(#gilt)"/>
+  <rect x="${cx - w / 2}" y="${top}" width="${w}" height="${h}" rx="${24 * scale}" fill="url(#glass)"/>
+  <rect x="${cx - w / 2 + 14 * scale}" y="${top + 18 * scale}" width="${12 * scale}" height="${h - 40 * scale}" rx="${6 * scale}" fill="#FFFFFF" opacity="0.18"/>
+  ${label(cx, top + h * 0.25, w * 0.82, h * 0.5, title, band)}`;
+}
+
+function kitBox(title) {
+  return `
+  ${dropperBottle(300, 520, 0.62, 'Extract', c.forest)}
+  ${dropperBottle(400, 520, 0.62, 'Extract', c.goldDeep)}
+  ${pumpBottle(505, 520, 0.5, 'Body Oil', c.forest)}
+  <path d="M170 470 L630 470 L610 690 L190 690 Z" fill="${c.kraft}"/>
+  <path d="M170 470 L630 470 L640 440 L160 440 Z" fill="${c.kraftDeep}"/>
+  <rect x="300" y="530" width="200" height="110" rx="3" fill="${c.ivory}"/>
+  <rect x="300" y="610" width="200" height="12" fill="${c.forest}"/>
+  <text x="400" y="565" text-anchor="middle" font-family="Didot, 'Bodoni 72', Georgia, serif" font-size="22" letter-spacing="4" fill="${c.espresso}">CRATER</text>
+  <text x="400" y="595" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="16" fill="${c.espresso}">${esc(title)}</text>`;
+}
+
+const scaleFor = { tincture: 1, single: 1, oil: 1, kit: 1 };
+
+function packshot(p) {
+  if (p.format === 'kit') return kitBox(p.title);
+  if (p.format === 'oil') return pumpBottle(400, 670, scaleFor.oil, p.title, p.band);
+  return dropperBottle(400, 670, scaleFor.tincture, p.title, p.band);
+}
+
+// Second view: texture / ingredient close-up placeholders per format.
+function detail(p) {
+  if (p.format === 'oil')
+    return `
+  <ellipse cx="400" cy="580" rx="200" ry="80" fill="${c.goldLight}" opacity="0.55"/>
+  <ellipse cx="410" cy="572" rx="120" ry="44" fill="${c.gold}" opacity="0.45"/>
+  <ellipse cx="350" cy="556" rx="36" ry="10" fill="#FFFFFF" opacity="0.6"/>`;
+  if (p.format === 'kit')
+    return `
+  <rect x="190" y="380" width="420" height="320" rx="6" fill="${c.kraft}"/>
+  <rect x="220" y="410" width="360" height="260" rx="4" fill="${c.kraftDeep}" opacity="0.5"/>
+  <circle cx="300" cy="540" r="52" fill="url(#gilt)"/><circle cx="400" cy="540" r="52" fill="url(#gilt)"/><circle cx="500" cy="540" r="44" fill="${c.espresso}"/>`;
+  if (p.format === 'single')
+    return `
+  <path d="M400 760 C400 640 400 520 400 360" stroke="${c.leaf}" stroke-width="6" fill="none"/>
+  ${[0, 1, 2, 3].map((i) => {
+    const y = 420 + i * 85;
+    return `<path d="M400 ${y} C350 ${y - 40} 300 ${y - 30} 280 ${y - 70} C330 ${y - 70} 380 ${y - 50} 400 ${y}" fill="${c.leaf}" opacity="0.8"/><path d="M400 ${y + 30} C450 ${y - 10} 500 ${y} 520 ${y - 40} C470 ${y - 40} 420 ${y - 20} 400 ${y + 30}" fill="${c.leaf}" opacity="0.65"/>`;
+  }).join('')}`;
+  // Tincture: a glass pipette releasing drops.
+  return `
+  <rect x="380" y="200" width="40" height="70" rx="18" fill="${c.espresso}"/>
+  <rect x="390" y="270" width="20" height="230" rx="10" fill="${c.amberLight}" opacity="0.55"/>
+  <path d="M390 500 L410 500 L402 540 L398 540 Z" fill="${c.amberLight}" opacity="0.7"/>
+  ${[0, 1, 2].map((i) => `<path d="M400 ${590 + i * 70} C412 ${606 + i * 70} 414 ${618 + i * 70} 400 ${626 + i * 70} C386 ${618 + i * 70} 388 ${606 + i * 70} 400 ${590 + i * 70} Z" fill="${c.amber}" opacity="${0.85 - i * 0.2}"/>`).join('')}`;
+}
+
+function svg(title, body, suffix) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000" role="img" aria-label="Illustration placeholder: ${esc(title)}${suffix}">
+  <title>Illustration placeholder: ${esc(title)}${suffix}</title>${defs}
+  ${backdrop}
+  ${body}
+  ${marker}
 </svg>
 `;
+}
+
+for (const [handle, p] of Object.entries(products)) {
   fs.mkdirSync(path.join(out, handle), { recursive: true });
-  fs.writeFileSync(path.join(out, handle, 'packshot.svg'), svg);
+  fs.writeFileSync(path.join(out, handle, 'packshot.svg'), svg(p.title, packshot(p), ''));
+  fs.writeFileSync(path.join(out, handle, 'detail.svg'), svg(p.title, detail(p), ' texture'));
 }
-// Second view per product: a texture close-up (placeholder), same studio backdrop.
-const textures = {
-  'mineral-serum': `
-    <ellipse cx="400" cy="560" rx="150" ry="110" fill="${c.glassGreen}" opacity="0.18"/>
-    <path d="M400 330 C470 450 500 520 470 590 C445 650 355 650 330 590 C300 520 330 450 400 330 Z" fill="#F4EEDD" stroke="${c.goldDeep}" stroke-opacity="0.45" stroke-width="2"/>
-    <ellipse cx="370" cy="560" rx="18" ry="34" fill="#FFFFFF" opacity="0.7"/>`,
-  'cloud-cream': `
-    <path d="M190 600 C260 470 380 500 420 560 C460 620 560 600 610 520 C640 640 520 700 400 690 C290 680 210 660 190 600 Z" fill="#F7F1E4" stroke="${c.goldDeep}" stroke-opacity="0.35" stroke-width="2"/>
-    <path d="M300 600 C340 570 400 580 430 610" fill="none" stroke="${c.goldDeep}" stroke-opacity="0.3" stroke-width="3"/>`,
-  'gel-cleanser': `
-    <ellipse cx="400" cy="580" rx="190" ry="88" fill="${c.glassGreen}" opacity="0.32"/>
-    <ellipse cx="410" cy="572" rx="120" ry="50" fill="${c.glassGreen}" opacity="0.22"/>
-    <ellipse cx="340" cy="552" rx="34" ry="10" fill="#FFFFFF" opacity="0.55"/><circle cx="470" cy="600" r="9" fill="#FFFFFF" opacity="0.6"/>`,
-  'balancing-toner': `
-    <ellipse cx="400" cy="600" rx="210" ry="70" fill="${c.glassAmber}" opacity="0.2"/>
-    <ellipse cx="400" cy="590" rx="150" ry="44" fill="${c.glassAmber}" opacity="0.28"/>
-    <ellipse cx="350" cy="580" rx="40" ry="10" fill="#FFFFFF" opacity="0.5"/>`,
-  'facial-mist': Array.from({ length: 26 }, (_, i) => {
-    const x = 220 + ((i * 97) % 360), y = 420 + ((i * 53) % 260), r = 6 + (i % 4) * 3;
-    return `<circle cx="${x}" cy="${y}" r="${r}" fill="${c.glassGreen}" opacity="0.25"/><circle cx="${x - r / 3}" cy="${y - r / 3}" r="${r / 3}" fill="#FFFFFF" opacity="0.7"/>`;
-  }).join(''),
-  'lip-cheek-balm': `
-    <circle cx="400" cy="560" r="190" fill="url(#gilt)"/>
-    <circle cx="400" cy="560" r="160" fill="#B2614E" opacity="0.85"/>
-    <path d="M300 520 C360 480 450 500 500 560" fill="none" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="10" stroke-linecap="round"/>`,
-};
-
-for (const [handle, art] of Object.entries(textures)) {
-  const name = names[handle];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000" role="img" aria-label="Illustration placeholder: ${esc(name)} texture">
-  <title>Illustration placeholder: ${esc(name)} texture</title>
-  <defs>
-    <linearGradient id="gilt" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c.goldDeep}"/><stop offset="0.45" stop-color="${c.goldLight}"/><stop offset="1" stop-color="${c.goldDeep}"/></linearGradient>
-  </defs>
-  <rect width="800" height="1000" fill="${c.studio}"/>
-  ${art}
-  <text x="40" y="958" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="${c.walnut}">Placeholder illustration</text>
-</svg>
-`;
-  fs.writeFileSync(path.join(out, handle, 'detail.svg'), svg);
-}
-
-console.log('wrote', Object.keys(shapes).length, 'packshots and', Object.keys(textures).length, 'detail views');
+console.log('wrote', Object.keys(products).length, 'packshots and detail views');
