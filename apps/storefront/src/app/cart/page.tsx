@@ -51,9 +51,12 @@ export default async function CartPage({ searchParams }: Props) {
             ) : (
               <p>{errorText}</p>
             )}
-            <a href="#bag-lines" className="focus-ring mt-3 inline-flex min-h-11 items-center font-semibold underline underline-offset-4">
-              {fixtureRefusal ? fixtureCheckout.action : bag.title}
-            </a>
+            {/* For a missing province, focus already moves to the province picker; a "Your bag" link would mislead. */}
+            {needsProvince ? null : (
+              <a href="#bag-lines" className="focus-ring mt-3 inline-flex min-h-11 items-center font-semibold underline underline-offset-4">
+                {fixtureRefusal ? fixtureCheckout.action : bag.title}
+              </a>
+            )}
           </div>
         ) : null}
 
