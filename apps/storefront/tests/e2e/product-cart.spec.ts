@@ -22,7 +22,7 @@ async function seriousViolations(page: Page, include?: string) {
 
 test('J1.3 / J2.1 a card opens its product page with title, price and packshot in the server HTML', async ({ page, request }) => {
   const html = await (await request.get('/products/lemon-balm-oat-extract')).text();
-  expect(html).toContain('Lemon Balm & Oat Extract');
+  expect(html).toContain('Lemon Balm &amp; Oat Extract');
   expect(html).toContain('$24.00 CAD');
   expect(html).toContain('/products/lemon-balm-oat-extract/packshot.svg');
 
@@ -41,7 +41,7 @@ test('J2.2 switching size updates the price and URL, and survives back and reloa
   await expect(page.getByText('$24.00 CAD').first()).toBeVisible();
 
   await fieldset.getByRole('link', { name: /^60 mL/ }).click();
-  await expect(page).toHaveURL(/\?size=15\+mL$/);
+  await expect(page).toHaveURL(/\?size=60\+mL$/);
   await expect(page.getByText('$38.00 CAD').first()).toBeVisible();
   await expect(fieldset.getByRole('link', { name: /^60 mL/ })).toHaveAttribute('aria-current', 'true');
 
