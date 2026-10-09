@@ -108,7 +108,7 @@ export function Field({ name, label, type = 'text', as = 'input', defaultValue =
     <div className="a-field">
       <label htmlFor={id}>
         {label}
-        {required ? <span className="a-req">Required</span> : null}
+        {required ? <span className="a-req">{' '}(required)</span> : null}
       </label>
       {as === 'textarea' ? (
         <textarea key={value} {...common} rows={rows} maxLength={maxLength} defaultValue={value} />

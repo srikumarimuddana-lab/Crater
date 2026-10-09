@@ -51,7 +51,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               <Field name="details.ingredients" label="Ingredients" as="textarea" rows={4} defaultValue={p.details.ingredients.join('\n')} hint="One per line." />
               <Field name="details.howToUse" label="Directions for use" as="textarea" rows={3} defaultValue={p.details.howToUse} />
               <Field name="details.precautions" label="Precautions" as="textarea" rows={3} defaultValue={p.details.precautions} />
-              <Field name="details.benefits" label="Benefits" as="textarea" rows={3} defaultValue={p.details.benefits.join('\n')} hint="One per line. Only wording you can support." />
+              <Field name="details.benefits" label="What it is" as="textarea" rows={3} defaultValue={p.details.benefits.join('\n')} hint="Shown on the product page under “What it is”. One per line; no health claims until licensed." />
             </Card>
             <Card title="Variants" id="variants">
               <div className="a-stack">

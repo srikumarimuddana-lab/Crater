@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { getAdmin, type AdminOrder } from '@/lib/admin';
 import { fmtAmount, gidSlug } from '@/components/admin/format';
 import { FinancialBadge, FulfilmentBadge } from '@/components/admin/status';
-import { StatusBadge, DateCell, EmptyState, PageHeader, Pagination, Tabs } from '@/components/admin/ui';
+import { StatusBadge, DateCell, EmptyState, PageHeader, Pagination, Tabs, TableWrap } from '@/components/admin/ui';
 import { gate, one, type SearchParams } from '../../_lib/gate';
 
 export const metadata: Metadata = { title: 'Orders' };
@@ -80,7 +80,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
           </EmptyState>
         </div>
       ) : (
-        <div className="a-tablewrap">
+        <TableWrap label="Orders">
           <table className="a-table">
             <caption className="a-sr">Orders, newest first{filtered ? ', filtered' : ''}</caption>
             <thead>
@@ -128,7 +128,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
               ))}
             </tbody>
           </table>
-        </div>
+        </TableWrap>
       )}
       <Pagination basePath="/admin/orders" params={params} endCursor={result.pageInfo.endCursor} hasNext={result.pageInfo.hasNextPage} isFirst={!after} />
     </>

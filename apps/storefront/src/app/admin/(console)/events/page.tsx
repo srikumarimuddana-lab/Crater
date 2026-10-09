@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getAdmin, requireAdmin, type Capability } from '@/lib/admin';
-import { DateCell, EmptyState, PageHeader, Pagination, StatusBadge, Tabs } from '@/components/admin/ui';
+import { DateCell, EmptyState, PageHeader, Pagination, StatusBadge, Tabs, TableWrap } from '@/components/admin/ui';
 import { authFailureView, gate, one, type SearchParams } from '../../_lib/gate';
 
 export const metadata: Metadata = { title: 'Event log' };
@@ -51,7 +51,7 @@ function Webhooks({ events, tz }: { events: Awaited<ReturnType<Awaited<ReturnTyp
     );
   }
   return (
-    <div className="a-tablewrap">
+    <TableWrap label="Payment webhook events">
       <table className="a-table">
         <caption className="a-sr">Payment webhook events, newest first</caption>
         <thead>
@@ -80,7 +80,7 @@ function Webhooks({ events, tz }: { events: Awaited<ReturnType<Awaited<ReturnTyp
           })}
         </tbody>
       </table>
-    </div>
+    </TableWrap>
   );
 }
 
@@ -95,7 +95,7 @@ async function Audit({ after, tz }: { after: string | null; tz: string }) {
   }
   return (
     <>
-      <div className="a-tablewrap">
+      <TableWrap label="Audit log">
         <table className="a-table">
           <caption className="a-sr">Audit log, newest first</caption>
           <thead>
@@ -127,7 +127,7 @@ async function Audit({ after, tz }: { after: string | null; tz: string }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </TableWrap>
       <Pagination basePath="/admin/events" params={{ tab: 'audit' }} endCursor={result.pageInfo.endCursor} hasNext={result.pageInfo.hasNextPage} isFirst={!after} />
     </>
   );

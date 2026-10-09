@@ -3,8 +3,9 @@
 Build a premium cosmetics/skincare ecommerce storefront with an editorial identity,
 one cinematic 3D product story, and a clear purchase journey. This repository
 contains the development toolkit, the specifications, and the storefront in
-`apps/storefront` (Phases 1–2 complete: shop UI and own commerce backend with
-Stripe Checkout, running on marked sample data).
+`apps/storefront` (Phases 1–2 complete: herbal shop UI and own commerce backend
+with Stripe Checkout; admin Slice 1 at `/admin` with built-in staff sign-in; all on
+marked sample data). Admin plan: `docs/admin/plan.md`.
 
 ## Start here
 

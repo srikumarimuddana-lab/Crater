@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { getAdmin } from '@/lib/admin';
 import { ROLE_LABEL } from '@/components/admin/format';
-import { DateCell, Notice, PageHeader, StatusBadge } from '@/components/admin/ui';
+import { DateCell, Notice, PageHeader, StatusBadge, TableWrap } from '@/components/admin/ui';
 import { gate } from '../../_lib/gate';
 
 export const metadata: Metadata = { title: 'Staff' };
@@ -16,7 +16,7 @@ export default async function StaffPage() {
       <div style={{ marginBottom: 12 }}>
         <Notice tone="info">Read-only for now. Roles are fixed in code; inviting staff and changing roles come in a later release.</Notice>
       </div>
-      <div className="a-tablewrap">
+      <TableWrap label="Staff and roles">
         <table className="a-table">
           <caption className="a-sr">Staff and roles</caption>
           <thead>
@@ -42,7 +42,7 @@ export default async function StaffPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </TableWrap>
     </>
   );
 }

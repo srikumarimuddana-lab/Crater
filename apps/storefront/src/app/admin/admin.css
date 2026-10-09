@@ -103,9 +103,15 @@
 
 /* ---- shell ---------------------------------------------------------------------------------- */
 [data-admin] .a-app {
-  display: grid;
-  grid-template-columns: 232px minmax(0, 1fr);
   min-height: 100dvh;
+}
+@media (min-width: 1024px) {
+  [data-admin] .a-app {
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    /* Paint the sidebar column to the page bottom (the sticky sidebar itself is one viewport tall). */
+    background: linear-gradient(to right, var(--a-sunken) 232px, transparent 232px);
+  }
 }
 [data-admin] .a-sidebar {
   background: var(--a-sunken);
@@ -643,6 +649,7 @@
 
 /* ---- dialog ----------------------------------------------------------------------------------- */
 [data-admin] dialog.a-dialog {
+  margin: auto; /* the Tailwind reset zeroes dialog margins */
   border: 1px solid var(--a-control);
   border-radius: 4px;
   padding: 0;
@@ -755,5 +762,19 @@
   [data-admin] * {
     transition: none !important;
     animation: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  [data-admin] .a-usermenu > summary {
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    line-height: 28px;
+  }
+  [data-admin] .a-usermenu > summary .a-muted {
+    display: none;
   }
 }

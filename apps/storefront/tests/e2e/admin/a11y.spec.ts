@@ -36,3 +36,12 @@ test('adjust dialog and login have no serious accessibility violations', async (
   expect(await serious(anon)).toEqual([]);
   await anon.context().close();
 });
+
+for (const url of ['/admin', '/admin/orders', '/admin/inventory', '/admin/products', '/admin/staff']) {
+  test(`${url} never scrolls the page sideways`, async ({ page }) => {
+    await page.goto(url);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+}

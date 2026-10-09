@@ -5,7 +5,7 @@ import { gidFrom, gidSlug, REASON_LABEL } from '@/components/admin/format';
 import { AdjustDialog, CloseButton } from '@/components/admin/adjust-dialog';
 import { FocusOnMount } from '@/components/admin/focus';
 import { ActionForm, Field, Submit } from '@/components/admin/form';
-import { EmptyState, Notice, PageHeader, SortTh, StatusBadge, Tabs } from '@/components/admin/ui';
+import { EmptyState, Notice, PageHeader, SortTh, StatusBadge, Tabs, TableWrap } from '@/components/admin/ui';
 import { adjustStockAction } from '../../_actions/inventory';
 import { gate, one, type SearchParams } from '../../_lib/gate';
 
@@ -89,7 +89,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
           <EmptyState>{q || onlyLow ? 'No variants match these filters.' : 'No variants yet.'}</EmptyState>
         </div>
       ) : (
-        <div className="a-tablewrap">
+        <TableWrap label="Stock levels">
           <table className="a-table">
             <caption className="a-sr">Stock levels{onlyLow ? ', low stock only' : ''}. Low stock first.</caption>
             <thead>
@@ -141,7 +141,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
               ))}
             </tbody>
           </table>
-        </div>
+        </TableWrap>
       )}
 
       {target ? (

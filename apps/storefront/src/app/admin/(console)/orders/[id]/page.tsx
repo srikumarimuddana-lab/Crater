@@ -5,7 +5,7 @@ import { getAdmin } from '@/lib/admin';
 import { fmtAmount, fmtMoney, gidFrom } from '@/components/admin/format';
 import { ActionForm, Field, Submit } from '@/components/admin/form';
 import { FinancialBadge, FulfilmentBadge } from '@/components/admin/status';
-import { Card, DateCell, KeyValue, Notice, PageHeader, StatusBadge } from '@/components/admin/ui';
+import { Card, DateCell, KeyValue, Notice, PageHeader, StatusBadge, TableWrap } from '@/components/admin/ui';
 import { markFulfilledAction, updateNotesAction } from '../../../_actions/orders';
 import { gate } from '../../../_lib/gate';
 
@@ -73,7 +73,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           ) : null}
 
           <Card title={`Items (${order.lines.reduce((n, l) => n + l.quantity, 0)})`} id="items">
-            <div className="a-tablewrap" style={{ border: 0 }}>
+            <TableWrap label="Order items">
               <table className="a-table">
                 <caption className="a-sr">Items in order {order.name}</caption>
                 <thead>
@@ -117,7 +117,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableWrap>
           </Card>
 
           {order.totals ? (

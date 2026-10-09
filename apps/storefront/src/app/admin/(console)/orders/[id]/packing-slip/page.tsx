@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { getAdmin } from '@/lib/admin';
 import { gidFrom } from '@/components/admin/format';
 import { PrintButton } from '@/components/admin/print-button';
-import { DateCell, PageHeader } from '@/components/admin/ui';
+import { DateCell, PageHeader, TableWrap } from '@/components/admin/ui';
 import { gate } from '../../../../_lib/gate';
 
 export const metadata: Metadata = { title: 'Packing slip' };
@@ -56,7 +56,7 @@ export default async function PackingSlipPage({ params }: { params: Promise<{ id
             <p>{slip.packingInstructions}</p>
           </section>
         ) : null}
-        <div className="a-tablewrap">
+        <TableWrap label="Items to pack">
           <table className="a-table">
             <caption className="a-sr">Items to pack for order {slip.orderName}</caption>
             <thead>
@@ -80,7 +80,7 @@ export default async function PackingSlipPage({ params }: { params: Promise<{ id
               ))}
             </tbody>
           </table>
-        </div>
+        </TableWrap>
       </div>
     </>
   );

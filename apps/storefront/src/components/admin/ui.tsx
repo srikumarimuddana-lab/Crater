@@ -181,3 +181,12 @@ export function ConfigProblem({ message }: { message: string }) {
     </div>
   );
 }
+
+/** Horizontal scroll container for wide tables: keyboard-focusable so it can be scrolled without a mouse. */
+export function TableWrap({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="a-tablewrap" role="region" aria-label={label} tabIndex={0}>
+      {children}
+    </div>
+  );
+}

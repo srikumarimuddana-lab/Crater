@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { getAdmin, type AdminProductSummary, type ProductStatus } from '@/lib/admin';
 import { fmtAmount, gidSlug } from '@/components/admin/format';
 import { ProductStatusBadge } from '@/components/admin/status';
-import { EmptyState, PageHeader, SortTh, StatusBadge } from '@/components/admin/ui';
+import { EmptyState, PageHeader, SortTh, StatusBadge, TableWrap } from '@/components/admin/ui';
 import { gate, one, type SearchParams } from '../../_lib/gate';
 
 export const metadata: Metadata = { title: 'Products' };
@@ -62,7 +62,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           <EmptyState>{q || status ? 'No products match these filters.' : 'No products yet.'}</EmptyState>
         </div>
       ) : (
-        <div className="a-tablewrap">
+        <TableWrap label="Products">
           <table className="a-table">
             <caption className="a-sr">Products</caption>
             <thead>
@@ -102,7 +102,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               ))}
             </tbody>
           </table>
-        </div>
+        </TableWrap>
       )}
     </>
   );

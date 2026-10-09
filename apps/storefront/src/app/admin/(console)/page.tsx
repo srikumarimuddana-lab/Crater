@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { getAdmin, getAdminSession, type OverviewPeriod } from '@/lib/admin';
 import { navFor } from '@/components/admin/shell';
 import { fmtAmount, fmtMoney } from '@/components/admin/format';
-import { DateCell, EmptyState, PageHeader, StatusBadge, Tabs } from '@/components/admin/ui';
+import { DateCell, EmptyState, PageHeader, StatusBadge, Tabs, TableWrap } from '@/components/admin/ui';
 import { gate, one, type SearchParams } from '../_lib/gate';
 
 export const metadata: Metadata = { title: 'Overview' };
@@ -82,7 +82,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Sea
       </div>
 
       <h2 style={{ marginBottom: 8 }}>Sales by day</h2>
-      <div className="a-tablewrap">
+      <TableWrap label="Sales by day">
         <table className="a-table">
           <caption className="a-sr">
             Sales by day, {period.long}, store time zone {m.timezone}. Amounts in {cur}.
@@ -109,7 +109,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Sea
           </tbody>
         </table>
         {m.orders === 0 ? <EmptyState>No orders yet in {period.long}.</EmptyState> : null}
-      </div>
+      </TableWrap>
     </>
   );
 }

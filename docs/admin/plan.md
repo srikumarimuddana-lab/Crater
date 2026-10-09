@@ -155,3 +155,21 @@ Store timezone; whether shipping is charged and at what rates; tax registration 
 refund reasons and approval limit; whether cost price is tracked; the first staff and their roles;
 whether to show the low-stock threshold to shoppers; and licensed product claims (NPNs) before any
 real product goes live.
+
+## 8. Slice 1 status (2026-10-09)
+
+Built and verified: sign-in with authenticator codes, role-filtered console, overview,
+orders (list, detail, fulfil, notes, packing slip), products (editor, publish gate, status),
+inventory (levels, adjust, movements), event log, staff list. Checks: typecheck, lint,
+build; Vitest 262 + 101 Postgres skips (363/363 with Postgres); Playwright 236 passed,
+10 skipped (storefront + admin, three viewports); integration 22/22.
+
+Known gaps:
+- Default e2e cannot create paid orders (memory mode has no webhook), so fulfilment, notes
+  and packing-slip contents are covered by service unit tests only. An admin spec under the
+  fake-Stripe integration setup is the next test task.
+- MFA enrolment page is built but not e2e-tested; the publish-blocked action path is
+  unit-tested only.
+- Forbidden and config-error pages render with HTTP 200; a true 403 needs `authInterrupts`.
+- Not built: customer column on orders, image editing, new-product page, toasts, unsaved-changes
+  bar, keyboard shortcuts.

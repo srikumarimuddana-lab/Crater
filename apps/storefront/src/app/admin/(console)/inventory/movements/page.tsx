@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { getAdmin } from '@/lib/admin';
 import { REASON_LABEL } from '@/components/admin/format';
-import { DateCell, EmptyState, PageHeader, Pagination, Tabs } from '@/components/admin/ui';
+import { DateCell, EmptyState, PageHeader, Pagination, Tabs, TableWrap } from '@/components/admin/ui';
 import { gate, one, type SearchParams } from '../../../_lib/gate';
 
 export const metadata: Metadata = { title: 'Inventory movements' };
@@ -27,7 +27,7 @@ export default async function MovementsPage({ searchParams }: { searchParams: Se
           <EmptyState>No stock movements yet. Adjustments and paid orders appear here.</EmptyState>
         </div>
       ) : (
-        <div className="a-tablewrap">
+        <TableWrap label="Stock movements">
           <table className="a-table">
             <caption className="a-sr">Stock movements, newest first. Corrections are new rows, never edits.</caption>
             <thead>
@@ -61,7 +61,7 @@ export default async function MovementsPage({ searchParams }: { searchParams: Se
               ))}
             </tbody>
           </table>
-        </div>
+        </TableWrap>
       )}
       <Pagination basePath="/admin/inventory/movements" params={{}} endCursor={result.pageInfo.endCursor} hasNext={result.pageInfo.hasNextPage} isFirst={!after} />
     </>
