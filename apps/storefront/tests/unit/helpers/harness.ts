@@ -6,7 +6,9 @@ import { createMemoryRepository } from '@/lib/commerce/memory-repository';
 import type { CommerceRepository } from '@/lib/commerce/records';
 import { createStorefront } from '@/lib/commerce/storefront';
 import type { StripeClient } from '@/lib/commerce/stripe-client';
-import type { Cart } from '@/lib/commerce/types';
+import { TAX_KEYS, TAX_RATES, taxOnMinor } from '@/lib/commerce/tax';
+import { desiredParams, type StripeTaxRate } from '@/lib/commerce/tax-rates';
+import type { Cart, ProvinceCode } from '@/lib/commerce/types';
 
 // Seeded variant ids (see catalog-seed.ts; ids start at 11 so retired skincare ids never alias).
 export const V = {
@@ -32,14 +34,53 @@ export const STRIPE_URL = `https://checkout.stripe.com/c/pay/${SESSION_ID}`;
 /** Real Stripe object only for signature verification/generation; it never makes a request here. */
 export const realStripe = new Stripe('sk_test_abc123DEF456');
 
+/** In-memory stand-in for Stripe's tax-rate endpoints: list/create/update with the same semantics the code relies on. */
+export function fakeTaxRates(preload = true) {
+  const rates: StripeTaxRate[] = [];
+  let n = 0;
+  const make = (p: ReturnType<typeof desiredParams>, id = `txr_${String(++n).padStart(4, '0')}`): StripeTaxRate => ({
+    id, active: p.active, display_name: p.display_name, percentage: p.percentage, inclusive: p.inclusive, country: p.country,
+    state: p.state ?? null, jurisdiction: p.jurisdiction, tax_type: p.tax_type, metadata: { ...p.metadata },
+  });
+  if (preload) for (const key of TAX_KEYS) rates.push(make(desiredParams(TAX_RATES, key), `txr_test_${key}`));
+  const api = {
+    list: vi.fn(async (p: { active: boolean; limit: number; starting_after?: string }) => {
+      const all = rates.filter((r) => r.active === p.active);
+      const start = p.starting_after ? all.findIndex((r) => r.id === p.starting_after) + 1 : 0;
+      const data = all.slice(start, start + p.limit);
+      return { data: structuredClone(data), has_more: start + p.limit < all.length };
+    }),
+    create: vi.fn(async (p: ReturnType<typeof desiredParams>) => {
+      const r = make(p);
+      rates.push(r);
+      return structuredClone(r);
+    }),
+    update: vi.fn(async (id: string, p: { active: false }) => {
+      const r = rates.find((x) => x.id === id);
+      if (!r) throw new Error('no such tax rate');
+      r.active = p.active;
+      return structuredClone(r);
+    }),
+  };
+  return { rates, api };
+}
+
 export function mockStripe(overrides: { url?: string | null; id?: string } = {}) {
   const create = vi.fn(async () => ({ id: overrides.id ?? SESSION_ID, url: overrides.url === undefined ? STRIPE_URL : overrides.url }));
-  const retrieve = vi.fn(async () => ({ id: SESSION_ID, payment_status: 'unpaid', status: 'open' }));
+  /** Sessions registered by paidSession(): the webhook payload ("light") and what retrieve(expand) returns ("full"). */
+  const known = new Map<string, { light: Record<string, unknown>; full: Record<string, unknown> }>();
+  const retrieve = vi.fn(async (id: string, params?: { expand?: string[] }) => {
+    const s = known.get(id);
+    if (s) return (params?.expand?.includes('total_details.breakdown') ? s.full : s.light) as never;
+    return { id: SESSION_ID, payment_status: 'unpaid', status: 'open' };
+  });
+  const tax = fakeTaxRates();
   const client = {
     checkout: { sessions: { create, retrieve } },
+    taxRates: tax.api,
     webhooks: { constructEvent: (p: string, h: string, s: string) => realStripe.webhooks.constructEvent(p, h, s) },
   } as unknown as StripeClient;
-  return { client, create, retrieve };
+  return { client, create, retrieve, taxRates: tax.api, rates: tax.rates, known };
 }
 
 export async function makeHarness(opts: { repo?: CommerceRepository; env?: Record<string, string | undefined> } = {}) {
@@ -55,8 +96,13 @@ export async function makeHarness(opts: { repo?: CommerceRepository; env?: Recor
 
 export type Harness = Awaited<ReturnType<typeof makeHarness>>;
 
-export async function cartWith(h: Harness, lines: { merchandiseId: string; quantity?: number }[]): Promise<Cart> {
-  const { cart, userErrors } = await h.storefront.cartCreate({ input: { lines } });
+/** A cart with lines and a ship-to province (default ON: HST 13%, matching the Toronto address the paid-session helper collects). */
+export async function cartWith(
+  h: Harness,
+  lines: { merchandiseId: string; quantity?: number }[],
+  province: ProvinceCode | null = 'ON',
+): Promise<Cart> {
+  const { cart, userErrors } = await h.storefront.cartCreate({ input: { lines, ...(province ? { buyerIdentity: { provinceCode: province } } : {}) } });
   if (!cart || userErrors.length) throw new Error(`cart setup failed: ${JSON.stringify(userErrors)}`);
   return cart;
 }
@@ -83,23 +129,49 @@ export function sessionEvent(
 /** Builds a paid session body matching what our create() call asked Stripe for. */
 export function paidSession(h: Harness, overrides: Record<string, unknown> = {}) {
   const params = (h.stripe.create.mock.calls as unknown as unknown[][]).at(-1)?.[0] as {
-    metadata: { cart_id: string; checkout_id: string };
-    line_items: { quantity: number; price_data: { unit_amount: number } }[];
+    metadata: { cart_id: string; checkout_id: string; tax_province?: string };
+    line_items: { quantity: number; tax_rates?: string[]; price_data: { unit_amount: number } }[];
   };
   const subtotal = params.line_items.reduce((s, l) => s + l.quantity * l.price_data.unit_amount, 0);
-  return {
+  // Stripe's tax: each line's fixed tax rates applied to its total, half up, then summed per rate (the real behaviour we rely on).
+  const byRate = new Map<string, number>();
+  for (const l of params.line_items) {
+    for (const id of l.tax_rates ?? []) {
+      const rate = h.stripe.rates.find((r) => r.id === id);
+      if (rate) byRate.set(id, (byRate.get(id) ?? 0) + taxOnMinor(l.quantity * l.price_data.unit_amount, String(rate.percentage)));
+    }
+  }
+  const amountTax = [...byRate.values()].reduce((a, b) => a + b, 0);
+  const province = params.metadata.tax_province;
+  const session = {
     id: SESSION_ID,
     payment_status: 'paid',
     status: 'complete',
     mode: 'payment',
     currency: 'cad',
     amount_subtotal: subtotal,
-    amount_total: subtotal,
-    total_details: { amount_shipping: 0, amount_tax: 0, amount_discount: 0 },
+    amount_total: subtotal + amountTax,
+    total_details: { amount_shipping: 0, amount_tax: amountTax, amount_discount: 0 },
     metadata: params.metadata,
     customer_details: { email: 'buyer@example.com' },
+    collected_information: province
+      ? { shipping_details: { name: 'Sam Buyer', address: { line1: '100 Sample Street', line2: null, city: 'Somewhere', state: province, postal_code: 'A1A 1A1', country: 'CA' } } }
+      : undefined,
     ...overrides,
   };
+  // Real webhook payloads omit total_details.breakdown; retrieve(id, { expand }) returns it.
+  const full = {
+    ...session,
+    total_details: {
+      ...session.total_details,
+      breakdown: {
+        discounts: [],
+        taxes: [...byRate].map(([id, amount]) => ({ amount, rate: h.stripe.rates.find((r) => r.id === id), taxability_reason: 'standard_rated', taxable_amount: subtotal })),
+      },
+    },
+  };
+  h.stripe.known.set(session.id, { light: session, full });
+  return session;
 }
 
 export async function deliver(h: Harness, body: string, header = sign(body)) {

@@ -20,7 +20,8 @@ export type AdminConfig = {
 
 type Env = Record<string, string | undefined>;
 
-export const DEFAULT_TIMEZONE = 'America/Toronto';
+/** Owner decision (docs/tax.md): Saskatchewan, no daylight saving. */
+export const DEFAULT_TIMEZONE = 'America/Regina';
 const ROLES: readonly StaffRole[] = ['OWNER', 'ADMIN', 'FULFILMENT', 'BOOKKEEPER', 'SUPPORT'];
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
 

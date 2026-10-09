@@ -12,7 +12,7 @@
 //     stays for the financial record, but the storefront lists and sells nothing from it.
 //   * Every seeded sample product is set ACTIVE (status = 'ACTIVE'), which also re-activates a sample
 //     product staff drafted or archived in the admin. Variant cost and low-stock threshold are staff
-//     data: the seed never overwrites them.
+//     data: the seed never overwrites them (it only fills a missing cost with the SAMPLE cost, about 35% of price).
 //   * Variants missing from the seed but belonging to a seeded product are deleted when unreferenced,
 //     otherwise made unavailable (inventory 0, parked after the live positions).
 //   * Sample collections (description starting "Sample collection") missing from the seed are deleted.
@@ -124,13 +124,15 @@ export async function seedCatalog(pool, catalog = catalogSeed) {
       for (const [position, v] of p.variants.entries()) {
         await client.query(
           `insert into commerce.variants
-             (id, product_id, position, sku, title, price_minor, compare_at_minor, selected_options, image, inventory_quantity)
-           values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10)
+             (id, product_id, position, sku, title, price_minor, compare_at_minor, selected_options, image, inventory_quantity, cost_minor)
+           values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10,$11)
            on conflict (id) do update set
              product_id = excluded.product_id, position = excluded.position, sku = excluded.sku, title = excluded.title,
              price_minor = excluded.price_minor, compare_at_minor = excluded.compare_at_minor,
-             selected_options = excluded.selected_options, image = excluded.image`,
-          [tail(v.id), tail(p.id), position, v.sku, v.title, v.priceMinor, v.compareAtMinor, json(v.selectedOptions), json(v.image), v.quantity],
+             selected_options = excluded.selected_options, image = excluded.image,
+             -- SAMPLE cost: fills a missing cost only; a cost staff entered or changed is never overwritten.
+             cost_minor = coalesce(commerce.variants.cost_minor, excluded.cost_minor)`,
+          [tail(v.id), tail(p.id), position, v.sku, v.title, v.priceMinor, v.compareAtMinor, json(v.selectedOptions), json(v.image), v.quantity, v.costMinor],
         );
       }
     }

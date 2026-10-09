@@ -44,6 +44,9 @@ function shape(o: OrderWithFulfilment, s: AdminSession, noteEvents: { at: string
     totals: prices
       ? { subtotal: toMoney(o.subtotalMinor), shipping: toMoney(o.shippingMinor), tax: toMoney(o.taxMinor), total: toMoney(o.totalMinor) }
       : null,
+    taxLines: prices ? o.taxLines.map((l) => ({ ...l, amount: { ...l.amount } })) : null,
+    taxProvince: o.taxProvince,
+    shippingProvince: o.shippingProvince,
     packingInstructions: o.packingInstructions,
     internalNotes: internal ? o.internalNotes : null,
     fulfilment: o.fulfilment

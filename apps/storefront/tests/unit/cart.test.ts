@@ -219,7 +219,7 @@ describe.each(REPO_KINDS)('cart semantics [%s repository]', (kind) => {
     const h = await setup();
     const cart = await cartWith(h, []);
     const ok = await h.storefront.cartBuyerIdentityUpdate({ cartId: cart.id, buyerIdentity: { email: 'a@b.co', countryCode: 'CA' } });
-    expect(ok.cart!.buyerIdentity).toEqual({ email: 'a@b.co', countryCode: 'CA' });
+    expect(ok.cart!.buyerIdentity).toEqual({ email: 'a@b.co', countryCode: 'CA', provinceCode: 'ON' }); // cartWith defaults the province to ON
     const bad = await h.storefront.cartBuyerIdentityUpdate({ cartId: cart.id, buyerIdentity: { email: 'not-an-email', countryCode: 'canada' } });
     expect(bad.userErrors.map((e) => e.field)).toEqual([['buyerIdentity', 'email'], ['buyerIdentity', 'countryCode']]);
     expect((await h.storefront.cartNoteUpdate({ cartId: cart.id, note: 'gift' })).cart!.note).toBe('gift');

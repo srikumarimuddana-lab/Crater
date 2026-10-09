@@ -87,7 +87,7 @@ export async function makeServices(env: Env) {
   const services = createAdminServices({
     admin: env.admin,
     commerce: env.h.repo,
-    config: { timezone: 'America/Toronto' },
+    config: { timezone: 'America/Regina' },
     getSession: async () => current,
     now: () => env.clock.now,
   });

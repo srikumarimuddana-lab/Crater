@@ -46,13 +46,17 @@ describe.each(REPO_KINDS)('admin services (%s repository)', (kind) => {
     expect((await svc.orders.updateNotes({ orderId: id, packingInstructions: 'Gift wrap please', internalNotes: 'Call buyer re: allergy' })).userErrors).toEqual([]);
     const admin = (await svc.orders.get(id))!;
     expect(admin).toMatchObject({ name: '#1001', financialStatus: 'PAID', fulfilmentStatus: 'UNFULFILLED', email: 'buyer@example.com', packingInstructions: 'Gift wrap please', internalNotes: 'Call buyer re: allergy' });
-    expect(admin.totals).toEqual({ subtotal: { amount: '48.00', currencyCode: 'CAD' }, shipping: expect.anything(), tax: expect.anything(), total: { amount: '48.00', currencyCode: 'CAD' } });
+    expect(admin.totals).toEqual({ subtotal: { amount: '48.00', currencyCode: 'CAD' }, shipping: expect.anything(), tax: { amount: '6.24', currencyCode: 'CAD' }, total: { amount: '54.24', currencyCode: 'CAD' } });
+    // Tax as Stripe charged it (HST 13% on the Ontario bag), the bag's province and the collected address province.
+    expect(admin).toMatchObject({ taxProvince: 'ON', shippingProvince: 'ON', taxLines: [{ key: 'CA_HST_ON', title: 'HST (Ontario)', ratePercent: '13', amount: { amount: '6.24' } }] });
     expect(admin.lines[0]).toMatchObject({ quantity: 2, unitPrice: { amount: '24.00' }, total: { amount: '48.00' } });
     expect(admin.timeline.map((e) => e.kind)).toEqual(['PLACED', 'PAID', 'NOTE']);
 
     svc.as('FULFILMENT');
     const pack = (await svc.orders.get(id))!;
     expect(pack.totals).toBeNull();
+    expect(pack.taxLines).toBeNull();
+    expect(pack).toMatchObject({ taxProvince: 'ON', shippingProvince: 'ON' });
     expect(pack.email).toBeNull();
     expect(pack.internalNotes).toBeNull();
     expect(pack.lines[0]).toMatchObject({ unitPrice: null, total: null, sku: SKU_HERO30 });
@@ -132,7 +136,7 @@ describe.each(REPO_KINDS)('admin services (%s repository)', (kind) => {
     const product = (await svc.products.get('gid://crater/Product/11'))!;
     expect(product).toMatchObject({ handle: 'lemon-balm-oat-extract', status: 'ACTIVE', sample: true });
     const v0 = product.variants[0];
-    expect(v0).toMatchObject({ sku: SKU_HERO30, available: 40, committed: 0, onHand: 40, lowStockThreshold: 5, openCartCount: 0, cost: null });
+    expect(v0).toMatchObject({ sku: SKU_HERO30, available: 40, committed: 0, onHand: 40, lowStockThreshold: 5, openCartCount: 0, cost: { amount: '8.40' } });
 
     expect(await svc.products.update({ id: product.id, expectedUpdatedAt: product.updatedAt, title: ' ' })).toMatchObject({ userErrors: [{ code: 'INVALID', field: ['title'] }] });
     expect(await svc.products.update({ id: product.id, expectedUpdatedAt: product.updatedAt, variants: [{ id: v0.id, price: '24.001' }] })).toMatchObject({ userErrors: [{ code: 'INVALID', field: ['variants', '0', 'price'] }] });
@@ -154,7 +158,7 @@ describe.each(REPO_KINDS)('admin services (%s repository)', (kind) => {
     const rows = await env.admin.listAudit({ first: 50, beforeId: null });
     expect(rows.find((r) => r.action === 'product.price_changed')).toMatchObject({
       targetId: product.id,
-      changes: { [`${SKU_HERO30}.price`]: { from: '24.00', to: '26.50' }, [`${SKU_HERO30}.cost`]: { from: null, to: '9.10' } },
+      changes: { [`${SKU_HERO30}.price`]: { from: '24.00', to: '26.50' }, [`${SKU_HERO30}.cost`]: { from: '8.40', to: '9.10' } },
     });
     expect(rows.map((r) => r.action)).toContain('product.updated');
 
@@ -286,15 +290,15 @@ describe.each(REPO_KINDS)('admin services (%s repository)', (kind) => {
 
   t('overview: definitions, store timezone buckets, AOV and webhook health', async () => {
     const { env, svc } = await setup();
-    env.clock.now = new Date('2026-03-02T03:30:00.000Z'); // 22:30 on Mar 1 in Toronto (EST)
+    env.clock.now = new Date('2026-03-02T03:30:00.000Z'); // 21:30 on Mar 1 in Regina (CST, UTC-6 all year)
     await placePaidOrder(env.h, [{ merchandiseId: V.hero30, quantity: 1 }]); // $24
-    env.clock.now = new Date('2026-03-02T06:00:00.000Z'); // 01:00 on Mar 2 in Toronto
+    env.clock.now = new Date('2026-03-02T06:30:00.000Z'); // 00:30 on Mar 2 in Regina
     await placePaidOrder(env.h, [{ merchandiseId: V.hero60, quantity: 1 }, { merchandiseId: V.peppermint30, quantity: 1 }]); // $60
     await placePaidOrder(env.h, [{ merchandiseId: V.hero30 }], { amount_subtotal: 7 }); // flagged PENDING: not a paid order
     env.clock.now = new Date('2026-03-02T15:00:00.000Z'); // 10:00 Mar 2
     svc.as('SUPPORT');
     const today = await svc.overview.get('TODAY');
-    expect(today).toMatchObject({ timezone: 'America/Toronto', orders: 1, grossSales: { amount: '60.00' }, netSales: { amount: '60.00' }, averageOrderValue: { amount: '60.00' } });
+    expect(today).toMatchObject({ timezone: 'America/Regina', orders: 1, grossSales: { amount: '60.00' }, netSales: { amount: '60.00' }, averageOrderValue: { amount: '60.00' } });
     expect(today.salesByDay).toEqual([{ date: '2026-03-02', orders: 1, grossSales: { amount: '60.00', currencyCode: 'CAD' } }]);
     const week = await svc.overview.get('LAST_7_DAYS');
     expect(week).toMatchObject({ orders: 2, grossSales: { amount: '84.00' }, averageOrderValue: { amount: '42.00' } });

@@ -75,8 +75,8 @@ describe.each(REPO_KINDS)('Stripe webhook and fulfilment [%s repository]', (kind
       currencyCode: 'CAD',
       subtotalPrice: { amount: '70.00' },
       totalShippingPrice: { amount: '0.00' },
-      totalTax: { amount: '0.00' },
-      totalPrice: { amount: '70.00' },
+      totalTax: { amount: '9.10' },
+      totalPrice: { amount: '79.10' },
       lineItems: [
         { title: 'Lemon Balm & Oat Extract', variantTitle: '30 mL', quantity: 2, originalUnitPrice: { amount: '24.00' }, originalTotalPrice: { amount: '48.00' }, variantId: V.hero30 },
         { title: 'Peppermint & Ginger Extract', quantity: 1, originalTotalPrice: { amount: '22.00' } },

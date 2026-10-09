@@ -205,7 +205,8 @@ const buildProduct = (spec: Spec, index: number): ProductRecord => {
     title: v.title,
     priceMinor: v.priceMinor,
     compareAtMinor: null,
-    costMinor: null,
+    // SAMPLE cost for development only (about 35% of price, rounded to 5 cents); the owner enters real costs.
+    costMinor: Math.round((v.priceMinor * 0.35) / 5) * 5,
     lowStockThreshold: 5,
     selectedOptions: [{ name: spec.optionName, value: v.title }],
     image,

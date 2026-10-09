@@ -2,13 +2,12 @@ import { CART_TTL_MS } from '@/lib/commerce/cart-logic';
 import type { Connection, ID } from '@/lib/commerce/types';
 import { toAuditInput } from '../audit';
 import { gidTail, adminGid } from '../ids';
-import { allowedAdjustReasons } from '../permissions';
+import { ADJUST_REASONS, REASON_SIGN, allowedAdjustReasons } from '../permissions';
 import type { MovementWithActor } from '../records';
 import type { AdjustStockInput, InventoryLevel, InventoryQuery, MovementsQuery } from '../service-types';
 import type { AdminMutationResult, InventoryMovement, StockAdjustmentReason } from '../types';
 import { auditDraft, cleanText, clampFirst, decodeIdCursor, encodeIdCursor, fail, mutateAs, ok, page, readAs, userError, type Ctx } from './shared';
 
-const REASONS: StockAdjustmentReason[] = ['RECEIVED', 'COUNT_CORRECTION', 'DAMAGED', 'RETURN_RESTOCK', 'OTHER'];
 const MAX_DELTA = 100_000;
 
 const toMovement = (m: MovementWithActor): InventoryMovement => ({
@@ -68,14 +67,15 @@ export function inventoryService(ctx: Ctx) {
       return mutateAs(ctx, 'inventory:adjust', async (s, at) => {
         const variantId = gidTail(input?.variantId, 'ProductVariant');
         if (variantId === null) return fail(userError('NOT_FOUND', ['variantId'], 'Variant not found.'));
-        if (!REASONS.includes(input.reason)) return fail(userError('INVALID', ['reason'], 'Choose a reason.'));
+        if (!ADJUST_REASONS.includes(input.reason)) return fail(userError('INVALID', ['reason'], 'Choose a reason.'));
         if (!allowedAdjustReasons(s.staff.role).includes(input.reason)) return fail(userError('FORBIDDEN', ['reason'], 'Your role cannot use this reason.'));
         const { delta } = input;
         if (!Number.isInteger(delta) || delta === 0 || Math.abs(delta) > MAX_DELTA) {
           return fail(userError('INVALID', ['delta'], `Enter a whole number other than 0 (up to ${MAX_DELTA}).`));
         }
-        if ((input.reason === 'RECEIVED' || input.reason === 'RETURN_RESTOCK') && delta < 0) return fail(userError('INVALID', ['delta'], 'This reason adds stock: enter a positive number.'));
-        if (input.reason === 'DAMAGED' && delta > 0) return fail(userError('INVALID', ['delta'], 'Damaged stock is removed: enter a negative number.'));
+        const sign = REASON_SIGN[input.reason];
+        if (sign === '+' && delta < 0) return fail(userError('INVALID', ['delta'], 'This reason adds stock: enter a positive number.'));
+        if (sign === '-' && delta > 0) return fail(userError('INVALID', ['delta'], 'This reason removes stock: enter a negative number.'));
         let note: string | null = null;
         if (input.note !== undefined && input.note !== null && input.note.trim() !== '') {
           const c = cleanText(input.note, 'Note', { max: 500 });

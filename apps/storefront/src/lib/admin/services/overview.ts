@@ -6,7 +6,7 @@ import { readAs, type Ctx } from './shared';
 const DAYS: Record<OverviewPeriod, number> = { TODAY: 1, LAST_7_DAYS: 7, LAST_30_DAYS: 30 };
 
 /**
- * Definitions (docs/admin/requirements.md 2.1), in the store timezone (TIMEZONE, default America/Toronto):
+ * Definitions (docs/admin/requirements.md 2.1), in the store timezone (TIMEZONE, default America/Regina):
  *  - paid order: financial status PAID, PARTIALLY_REFUNDED or REFUNDED, by processed time.
  *  - period: TODAY = since local midnight; LAST_7_DAYS / LAST_30_DAYS = today plus the 6 / 29 previous local days.
  *  - grossSales: sum of order subtotals (before refunds; no tax or shipping).

@@ -35,10 +35,20 @@ export function roleCan(role: string, capability: string): boolean {
   return Object.hasOwn(ROLE_CAPABILITIES, role) && (ROLE_CAPABILITIES[role as StaffRole] as readonly string[]).includes(capability);
 }
 
-/** Stock reasons a role may use. Fulfilment is limited to received, count and damaged (requirements 2.6). */
+/** Every stock-adjustment reason, in the order the UI lists them (docs/tax.md). */
+export const ADJUST_REASONS: readonly StockAdjustmentReason[] = [
+  'RECEIVED', 'COUNT_CORRECTION', 'DAMAGED', 'EXPIRED', 'RETURN_RESTOCK', 'SAMPLES_GIFTS', 'LOST_STOLEN', 'OTHER',
+];
+
+/** Direction each reason allows: '+' adds stock, '-' removes it, '±' either. */
+export const REASON_SIGN: Readonly<Record<StockAdjustmentReason, '+' | '-' | '±'>> = {
+  RECEIVED: '+', COUNT_CORRECTION: '±', DAMAGED: '-', EXPIRED: '-', RETURN_RESTOCK: '+', SAMPLES_GIFTS: '-', LOST_STOLEN: '-', OTHER: '±',
+};
+
+/** Stock reasons a role may use. Fulfilment: received, count correction, damaged, expired. Owner and Admin: all. */
 export function allowedAdjustReasons(role: StaffRole): StockAdjustmentReason[] {
   if (!roleCan(role, 'inventory:adjust')) return [];
-  return role === 'FULFILMENT' ? ['RECEIVED', 'COUNT_CORRECTION', 'DAMAGED'] : ['RECEIVED', 'COUNT_CORRECTION', 'DAMAGED', 'RETURN_RESTOCK', 'OTHER'];
+  return role === 'FULFILMENT' ? ['RECEIVED', 'COUNT_CORRECTION', 'DAMAGED', 'EXPIRED'] : [...ADJUST_REASONS];
 }
 
 /** Field-level redaction that the capability list cannot express. Applied by the services, never the UI. */

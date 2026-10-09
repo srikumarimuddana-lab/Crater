@@ -254,7 +254,7 @@ describe('ADMIN_DEV_STAFF bootstrap is memory-only', () => {
     expect(() => readAdminConfig({})).toThrow(/ADMIN_SECRET_KEY is required/);
     expect(() => readAdminConfig({ ...baseEnv, ADMIN_AUTH_PROVIDER: 'ldap' })).toThrow(/ADMIN_AUTH_PROVIDER/);
     expect(() => readAdminConfig({ ...baseEnv, TIMEZONE: 'Mars/Base' })).toThrow(/TIMEZONE/);
-    expect(readAdminConfig(baseEnv)).toMatchObject({ provider: 'builtin', timezone: 'America/Toronto', secureCookies: false });
+    expect(readAdminConfig(baseEnv)).toMatchObject({ provider: 'builtin', timezone: 'America/Regina', secureCookies: false });
     expect(readAdminConfig({ ...baseEnv, SITE_URL: 'https://shop.example' }).secureCookies).toBe(true);
   });
 });

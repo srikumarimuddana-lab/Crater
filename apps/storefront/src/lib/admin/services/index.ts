@@ -3,6 +3,7 @@ import { inventoryService } from './inventory';
 import { ordersService } from './orders';
 import { overviewService } from './overview';
 import { productsService } from './products';
+import { settingsService } from './settings';
 import { makeCtx, type ServiceDeps } from './shared';
 
 export type { ServiceDeps };
@@ -17,6 +18,7 @@ export function createAdminServices(deps: ServiceDeps) {
     inventory: inventoryService(ctx),
     events: eventsService(ctx),
     staff: staffService(ctx),
+    settings: settingsService(ctx),
   };
 }
 export type AdminServices = ReturnType<typeof createAdminServices>;

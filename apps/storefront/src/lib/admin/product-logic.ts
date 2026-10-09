@@ -13,6 +13,8 @@ const real = (text: string): boolean => text.trim().length > 0 && !isPlaceholder
  * Publish gate. Activation requires every check to pass. The admin never writes content for the owner:
  * empty or placeholder text fails. Sample products always fail NOT_SAMPLE.
  */
+const sold = (p: ProductRecord) => p.variants.filter((v) => v.priceMinor > 0);
+
 export function publishChecks(p: ProductRecord): PublishCheck[] {
   return [
     { key: 'NOT_SAMPLE', passed: !p.sample },
@@ -21,6 +23,8 @@ export function publishChecks(p: ProductRecord): PublishCheck[] {
     { key: 'HAS_DIRECTIONS', passed: real(p.details.howToUse) },
     { key: 'IMAGES_HAVE_ALT', passed: p.images.length > 0 && p.images.every((i) => i.altText.trim().length > 0) },
     { key: 'HAS_ACTIVE_VARIANT', passed: p.variants.some((v) => v.priceMinor > 0) },
+    // Owner decision (docs/tax.md): every sellable variant needs a cost price before a product can go live.
+    { key: 'HAS_COST', passed: sold(p).length > 0 && sold(p).every((v) => v.costMinor !== null) },
   ];
 }
 

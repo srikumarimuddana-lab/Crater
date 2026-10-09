@@ -26,7 +26,7 @@ import { GET as completeGET } from '@/app/api/checkout/complete/route';
 import { POST as webhookPOST, GET as webhookGET } from '@/app/api/webhooks/stripe/route';
 import { GET as productsGET } from '@/app/api/storefront/products/route';
 import { GET as productGET } from '@/app/api/storefront/products/[handle]/route';
-import { GET as cartGET, POST as cartPOST } from '@/app/api/storefront/cart/route';
+import { GET as cartGET, PATCH as cartPATCH, POST as cartPOST } from '@/app/api/storefront/cart/route';
 import { POST as ackPOST, GET as ackGET } from '@/app/api/storefront/cart/price-changes/acknowledge/route';
 import { POST as linesPOST, PATCH as linesPATCH, DELETE as linesDELETE } from '@/app/api/storefront/cart/lines/route';
 
@@ -66,6 +66,13 @@ const json = (method: string, path: string, body?: unknown, headers: Record<stri
   });
 
 const PRIVATE = 'private, no-store';
+
+/** Fills the cookie cart with the hero product and (default ON) a ship-to province, the way the bag does before checkout. */
+const fillWithProvince = async (province: string | null = 'ON') => {
+  const res = await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.hero30 }] }));
+  if (province) await cartPATCH(json('PATCH', '/api/storefront/cart', { buyerIdentity: { provinceCode: province } }));
+  return res;
+};
 
 describe('catalog routes', () => {
   it('GET /api/storefront/products lists, filters, paginates, and is briefly publicly cacheable', async () => {
@@ -225,7 +232,7 @@ describe('cart routes', () => {
 
 describe('POST /api/checkout', () => {
   const post = (headers: Record<string, string> = {}) => checkoutPOST(new Request('http://localhost:3000/api/checkout', { method: 'POST', headers }));
-  const fillCart = () => linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.hero30 }] }));
+  const fillCart = () => fillWithProvince();
 
   it('303s to the cart with EMPTY_CART when there is no cart cookie', async () => {
     const res = await post();
@@ -286,7 +293,7 @@ describe('POST /api/checkout', () => {
 });
 
 describe('GET /api/checkout/complete (Stripe success_url)', () => {
-  const fillCart = () => linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.hero30 }] }));
+  const fillCart = () => fillWithProvince();
   const complete = (query = `session_id=${SESSION_ID}`) => completeGET(new Request(`http://localhost:3000/api/checkout/complete?${query}`));
   const cookieCart = () => jar.values.get(CART_COOKIE);
 
@@ -392,11 +399,11 @@ describe('POST /api/webhooks/stripe', () => {
 
   it('verifies against the RAW body (odd whitespace survives) and fulfils the order end to end', async () => {
     const stripe = stubStripe();
-    const cart = (await (await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.hero30 }] }))).json()).cart;
+    const cart = (await (await fillWithProvince()).json()).cart;
     const redirect = await checkoutPOST(new Request('http://localhost:3000/api/checkout', { method: 'POST' }));
     expect(redirect.status).toBe(303);
     const params = (stripe.create.mock.calls as unknown as [{ metadata: unknown; line_items: { quantity: number; price_data: { unit_amount: number } }[] }][])[0][0];
-    const session = { id: SESSION_ID, payment_status: 'paid', currency: 'cad', amount_subtotal: 2400, amount_total: 2400, metadata: params.metadata, total_details: { amount_shipping: 0, amount_tax: 0, amount_discount: 0 }, customer_details: { email: 'x@example.com' } };
+    const session = { id: SESSION_ID, payment_status: 'paid', currency: 'cad', amount_subtotal: 2400, amount_total: 2712, metadata: params.metadata, total_details: { amount_shipping: 0, amount_tax: 312, amount_discount: 0, breakdown: { discounts: [], taxes: [{ amount: 312, rate: stripe.rates.find((r) => r.id === 'txr_test_CA_HST_ON'), taxability_reason: 'standard_rated', taxable_amount: 2400 }] } }, customer_details: { email: 'x@example.com' }, collected_information: { shipping_details: { name: 'X', address: { line1: '1 Test St', city: 'Toronto', state: 'ON', postal_code: 'M5V 2T6', country: 'CA' } } } };
     const body = `  ${sessionEvent('checkout.session.completed', session, 'evt_route_1').replace(/,"/g, ',  "')}\n`;
     const res = await post(body, realStripe.webhooks.generateTestHeaderString({ payload: body, secret: TEST_ENV.STRIPE_WEBHOOK_SECRET }));
     expect(res.status).toBe(200);
@@ -415,7 +422,7 @@ describe('POST /api/webhooks/stripe', () => {
 });
 
 describe('price changes: acknowledge route and checkout redirect', () => {
-  const fill = () => linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.hero30 }] }));
+  const fill = () => fillWithProvince();
   const ack = (headers: Record<string, string> = {}, body: unknown = undefined) =>
     ackPOST(json('POST', '/api/storefront/cart/price-changes/acknowledge', body, headers));
   const checkout = () => checkoutPOST(new Request('http://localhost:3000/api/checkout', { method: 'POST' }));

@@ -48,8 +48,11 @@ describe('permissions matrix (deny by default)', () => {
     expect(fieldAccess('FULFILMENT')).toEqual({ productCost: false, orderEmail: 'none' });
     expect(fieldAccess('SUPPORT').productCost).toBe(false);
     expect(fieldAccess('BOOKKEEPER')).toEqual({ productCost: true, orderEmail: 'masked' });
-    expect(allowedAdjustReasons('FULFILMENT')).toEqual(['RECEIVED', 'COUNT_CORRECTION', 'DAMAGED']);
-    expect(allowedAdjustReasons('ADMIN')).toContain('OTHER');
+    expect(allowedAdjustReasons('FULFILMENT')).toEqual(['RECEIVED', 'COUNT_CORRECTION', 'DAMAGED', 'EXPIRED']);
+    for (const role of ['OWNER', 'ADMIN'] as const) {
+      expect(allowedAdjustReasons(role)).toEqual(['RECEIVED', 'COUNT_CORRECTION', 'DAMAGED', 'EXPIRED', 'RETURN_RESTOCK', 'SAMPLES_GIFTS', 'LOST_STOLEN', 'OTHER']);
+    }
+    for (const role of ['BOOKKEEPER', 'SUPPORT'] as const) expect(allowedAdjustReasons(role)).toEqual([]);
     expect(allowedAdjustReasons('SUPPORT')).toEqual([]);
     expect(maskEmail('jane.doe@example.com')).toBe('j***@example.com');
   });

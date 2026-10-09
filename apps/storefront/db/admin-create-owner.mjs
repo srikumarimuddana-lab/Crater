@@ -16,9 +16,9 @@ import { poolConfig } from './migrate.mjs';
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
 
 /** Reads one line from stdin; hides the typing when stdin is a terminal. */
-export async function readPassword(stdin = process.stdin, stderr = process.stderr) {
+export async function readPassword(stdin = process.stdin, stderr = process.stderr, label = 'Owner password') {
   if (stdin.isTTY) {
-    stderr.write('Owner password (hidden, min 12 characters): ');
+    stderr.write(`${label} (hidden, min 12 characters): `);
     return new Promise((resolve, reject) => {
       let value = '';
       stdin.setRawMode(true);
