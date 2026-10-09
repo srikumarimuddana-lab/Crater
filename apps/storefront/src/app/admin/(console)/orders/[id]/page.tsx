@@ -8,6 +8,9 @@ import { FinancialBadge, FulfilmentBadge } from '@/components/admin/status';
 import { Card, DateCell, KeyValue, Notice, PageHeader, StatusBadge, TableWrap } from '@/components/admin/ui';
 import { markFulfilledAction, updateNotesAction } from '../../../_actions/orders';
 import { gate } from '../../../_lib/gate';
+import { taxCopy } from '@/lib/content/shop-copy';
+
+const provinceName = (v: string | null): string | null => (v === null ? null : (Object.hasOwn(taxCopy.provinces, v) ? taxCopy.provinces[v as keyof typeof taxCopy.provinces] : v));
 
 export const metadata: Metadata = { title: 'Order' };
 
@@ -24,6 +27,10 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const paid = order.financialStatus === 'PAID' || order.financialStatus === 'PARTIALLY_REFUNDED';
   const timeline = [...order.timeline].sort((a, b) => b.at.localeCompare(a.at));
   const a = order.shippingAddress;
+  const taxFlags: string[] = order.reviewFlags.filter((f) => f === 'TAX_PROVINCE_MISMATCH' || f === 'TAX_AMOUNT_MISMATCH');
+  const otherFlags = order.reviewFlags.filter((f) => !taxFlags.includes(f));
+  const basis = provinceName(order.taxProvince);
+  const stripeProvince = provinceName(order.shippingProvince);
 
   return (
     <>
@@ -43,6 +50,21 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           </Link>
         }
       />
+      {taxFlags.length ? (
+        <div className="a-stack" style={{ marginBottom: 16 }} data-testid="tax-flags">
+          {taxFlags.includes('TAX_PROVINCE_MISMATCH') ? (
+            <Notice tone="warning" role="status" title="Review: tax province mismatch.">
+              Tax was charged for {basis ?? 'the province chosen in the bag'}, but the shipping address Stripe collected is in {stripeProvince ?? 'a different province'}. The order is held (payment status Pending) until
+              staff review it. Refund the order or contact the customer before shipping.
+            </Notice>
+          ) : null}
+          {taxFlags.includes('TAX_AMOUNT_MISMATCH') ? (
+            <Notice tone="warning" role="status" title="Review: tax amount mismatch.">
+              The tax Stripe charged differs from the tax Crater calculated by more than 1 cent on a line. Compare the tax lines below with the payment in Stripe before shipping. Stripe’s amounts are the ones recorded.
+            </Notice>
+          ) : null}
+        </div>
+      ) : null}
       <div className="a-grid2">
         <div className="a-stack">
           {canFulfil && !order.fulfilment ? (
@@ -126,10 +148,18 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                 items={[
                   { label: 'Subtotal', value: fmtMoney(order.totals.subtotal) },
                   { label: 'Shipping', value: fmtMoney(order.totals.shipping) },
-                  { label: 'Tax', value: fmtMoney(order.totals.tax) },
+                  ...(order.taxLines && order.taxLines.length > 0
+                    ? order.taxLines.map((t) => ({ label: `${t.title} ${t.ratePercent}%`, value: fmtMoney(t.amount) }))
+                    : [{ label: 'Tax', value: fmtMoney(order.totals.tax) }]),
+                  ...(order.taxLines && order.taxLines.length > 1 ? [{ label: 'Tax total', value: fmtMoney(order.totals.tax) }] : []),
                   { label: 'Total', value: <strong>{fmtMoney(order.totals.total)}</strong> },
                 ]}
               />
+              <p className="a-muted" style={{ marginTop: 12 }} data-testid="tax-basis">
+                Tax basis: <strong>{basis ?? 'not recorded'}</strong> (the province the shopper chose in the bag).
+                <br />
+                Ship-to (Stripe): <strong>{stripeProvince ?? 'not recorded'}</strong> (the address collected at checkout).
+              </p>
             </Card>
           ) : null}
 
@@ -179,9 +209,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               <p>{order.email}</p>
             </Card>
           ) : null}
-          {order.reviewFlags.length ? (
+          {otherFlags.length ? (
             <Notice tone="warning" title="Needs attention:">
-              {order.reviewFlags.join(', ')}
+              {otherFlags.join(', ')}
             </Notice>
           ) : null}
           {g.can('orders:internal_notes') ? (

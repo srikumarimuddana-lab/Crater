@@ -71,7 +71,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                       autoComplete="off"
                       hint={v.openCartCount > 0 ? `${plural(v.openCartCount, 'open bag')} hold this variant. Shoppers will see a price-change notice.` : 'No open bags hold this variant.'}
                     />
-                    {showCost ? <Field name={`variants.${i}.cost`} label={`Cost, ${v.price.currencyCode}`} inputMode="decimal" defaultValue={v.cost?.amount ?? ''} autoComplete="off" hint="Optional. Visible to owners, admins and bookkeepers." /> : null}
+                    {showCost ? <Field name={`variants.${i}.cost`} label={`Cost, ${v.price.currencyCode}`} inputMode="decimal" defaultValue={v.cost?.amount ?? ''} autoComplete="off" hint="Required to publish (you can save a draft without it). What one unit costs you to make or buy. Visible to owners, admins and bookkeepers." /> : null}
                     <Field name={`variants.${i}.lowStockThreshold`} label="Low-stock threshold" inputMode="numeric" defaultValue={String(v.lowStockThreshold)} required autoComplete="off" />
                     <p className="a-muted">
                       Available {v.available} · Committed {v.committed} · On hand {v.onHand}. Change stock on the Inventory page.

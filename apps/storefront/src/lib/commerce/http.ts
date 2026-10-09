@@ -108,13 +108,26 @@ export function parseCartInput(body: unknown): CartInput {
   }
   if (o.attributes !== undefined) out.attributes = attributes(o.attributes, 'attributes');
   if (o.buyerIdentity !== undefined) {
-    const b = exact(o.buyerIdentity, ['email', 'countryCode'], 'buyerIdentity');
-    for (const k of ['email', 'countryCode'] as const) {
-      if (b[k] !== undefined && b[k] !== null && typeof b[k] !== 'string') throw new BadRequest(`${k} must be a string or null`);
-    }
-    out.buyerIdentity = b as CartInput['buyerIdentity'];
+    out.buyerIdentity = parseBuyerIdentity(o.buyerIdentity);
   }
   return out;
+}
+
+/** buyerIdentity object: shape only. Values (email format, country, province code) are validated by the cart layer as userErrors. */
+export function parseBuyerIdentity(value: unknown): NonNullable<CartInput['buyerIdentity']> {
+  const b = exact(value, ['email', 'countryCode', 'provinceCode'], 'buyerIdentity');
+  for (const k of ['email', 'countryCode', 'provinceCode'] as const) {
+    if (b[k] !== undefined && b[k] !== null && typeof b[k] !== 'string') throw new BadRequest(`${k} must be a string or null`);
+    if (typeof b[k] === 'string' && (b[k] as string).length > 254) throw new BadRequest(`${k} is too long`);
+  }
+  return b as NonNullable<CartInput['buyerIdentity']>;
+}
+
+/** PATCH /api/storefront/cart body: { buyerIdentity: { email?, countryCode?, provinceCode? } }. */
+export function parseBuyerIdentityBody(body: unknown): { buyerIdentity: NonNullable<CartInput['buyerIdentity']> } {
+  const o = exact(body, ['buyerIdentity'], 'body');
+  if (o.buyerIdentity === undefined) throw new BadRequest('buyerIdentity is required');
+  return { buyerIdentity: parseBuyerIdentity(o.buyerIdentity) };
 }
 
 export function parseAddBody(body: unknown): { lines: CartLineInput[] } {

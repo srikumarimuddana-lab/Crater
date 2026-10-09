@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { allowedAdjustReasons, getAdmin, type InventoryLevel } from '@/lib/admin';
-import { gidFrom, gidSlug, REASON_LABEL } from '@/components/admin/format';
+import { gidFrom, gidSlug, reasonOptionLabel, REASON_LABEL, REASON_SIGN } from '@/components/admin/format';
 import { AdjustDialog, CloseButton } from '@/components/admin/adjust-dialog';
 import { FocusOnMount } from '@/components/admin/focus';
 import { ActionForm, Field, Submit } from '@/components/admin/form';
@@ -51,6 +51,14 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
   const target = adjustSlug && canAdjust ? levels.find((l) => gidSlug(l.variantId) === adjustSlug && l.tracked) : undefined;
   const reasons = allowedAdjustReasons(g.session.staff.role);
   const adjusted = one(sp.adjusted);
+  const names = (sign: string) => reasons.filter((r) => REASON_SIGN[r] === sign).map((r) => REASON_LABEL[r] ?? r);
+  const reasonHint = [
+    names('+').length ? `${names('+').join(' and ')}: enter a positive change.` : '',
+    names('-').length ? `${names('-').join(', ')}: enter a negative change.` : '',
+    names('±').length ? `${names('±').join(' and ')}: either sign.` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <>
@@ -153,7 +161,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
               SKU {target.sku}. Available now: <strong>{target.available}</strong>. Committed to paid orders: {target.committed}.
             </p>
             <Field name="delta" label="Change by" required autoComplete="off" hint="Use a minus sign to remove stock, for example -2. It cannot take stock below 0." />
-            <Field name="reason" label="Reason" as="select" required options={[{ value: '', label: 'Choose a reason' }, ...reasons.map((r) => ({ value: r, label: REASON_LABEL[r] ?? r }))]} />
+            <Field name="reason" label="Reason" as="select" required options={[{ value: '', label: 'Choose a reason' }, ...reasons.map((r) => ({ value: r, label: reasonOptionLabel(r) }))]} hint={reasonHint} />
             <Field name="note" label="Note" as="textarea" rows={2} maxLength={300} hint="Required for Other (3 or more characters). Not copied to the audit log." />
             <div className="a-dialog-actions">
               <CloseButton />

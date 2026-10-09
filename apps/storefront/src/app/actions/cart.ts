@@ -3,8 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { getStorefront } from '@/lib/commerce';
 import { clearCartId, getCartId, setCartId } from '@/lib/commerce/cart-cookie';
-import type { Cart, CartErrorCode, CartMutationPayload } from '@/lib/commerce/types';
-import { MAX_LINE_QUANTITY, type AckState, type CartActionState } from '@/components/commerce/cart-types';
+import type { Cart, CartErrorCode, CartMutationPayload, ProvinceCode } from '@/lib/commerce/types';
+import { taxCopy } from '@/lib/content/shop-copy';
+import { MAX_LINE_QUANTITY, type AckState, type CartActionState, type ProvinceActionState } from '@/components/commerce/cart-types';
 
 /**
  * Cart Server Actions. They accept only variant/line IDs and quantities (never prices), read the
@@ -178,5 +179,30 @@ export async function acknowledgePrices(): Promise<AckState> {
     return { status: payload.cart && payload.userErrors.length === 0 ? 'acknowledged' : 'error', ts };
   } catch {
     return { status: 'error', ts };
+  }
+}
+
+/**
+ * Ship-to province for tax (docs/tax.md). Takes only the province code; the backend validates it and
+ * computes the tax. Works as a plain form post, so choosing a province needs no JavaScript.
+ */
+export async function setProvince(_prev: ProvinceActionState, formData: FormData): Promise<ProvinceActionState> {
+  const ts = Date.now() + Math.random();
+  const raw = field(formData, 'province');
+  if (!Object.hasOwn(taxCopy.provinces, raw)) return { status: 'error', province: null, error: 'INVALID', ts };
+  const province = raw as ProvinceCode;
+  try {
+    const cartId = await getCartId();
+    if (!cartId) return { status: 'error', province: null, error: 'MISSING_CART', ts };
+    const payload = await getStorefront().cartBuyerIdentityUpdate({ cartId, buyerIdentity: { provinceCode: province } });
+    if (payload.userErrors.some((e) => e.code === 'MISSING_CART')) {
+      await clearCartId();
+      return { status: 'error', province: null, error: 'MISSING_CART', ts };
+    }
+    if (payload.userErrors.length > 0 || !payload.cart) return { status: 'error', province: null, error: 'INVALID', ts };
+    revalidatePath('/', 'layout');
+    return { status: 'saved', province, error: null, ts };
+  } catch {
+    return { status: 'error', province: null, error: 'SERVER', ts };
   }
 }

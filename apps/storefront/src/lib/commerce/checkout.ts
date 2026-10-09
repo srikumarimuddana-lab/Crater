@@ -5,10 +5,12 @@ import { readConfig, stripeUsable, type CommerceConfig } from './config';
 import { isCartId, isCheckoutId, isStripeSessionId, newCheckoutId } from './ids';
 import { logger, redactSession, ref } from './log';
 import { minorToAmount, multiplyMinor, sumMinor, toMoney } from './money';
+import { TAX_RATES, normaliseProvince, sumTaxMinor, taxLinesFor, PROVINCE_TAX_KEYS, type TaxKey } from './tax';
+import { TAX_KEY_METADATA, resolveTaxRateIds } from './tax-rates';
 import type { CheckoutLineSnapshot, CheckoutRecord, CommerceRepository, OrderRecord, PostalAddressRecord, WebhookOutcome } from './records';
 import { loadIndex } from './storefront';
 import { isStripeCheckoutUrl, type StripeClient, type StripeFactory } from './stripe-client';
-import type { CheckoutSessionResult, ID, Order } from './types';
+import type { CheckoutSessionResult, ID, Order, ProvinceCode, TaxLine } from './types';
 
 export type CheckoutDeps = {
   repo: CommerceRepository;
@@ -77,10 +79,73 @@ export function orderFromRecord(o: OrderRecord): Order {
   };
 }
 
+/** Tax rate ids are looked up once per process (and secret key) and re-checked after this long or after any Stripe failure. */
+const TAX_RATE_CACHE_MS = 10 * 60 * 1000;
+/** Allowed rounding drift between our per-line tax and Stripe's: one cent per line item. */
+const taxToleranceMinor = (lineCount: number): number => lineCount;
+
+/** Per-rate tax Stripe charged, from `total_details.breakdown.taxes`. Rates are identified by their crater_tax_key metadata. */
+export function chargedTaxLines(taxes: Stripe.Checkout.Session.TotalDetails.Breakdown.Tax[]): TaxLine[] {
+  const byKey = new Map<string, TaxLine>();
+  for (const t of taxes) {
+    const tagged = t.rate?.metadata?.[TAX_KEY_METADATA];
+    const known = tagged && Object.hasOwn(TAX_RATES, tagged) ? TAX_RATES[tagged as TaxKey] : null;
+    const key = known ? known.key : `STRIPE_${String(t.rate?.id ?? 'unknown').slice(0, 40)}`;
+    const prior = byKey.get(key);
+    const minor = (prior ? Math.round(Number(prior.amount.amount) * 100) : 0) + t.amount;
+    byKey.set(key, {
+      key,
+      title: known ? known.title : String(t.rate?.display_name ?? 'Tax').slice(0, 60),
+      ratePercent: known ? known.ratePercent : String(t.rate?.percentage ?? ''),
+      amount: toMoney(minor),
+    });
+  }
+  return [...byKey.values()];
+}
+
+/** Tax flags: empty when the order matches the checkout snapshot (province and amounts within the per-line tolerance). */
+export function taxFlags(
+  checkout: Pick<CheckoutRecord, 'province' | 'taxLines' | 'lines'>,
+  charged: TaxLine[],
+  chargedTotalMinor: number,
+  shippingProvince: ProvinceCode | null,
+): string[] {
+  if (!checkout.province) return []; // snapshot predates province tax: nothing to compare
+  const flags: string[] = [];
+  if (shippingProvince !== checkout.province) flags.push('TAX_PROVINCE_MISMATCH');
+  const tolerance = taxToleranceMinor(checkout.lines.length);
+  const minor = (l: TaxLine) => Math.round(Number(l.amount.amount) * 100);
+  const expected = new Map(checkout.taxLines.map((l) => [l.key, minor(l)]));
+  const got = new Map(charged.map((l) => [l.key, minor(l)]));
+  const keys = new Set([...expected.keys(), ...got.keys()]);
+  let off = Math.abs(chargedTotalMinor - sumTaxMinor(checkout.taxLines)) > tolerance;
+  for (const k of keys) if (Math.abs((got.get(k) ?? 0) - (expected.get(k) ?? 0)) > tolerance) off = true;
+  if (sumTaxMinor(charged) !== chargedTotalMinor) off = true; // breakdown must add up to Stripe's own total
+  if (off) flags.push('TAX_AMOUNT_MISMATCH');
+  return flags;
+}
+
 export function createCheckoutService(deps: CheckoutDeps) {
   const { repo } = deps;
+  let rateCache: { at: number; secret: string; ids: Map<TaxKey, string> } | null = null;
   const config = deps.config ?? (() => readConfig());
   const now = deps.now ?? (() => new Date());
+
+  /** Tax Rate ids for a province, looked up by metadata once per process (re-checked every 10 minutes). Null if unavailable. */
+  async function taxRateIds(stripe: StripeClient, secret: string, province: ProvinceCode, nowMs: number): Promise<string[] | null> {
+    const keys = PROVINCE_TAX_KEYS[province];
+    const fresh = rateCache && rateCache.secret === secret && nowMs - rateCache.at < TAX_RATE_CACHE_MS ? rateCache : null;
+    if (fresh && keys.every((k) => fresh.ids.has(k))) return keys.map((k) => fresh.ids.get(k) as string);
+    try {
+      const ids = await resolveTaxRateIds(stripe, TAX_RATES, keys);
+      rateCache = { at: nowMs, secret, ids: new Map([...(fresh?.ids ?? []), ...ids]) };
+      return keys.map((k) => ids.get(k) as string);
+    } catch (error) {
+      rateCache = null;
+      logger.error('stripe tax rates unavailable (run "npm run stripe:tax-rates")', error);
+      return null;
+    }
+  }
 
   async function createCheckoutSession(cartId: ID): Promise<CheckoutSessionResult> {
     const cfg = config();
@@ -130,11 +195,19 @@ export function createCheckoutService(deps: CheckoutDeps) {
       if (record.lines.some((l) => lineHasPriceChange(l, index))) {
         return CHECKOUT_FAIL('PRICE_CHANGED', 'A price in your cart changed since you added it. Review your cart and try again.');
       }
-      const subtotalMinor = sumMinor(lines.map((l) => multiplyMinor(l.unitMinor, l.quantity)));
+      const lineTotals = lines.map((l) => multiplyMinor(l.unitMinor, l.quantity));
+      const subtotalMinor = sumMinor(lineTotals);
       if (subtotalMinor <= 0) return CHECKOUT_FAIL('CART_INVALID', 'Your cart total is not valid.');
+      // Tax depends on the ship-to province the shopper chose in the bag. Checked after stock and price.
+      const province = record.buyerProvince ?? null;
+      if (!province) return CHECKOUT_FAIL('PROVINCE_REQUIRED', 'Choose the province you are shipping to before checkout.');
+      const expectedTax = taxLinesFor(province, lineTotals);
+      const stripe = deps.stripe(cfg.stripeSecretKey as string);
+      const rateIds = await taxRateIds(stripe, cfg.stripeSecretKey as string, province, at.getTime());
+      if (!rateIds) return CHECKOUT_FAIL('PAYMENT_PROVIDER_UNAVAILABLE', 'Checkout is temporarily unavailable.');
 
       const fingerprint = createHash('sha256')
-        .update(JSON.stringify([lines.map((l) => [l.variantId, l.quantity, l.unitMinor]), record.buyerEmail, 'CAD']))
+        .update(JSON.stringify([lines.map((l) => [l.variantId, l.quantity, l.unitMinor]), record.buyerEmail, 'CAD', province]))
         .digest('hex');
 
       // Persist the frozen snapshot BEFORE calling Stripe. A repeat click on an unchanged
@@ -153,6 +226,8 @@ export function createCheckoutService(deps: CheckoutDeps) {
           subtotalMinor,
           buyerEmail: record.buyerEmail,
           lines,
+          province,
+          taxLines: expectedTax,
           createdAt: iso,
           updatedAt: iso,
         };
@@ -160,7 +235,6 @@ export function createCheckoutService(deps: CheckoutDeps) {
         checkout = fresh;
       }
 
-      const stripe = deps.stripe(cfg.stripeSecretKey as string);
       const params: Stripe.Checkout.SessionCreateParams = {
         mode: 'payment',
         client_reference_id: checkout.id,
@@ -172,8 +246,10 @@ export function createCheckoutService(deps: CheckoutDeps) {
             unit_amount: l.unitMinor,
             product_data: { name: `${l.title} — ${l.variantTitle}`, metadata: { variant_id: l.variantId } },
           },
+          // Fixed, exclusive tax rates for the chosen province: Stripe charges exactly what the bag showed.
+          tax_rates: rateIds,
         })),
-        metadata: { cart_id: checkout.cartRef, checkout_id: checkout.id },
+        metadata: { cart_id: checkout.cartRef, checkout_id: checkout.id, tax_province: province },
         shipping_address_collection: { allowed_countries: ['CA'] },
         phone_number_collection: { enabled: false },
         ...(checkout.buyerEmail ? { customer_email: checkout.buyerEmail } : {}),
@@ -181,8 +257,8 @@ export function createCheckoutService(deps: CheckoutDeps) {
         // and then redirects to /checkout/success.
         success_url: `${cfg.siteUrl}/api/checkout/complete?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${cfg.siteUrl}/cart?checkout=cancelled`,
-        // TODO(owner decision): Stripe Tax (paid add-on) is intentionally NOT enabled, and no
-        // shipping_options are configured, so no tax or shipping is charged. Do not invent rates.
+        // Tax: fixed Tax Rates per line (docs/tax.md), not Stripe Tax. No shipping_options are configured yet
+        // (owner decision pending), so no shipping is charged. Do not invent rates.
       };
       const session = await stripe.checkout.sessions.create(params, { idempotencyKey: `crater-${checkout.id}` });
 
@@ -193,6 +269,7 @@ export function createCheckoutService(deps: CheckoutDeps) {
       await repo.attachSession(checkout.id, session.id, at.toISOString());
       return { ok: true, redirectUrl: session.url };
     } catch (error) {
+      rateCache = null; // a stale or archived rate id must not survive a Stripe failure
       logger.error('checkout session creation failed', error);
       return CHECKOUT_FAIL('PAYMENT_PROVIDER_UNAVAILABLE', 'Checkout is temporarily unavailable. Please try again.');
     }
@@ -341,6 +418,22 @@ export function createCheckoutService(deps: CheckoutDeps) {
     if (totalMinor !== checkout.subtotalMinor + shippingMinor + taxMinor - (session.total_details?.amount_discount ?? 0)) {
       flags.push('TOTAL_MISMATCH');
     }
+    // Stripe's own tax is the authority. Webhook payloads omit the per-rate breakdown, so fetch it when tax was charged.
+    // A failure here throws: the webhook answers 5xx and Stripe retries (the event id dedupe makes that safe).
+    let taxLines: TaxLine[] = [];
+    if (taxMinor > 0) {
+      let taxes = session.total_details?.breakdown?.taxes;
+      if (!taxes) {
+        const full = await deps
+          .stripe(config().stripeSecretKey as string)
+          .checkout.sessions.retrieve(session.id, { expand: ['total_details.breakdown'] });
+        taxes = full.total_details?.breakdown?.taxes;
+      }
+      if (!taxes) throw new Error('tax breakdown unavailable for a session that charged tax');
+      taxLines = chargedTaxLines(taxes);
+    }
+    const address = shippingAddressFromSession(session);
+    flags.push(...taxFlags(checkout, taxLines, taxMinor, normaliseProvince(address?.province)));
     const outcome = await repo.completeCheckout({
       eventId: event.id,
       eventType: event.type,
@@ -351,8 +444,9 @@ export function createCheckoutService(deps: CheckoutDeps) {
       flags,
       shippingMinor,
       taxMinor,
+      taxLines,
       totalMinor,
-      shippingAddress: shippingAddressFromSession(session),
+      shippingAddress: address,
       now: at,
     });
     if (outcome.kind === 'created') {

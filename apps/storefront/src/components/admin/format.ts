@@ -45,10 +45,38 @@ export const REASON_LABEL: Record<string, string> = {
   RECEIVED: 'Received',
   COUNT_CORRECTION: 'Count correction',
   DAMAGED: 'Damaged',
+  EXPIRED: 'Expired',
   RETURN_RESTOCK: 'Return restock',
+  SAMPLES_GIFTS: 'Samples and gifts',
+  LOST_STOLEN: 'Lost or stolen',
   OTHER: 'Other',
   ORDER_PAID: 'Order paid',
 };
+/** Sign rule per reason (docs/tax.md): '+' adds stock, '-' removes it, '±' either way. */
+export const REASON_SIGN: Record<string, '+' | '-' | '±'> = {
+  RECEIVED: '+',
+  RETURN_RESTOCK: '+',
+  DAMAGED: '-',
+  EXPIRED: '-',
+  SAMPLES_GIFTS: '-',
+  LOST_STOLEN: '-',
+  COUNT_CORRECTION: '±',
+  OTHER: '±',
+};
+export const REASON_MEANING: Record<string, string> = {
+  RECEIVED: 'new stock from production or a supplier',
+  COUNT_CORRECTION: 'a physical count differs from the system',
+  DAMAGED: 'broken, leaking or unsellable',
+  EXPIRED: 'past its best-before or lot expiry',
+  RETURN_RESTOCK: 'a customer return put back on the shelf',
+  SAMPLES_GIFTS: 'given away as samples, gifts or for marketing',
+  LOST_STOLEN: 'missing or stolen',
+  OTHER: 'anything else; a note is required',
+};
+const SIGN_WORD = { '+': 'adds stock', '-': 'removes stock', '±': 'either way' } as const;
+/** Option text for the adjust form: "Expired (removes stock)". */
+export const reasonOptionLabel = (r: string): string => `${REASON_LABEL[r] ?? r} (${SIGN_WORD[REASON_SIGN[r] ?? '±']})`;
+
 export const ROLE_LABEL: Record<string, string> = {
   OWNER: 'Owner',
   ADMIN: 'Admin',
@@ -64,6 +92,7 @@ export const CHECK_LABEL: Record<string, string> = {
   HAS_DIRECTIONS: 'Directions for use written',
   IMAGES_HAVE_ALT: 'Alt text on every image',
   HAS_ACTIVE_VARIANT: 'At least one variant has a price',
+  HAS_COST: 'Cost price entered for every variant',
 };
 export const CHECK_HELP: Record<string, string> = {
   NOT_SAMPLE: 'Sample products can never be published. Replace sample content with real, verified product information first.',
@@ -72,4 +101,5 @@ export const CHECK_HELP: Record<string, string> = {
   HAS_DIRECTIONS: 'Write the directions for use.',
   IMAGES_HAVE_ALT: 'Every image needs descriptive alt text.',
   HAS_ACTIVE_VARIANT: 'Set a price above zero on at least one variant.',
+  HAS_COST: 'Enter what each variant costs you to make or buy. Cost is required before a product can be published.',
 };

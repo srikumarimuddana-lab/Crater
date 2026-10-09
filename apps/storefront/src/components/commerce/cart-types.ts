@@ -1,4 +1,4 @@
-import type { CartErrorCode, CartWarningCode, MoneyV2 } from '@/lib/commerce/types';
+import type { CartErrorCode, CartWarningCode, MoneyV2, ProvinceCode } from '@/lib/commerce/types';
 
 /** Largest quantity per line the backend accepts. */
 export const MAX_LINE_QUANTITY = 10;
@@ -21,9 +21,19 @@ export type CartLineView = {
   available: boolean;
 };
 
+export type CartTaxLineView = { key: string; title: string; ratePercent: string; amount: MoneyV2 };
+
 export type CartView = {
   totalQuantity: number;
   subtotal: MoneyV2;
+  /** Ship-to province chosen in the bag; null until the shopper picks one. */
+  provinceCode: ProvinceCode | null;
+  /** Per-tax breakdown for the province; empty while the province is unknown. */
+  taxLines: CartTaxLineView[];
+  /** Subtotal plus tax. Equals the subtotal while taxes are unknown (see `taxesKnown`). */
+  total: MoneyV2;
+  /** True once a province is set and the backend has computed the tax. */
+  taxesKnown: boolean;
   /** True while any line's current price differs from the price the shopper last saw. */
   hasPriceChanges: boolean;
   lines: CartLineView[];
@@ -71,3 +81,13 @@ export type AckState = {
 };
 
 export const initialAckState: AckState = { status: 'idle', ts: 0 };
+
+/** Result of the setProvince Server Action. Codes only: the UI maps them to copy. */
+export type ProvinceActionState = {
+  status: 'idle' | 'saved' | 'error';
+  province: ProvinceCode | null;
+  error: 'INVALID' | 'MISSING_CART' | 'SERVER' | null;
+  ts: number;
+};
+
+export const initialProvinceState: ProvinceActionState = { status: 'idle', province: null, error: null, ts: 0 };

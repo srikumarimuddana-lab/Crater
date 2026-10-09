@@ -88,6 +88,9 @@ export const toOrderRecord = (o: Row, lines: Row[]): OrderRecord => ({
   taxMinor: num(o.tax_minor),
   totalMinor: num(o.total_minor),
   reviewFlags: (o.review_flags as string[]) ?? [],
+  taxLines: (o.tax_lines as OrderRecord['taxLines'] | null) ?? [],
+  taxProvince: (o.tax_province as OrderRecord['taxProvince'] | null) ?? null,
+  shippingProvince: (o.shipping_province as string | null) ?? null,
   processedAt: iso(o.processed_at),
   fulfilmentStatus: o.fulfilment_status as OrderRecord['fulfilmentStatus'],
   shippingAddress: (o.shipping_address as PostalAddressRecord | null) ?? null,
@@ -142,6 +145,7 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
     note: (c.note as string | null) ?? null,
     buyerEmail: (c.buyer_email as string | null) ?? null,
     buyerCountry: c.buyer_country ? String(c.buyer_country).trim() : null,
+    buyerProvince: (c.buyer_province as CartRecord['buyerProvince'] | null) ?? null,
     attributes: (c.attributes as CartRecord['attributes']) ?? [],
     lineSeq: num(c.line_seq),
     lines: lines.map((l) => ({
@@ -163,6 +167,8 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
     subtotalMinor: num(r.subtotal_minor),
     buyerEmail: (r.buyer_email as string | null) ?? null,
     lines: r.lines as CheckoutRecord['lines'],
+    province: (r.tax_province as CheckoutRecord['province'] | null) ?? null,
+    taxLines: (r.tax_lines as CheckoutRecord['taxLines'] | null) ?? [],
     createdAt: iso(r.created_at),
     updatedAt: iso(r.updated_at),
   });
@@ -229,9 +235,9 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
     async createCart(cart) {
       await tx(async (c) => {
         await c.query(
-          `insert into commerce.carts (id, created_at, updated_at, completed_at, note, buyer_email, buyer_country, attributes, line_seq)
-           values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9)`,
-          [cart.id, cart.createdAt, cart.updatedAt, cart.completedAt, cart.note, cart.buyerEmail, cart.buyerCountry, json(cart.attributes), cart.lineSeq],
+          `insert into commerce.carts (id, created_at, updated_at, completed_at, note, buyer_email, buyer_country, attributes, line_seq, buyer_province)
+           values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10)`,
+          [cart.id, cart.createdAt, cart.updatedAt, cart.completedAt, cart.note, cart.buyerEmail, cart.buyerCountry, json(cart.attributes), cart.lineSeq, cart.buyerProvince],
         );
         await writeLines(c, cart);
       });
@@ -252,8 +258,8 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
         const { cart, value } = fn(toCart(carts[0], lines));
         if (cart) {
           await c.query(
-            `update commerce.carts set updated_at=$2, completed_at=$3, note=$4, buyer_email=$5, buyer_country=$6, attributes=$7::jsonb, line_seq=$8 where id=$1`,
-            [id, cart.updatedAt, cart.completedAt, cart.note, cart.buyerEmail, cart.buyerCountry, json(cart.attributes), cart.lineSeq],
+            `update commerce.carts set updated_at=$2, completed_at=$3, note=$4, buyer_email=$5, buyer_country=$6, attributes=$7::jsonb, line_seq=$8, buyer_province=$9 where id=$1`,
+            [id, cart.updatedAt, cart.completedAt, cart.note, cart.buyerEmail, cart.buyerCountry, json(cart.attributes), cart.lineSeq, cart.buyerProvince],
           );
           await writeLines(c, cart);
         }
@@ -277,9 +283,9 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
     },
     async createCheckout(c) {
       await pool.query(
-        `insert into commerce.checkouts (id, cart_id, cart_ref, status, stripe_session_id, fingerprint, subtotal_minor, buyer_email, lines, created_at, updated_at)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11)`,
-        [c.id, c.cartId, c.cartRef, c.status, c.stripeSessionId, c.fingerprint, c.subtotalMinor, c.buyerEmail, json(c.lines), c.createdAt, c.updatedAt],
+        `insert into commerce.checkouts (id, cart_id, cart_ref, status, stripe_session_id, fingerprint, subtotal_minor, buyer_email, lines, created_at, updated_at, tax_province, tax_lines)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13::jsonb)`,
+        [c.id, c.cartId, c.cartRef, c.status, c.stripeSessionId, c.fingerprint, c.subtotalMinor, c.buyerEmail, json(c.lines), c.createdAt, c.updatedAt, c.province, json(c.taxLines)],
       );
     },
     async getCheckout(id) {
@@ -346,11 +352,11 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
         const created = (
           await c.query(
             `insert into commerce.orders
-               (order_number, checkout_id, stripe_session_id, email, financial_status, subtotal_minor, shipping_minor, tax_minor, total_minor, review_flags, processed_at, shipping_address)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb) returning id`,
+               (order_number, checkout_id, stripe_session_id, email, financial_status, subtotal_minor, shipping_minor, tax_minor, total_minor, review_flags, processed_at, shipping_address, tax_lines, tax_province, shipping_province)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13::jsonb,$14,$15) returning id`,
             [orderNumber, checkout.id, input.sessionId, input.email, input.financialStatus, checkout.subtotalMinor,
               input.shippingMinor, input.taxMinor, input.totalMinor, [...new Set(flags)], input.now,
-              input.shippingAddress ? json(input.shippingAddress) : null],
+              input.shippingAddress ? json(input.shippingAddress) : null, json(input.taxLines), checkout.province, input.shippingAddress?.province || null],
           )
         ).rows as Row[];
         for (const [position, l] of checkout.lines.entries()) {

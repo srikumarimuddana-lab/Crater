@@ -25,6 +25,7 @@ export function navFor(s: AdminSession): NavGroup[] {
       items: [
         ...(has(s, 'events:read') || has(s, 'audit:read') ? [{ label: 'Event log', href: '/admin/events' }] : []),
         ...(has(s, 'staff:read') ? [{ label: 'Staff', href: '/admin/staff' }] : []),
+        ...(has(s, 'overview:read') ? [{ label: 'Settings', href: '/admin/settings' }] : []),
       ],
     },
   ];

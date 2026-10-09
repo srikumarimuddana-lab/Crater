@@ -1,6 +1,7 @@
 import { isVariantAvailable, toVariant, type CatalogIndex } from './catalog';
 import { gid, numericId } from './ids';
 import { multiplyMinor, sumMinor, toMoney } from './money';
+import { isProvinceCode, sumTaxMinor, taxLinesFor } from './tax';
 import type { CartLineRecord, CartRecord } from './records';
 import type {
   Attribute,
@@ -13,6 +14,7 @@ import type {
   CartUserError,
   CartWarning,
   ID,
+  ProvinceCode,
 } from './types';
 
 export const MAX_LINE_QUANTITY = 10;
@@ -272,8 +274,8 @@ export function validateBuyerIdentity(
   identity: Partial<CartBuyerIdentity> | undefined,
   path: string[],
   errors: CartUserError[],
-): Partial<{ email: string | null; countryCode: string | null }> {
-  const out: Partial<{ email: string | null; countryCode: string | null }> = {};
+): Partial<{ email: string | null; countryCode: string | null; provinceCode: ProvinceCode | null }> {
+  const out: Partial<{ email: string | null; countryCode: string | null; provinceCode: ProvinceCode | null }> = {};
   if (identity === undefined) return out;
   if (identity === null || typeof identity !== 'object') {
     errors.push(err('INVALID', path, 'Invalid buyer identity.'));
@@ -288,6 +290,11 @@ export function validateBuyerIdentity(
     if (identity.countryCode === null) out.countryCode = null;
     else if (typeof identity.countryCode === 'string' && /^[A-Z]{2}$/.test(identity.countryCode)) out.countryCode = identity.countryCode;
     else errors.push(err('INVALID', [...path, 'countryCode'], 'The country code must be an ISO 3166 alpha-2 code.'));
+  }
+  if (identity.provinceCode !== undefined) {
+    if (identity.provinceCode === null) out.provinceCode = null;
+    else if (isProvinceCode(identity.provinceCode)) out.provinceCode = identity.provinceCode;
+    else errors.push(err('INVALID', [...path, 'provinceCode'], 'Choose a Canadian province or territory (two-letter code such as SK or ON).'));
   }
   return out;
 }
@@ -322,6 +329,7 @@ export function applyBuyerIdentity(cart: CartRecord, identity: Partial<CartBuyer
   const v = validateBuyerIdentity(identity, ['buyerIdentity'], userErrors);
   if (v.email !== undefined) next.buyerEmail = v.email;
   if (v.countryCode !== undefined) next.buyerCountry = v.countryCode;
+  if (v.provinceCode !== undefined) next.buyerProvince = v.provinceCode;
   return finish(next, now, userErrors, []);
 }
 
@@ -343,7 +351,7 @@ export function buildNewCart(
   const iso = now.toISOString();
   const cart: CartRecord = {
     id, createdAt: iso, updatedAt: iso, completedAt: null,
-    note: null, buyerEmail: null, buyerCountry: null, attributes: [], lineSeq: 0, lines: [],
+    note: null, buyerEmail: null, buyerCountry: null, buyerProvince: null, attributes: [], lineSeq: 0, lines: [],
   };
   const userErrors: CartUserError[] = [];
   const warnings: CartWarning[] = [];
@@ -357,6 +365,7 @@ export function buildNewCart(
   const identity = validateBuyerIdentity(input?.buyerIdentity, ['input', 'buyerIdentity'], userErrors);
   if (identity.email !== undefined) cart.buyerEmail = identity.email;
   if (identity.countryCode !== undefined) cart.buyerCountry = identity.countryCode;
+  if (identity.provinceCode !== undefined) cart.buyerProvince = identity.provinceCode;
   if (input?.note !== undefined) cart.note = validateNote(input.note, ['input', 'note'], userErrors) || null;
   if (input?.attributes !== undefined) cart.attributes = validateAttributes(input.attributes, ['input', 'attributes'], userErrors);
   if (userErrors.length) return { cart: null, userErrors, warnings: [] };
@@ -369,6 +378,7 @@ export function buildNewCart(
 export function buildCart(record: CartRecord, index: CatalogIndex): Cart {
   const nodes: CartLine[] = [];
   let subtotal = 0;
+  const lineTotals: number[] = [];
   let hasPriceChanges = false;
   for (const line of record.lines) {
     const found = index.variants.get(line.variantId);
@@ -376,6 +386,7 @@ export function buildCart(record: CartRecord, index: CatalogIndex): Cart {
     const unit = found.variant.priceMinor;
     const total = multiplyMinor(unit, line.quantity);
     subtotal = sumMinor([subtotal, total]);
+    lineTotals.push(total);
     if (unit !== line.priceAtAddMinor) hasPriceChanges = true;
     nodes.push({
       id: lineId(line.n),
@@ -391,6 +402,11 @@ export function buildCart(record: CartRecord, index: CatalogIndex): Cart {
       priceAtAdd: toMoney(line.priceAtAddMinor),
     });
   }
+  // Tax is derived on every read from the server's repriced lines and the stored province; nothing is trusted from a client.
+  const province = record.buyerProvince ?? null;
+  const taxLines = taxLinesFor(province, lineTotals);
+  const taxMinor = sumTaxMinor(taxLines);
+  const total = province ? subtotal + taxMinor : subtotal;
   return {
     id: record.id,
     checkoutUrl: CHECKOUT_URL,
@@ -403,11 +419,12 @@ export function buildCart(record: CartRecord, index: CatalogIndex): Cart {
     },
     cost: {
       subtotalAmount: toMoney(subtotal),
-      totalAmount: toMoney(subtotal),
-      totalTaxAmount: null,
-      checkoutChargeAmount: toMoney(subtotal),
+      totalAmount: toMoney(total),
+      totalTaxAmount: province ? toMoney(taxMinor) : null,
+      taxLines,
+      checkoutChargeAmount: toMoney(total),
     },
-    buyerIdentity: { email: record.buyerEmail, countryCode: record.buyerCountry },
+    buyerIdentity: { email: record.buyerEmail, countryCode: record.buyerCountry, provinceCode: record.buyerProvince ?? null },
     note: record.note,
     attributes: record.attributes.map((a) => ({ ...a })),
     hasPriceChanges,

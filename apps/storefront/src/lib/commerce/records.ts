@@ -1,4 +1,4 @@
-import type { Attribute, ID, Image, ProductDetails, ProductOption, SelectedOption } from './types';
+import type { Attribute, ID, Image, ProductDetails, ProductOption, ProvinceCode, SelectedOption, TaxLine } from './types';
 
 /**
  * Storage-level records. Prices are integer cents; carts hold no prices (they are
@@ -74,6 +74,8 @@ export type CartRecord = {
   note: string | null;
   buyerEmail: string | null;
   buyerCountry: string | null;
+  /** Ship-to province chosen in the bag (migration 0005); drives tax. */
+  buyerProvince: ProvinceCode | null;
   attributes: Attribute[];
   lineSeq: number;
   lines: CartLineRecord[];
@@ -101,6 +103,10 @@ export type CheckoutRecord = {
   subtotalMinor: number;
   buyerEmail: string | null;
   lines: CheckoutLineSnapshot[];
+  /** Ship-to province the tax was computed for. Null only for snapshots made before migration 0005. */
+  province: ProvinceCode | null;
+  /** Tax Crater expected Stripe to charge (frozen with the lines); the webhook compares Stripe's amounts with it. */
+  taxLines: TaxLine[];
   createdAt: string;
   updatedAt: string;
 };
@@ -135,6 +141,11 @@ export type OrderRecord = {
   reviewFlags: string[];
   processedAt: string;
   lines: CheckoutLineSnapshot[];
+  /** Tax components Stripe actually charged (authoritative). */
+  taxLines: TaxLine[];
+  /** Province the shopper chose in the bag (the tax basis) and the province of the address Stripe collected. */
+  taxProvince: ProvinceCode | null;
+  shippingProvince: string | null;
   fulfilmentStatus: FulfilmentStatusRecord;
   shippingAddress: PostalAddressRecord | null;
   packingInstructions: string | null;
@@ -151,6 +162,8 @@ export type CompleteCheckoutInput = {
   flags: string[];
   shippingMinor: number;
   taxMinor: number;
+  /** Per-rate tax from Stripe (total_details.breakdown.taxes); empty when none was charged. */
+  taxLines: TaxLine[];
   totalMinor: number;
   /** Address Stripe collected (API 2026-08-26.dahlia: collected_information.shipping_details); null if none. */
   shippingAddress: PostalAddressRecord | null;
@@ -174,7 +187,16 @@ export type RecordStatusInput = {
 
 export type WebhookOutcome = 'PROCESSED' | 'DUPLICATE' | 'REJECTED' | 'FAILED';
 
-export type MovementReason = 'RECEIVED' | 'COUNT_CORRECTION' | 'DAMAGED' | 'RETURN_RESTOCK' | 'OTHER' | 'ORDER_PAID';
+export type MovementReason =
+  | 'RECEIVED'
+  | 'COUNT_CORRECTION'
+  | 'DAMAGED'
+  | 'EXPIRED'
+  | 'RETURN_RESTOCK'
+  | 'SAMPLES_GIFTS'
+  | 'LOST_STOLEN'
+  | 'OTHER'
+  | 'ORDER_PAID';
 
 /** Append-only stock ledger row. `availableAfter` is the variant's sellable quantity after the change. */
 export type MovementRecord = {

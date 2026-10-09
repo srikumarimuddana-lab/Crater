@@ -9,6 +9,10 @@ export function toCartView(cart: Cart): CartView {
   return {
     totalQuantity: cart.totalQuantity,
     subtotal: cart.cost.subtotalAmount,
+    provinceCode: cart.buyerIdentity.provinceCode,
+    taxLines: cart.cost.taxLines.map((t) => ({ key: t.key, title: t.title, ratePercent: t.ratePercent, amount: t.amount })),
+    total: cart.cost.totalAmount,
+    taxesKnown: cart.buyerIdentity.provinceCode !== null && cart.cost.totalTaxAmount !== null,
     hasPriceChanges: cart.hasPriceChanges,
     lines: cart.lines.nodes.map((line) => {
       const m = line.merchandise;

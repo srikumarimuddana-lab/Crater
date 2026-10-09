@@ -12,11 +12,13 @@ import {
   productPage,
   quantity as quantityCopy,
   recovery,
+  taxCopy,
 } from '@/lib/content/shop-copy';
 import { buttonClassName } from '@/components/ui/button';
 import { ActionBoundary } from './action-boundary';
 import { initialCartActionState, type CartActionState, type CartLineView, type CartView } from './cart-types';
 import { Price } from './price';
+import { taxUi } from './tax-ui-copy';
 
 /** `aria-disabled` keeps focus on the control (a truly disabled button drops focus to body). */
 function soft(disabled: boolean) {
@@ -241,7 +243,7 @@ function LineItem({
   );
 }
 
-/** Subtotal, the tax/shipping note and a checkout form that POSTs to the server route. */
+/** Subtotal, tax lines and total (once a province is chosen), the shipping note and a checkout form that POSTs to the server route. */
 export function CartSummary({ cart, checkoutUrl = '/api/checkout' }: { cart: CartView; checkoutUrl?: string }) {
   const [submitted, setSubmitted] = useState(false);
 
@@ -254,13 +256,33 @@ export function CartSummary({ cart, checkoutUrl = '/api/checkout' }: { cart: Car
 
   return (
     <div>
-      <dl className="flex items-baseline justify-between gap-4">
-        <dt className="font-semibold">{bag.subtotal}</dt>
-        <dd>
-          <Price money={cart.subtotal} className="text-price" />
-        </dd>
+      <dl className="space-y-1">
+        <div className="flex items-baseline justify-between gap-4">
+          <dt className="font-semibold">{bag.subtotal}</dt>
+          <dd>
+            <Price money={cart.subtotal} className="text-price" />
+          </dd>
+        </div>
+        {cart.taxesKnown
+          ? cart.taxLines.map((t) => (
+              <div key={t.key} className="text-small flex items-baseline justify-between gap-4 text-walnut" data-tax-line={t.key}>
+                <dt>{taxUi.taxLabel(t.title, t.ratePercent)}</dt>
+                <dd className="tabular-nums">
+                  <Price money={t.amount} />
+                </dd>
+              </div>
+            ))
+          : null}
+        {cart.taxesKnown ? (
+          <div className="flex items-baseline justify-between gap-4 border-t border-espresso/15 pt-2" data-testid="bag-total">
+            <dt className="font-semibold">{taxCopy.totalLabel}</dt>
+            <dd>
+              <Price money={cart.total} className="text-price" />
+            </dd>
+          </div>
+        ) : null}
       </dl>
-      <p className="text-small mt-1 text-walnut">{bag.taxShippingNote}</p>
+      <p className="text-small mt-1 text-walnut">{cart.taxesKnown ? taxUi.shippingNote : `${taxCopy.taxesPending} ${bag.taxShippingNote}`}</p>
       <form
         method="post"
         action={checkoutUrl}

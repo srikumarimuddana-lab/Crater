@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { loadCart } from '@/app/_lib/cart';
 import { CartLines, CartSummary } from '@/components/commerce/cart-lines';
 import { PriceChangeNotice } from '@/components/commerce/price-change-notice';
+import { ProvinceForm } from '@/components/commerce/province-form';
 import { PageShell } from '@/components/page-shell';
 import {
   bag,
@@ -27,7 +28,10 @@ export default async function CartPage({ searchParams }: Props) {
   const hasLines = Boolean(cart && cart.lines.length > 0);
   // Once the new prices are accepted, the PRICE_CHANGED message is resolved and no longer shown.
   const priceResolved = errorCode === 'PRICE_CHANGED' && !(cart && cart.hasPriceChanges);
-  const errorText = priceResolved ? null : checkoutErrorMessage(errorCode);
+  // Likewise once a province is chosen the PROVINCE_REQUIRED message is resolved.
+  const provinceResolved = errorCode === 'PROVINCE_REQUIRED' && Boolean(cart?.provinceCode);
+  const needsProvince = errorCode === 'PROVINCE_REQUIRED' && !provinceResolved;
+  const errorText = priceResolved || provinceResolved ? null : checkoutErrorMessage(errorCode);
   const fixtureRefusal = errorCode === 'FIXTURE_MODE';
 
   return (
@@ -38,7 +42,7 @@ export default async function CartPage({ searchParams }: Props) {
         </h1>
 
         {errorText ? (
-          <div role="alert" className="mt-8 rounded-xs border border-espresso bg-parchment px-5 py-4">
+          <div id="bag-error" role="alert" className="mt-8 rounded-xs border border-espresso bg-parchment px-5 py-4">
             {fixtureRefusal ? (
               <>
                 <p className="font-display text-2xl">{fixtureCheckout.heading}</p>
@@ -71,7 +75,10 @@ export default async function CartPage({ searchParams }: Props) {
 
           {cart && hasLines ? (
             <aside aria-label={bag.summaryLabel} className="h-fit rounded-xs border border-espresso/15 bg-parchment p-5 lg:sticky lg:top-6">
-              <CartSummary cart={cart} />
+              <ProvinceForm provinceCode={cart.provinceCode} focusOnMount={needsProvince} describedBy={needsProvince ? 'bag-error' : undefined} />
+              <div className="mt-5 border-t border-espresso/15 pt-4">
+                <CartSummary cart={cart} />
+              </div>
               <p className="text-small mt-4 text-walnut">{bag.sampleNote}</p>
             </aside>
           ) : null}

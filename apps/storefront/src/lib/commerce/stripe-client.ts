@@ -1,5 +1,6 @@
 import Stripe from 'stripe';
 import { logger } from './log';
+import type { TaxRateApi } from './tax-rates';
 
 /**
  * The narrow slice of the Stripe SDK this app uses. Injecting a factory lets tests
@@ -12,9 +13,21 @@ export interface StripeClient {
         params: Stripe.Checkout.SessionCreateParams,
         options: { idempotencyKey: string },
       ): Promise<{ id: string; url: string | null }>;
-      retrieve(id: string): Promise<{ id: string; payment_status: string; status: string | null; metadata?: Record<string, string> | null }>;
+      /** `expand: ['total_details.breakdown']` adds the per-rate tax amounts (webhook payloads do not carry them). */
+      retrieve(
+        id: string,
+        params?: { expand?: string[] },
+      ): Promise<{
+        id: string;
+        payment_status: string;
+        status: string | null;
+        metadata?: Record<string, string> | null;
+        total_details?: Stripe.Checkout.Session.TotalDetails | null;
+      }>;
     };
   };
+  /** Fixed Tax Rate objects (see tax-rates.ts). */
+  taxRates: TaxRateApi['taxRates'];
   webhooks: {
     constructEvent(payload: string, header: string, secret: string): Stripe.Event;
   };
