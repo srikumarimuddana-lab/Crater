@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type Stripe from 'stripe';
-import { buildCart, isCartDead } from './cart-logic';
+import { isCartDead } from './cart-logic';
 import { readConfig, stripeUsable, type CommerceConfig } from './config';
 import { isCartId, isCheckoutId, isStripeSessionId, newCheckoutId } from './ids';
 import { logger, redactSession, ref } from './log';
@@ -281,8 +281,9 @@ export function createCheckoutService(deps: CheckoutDeps) {
         logger.warn('order created and flagged for review', {
           order: outcome.order.number,
           flags: outcome.order.reviewFlags,
-          expected: minorToAmount(checkout.subtotalMinor),
-          received: minorToAmount(session.amount_subtotal ?? 0),
+          ...(outcome.order.reviewFlags.includes('AMOUNT_MISMATCH')
+            ? { expected: minorToAmount(checkout.subtotalMinor), received: minorToAmount(session.amount_subtotal ?? 0) }
+            : {}),
           session: redactSession(session.id),
         });
       }
