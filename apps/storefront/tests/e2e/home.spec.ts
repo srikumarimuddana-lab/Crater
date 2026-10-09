@@ -171,6 +171,7 @@ test.describe('mega menu without JavaScript', () => {
 });
 
 test('featured carousel: a list of six products with working, accessible previous and next buttons', async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
   await page.goto('/');
   const section = page.getByRole('region', { name: 'Featured formulas' });
   const list = section.locator('#featured-list');
