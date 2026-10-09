@@ -97,6 +97,30 @@ and ivory labels with a gold inner rule. Every image carries a top "ILLUSTRATION
 NOT A PRODUCT PHOTO" band, and the page adds an HTML caption or overlay. These are not
 approved packaging. Fixture names, sizes and prices come from `src/lib/content/fixtures.ts`.
 
+## 6a. Real-store conventions (user direction, 2026-10-09)
+
+The user asked that pages not look AI-generated. Follow common premium Shopify-theme
+and editorial skincare conventions (general patterns only; never copy a brand's
+assets, copy or distinctive layout). This section overrides earlier composition notes.
+
+- Avoid: repeated eyebrow + giant centred serif + ornament stacks, centring every
+  section, glows/gradients behind content, pills everywhere, uppercase-tracked
+  labels on everything, gold rings around images, description text on cards.
+- Header: one-line announcement bar (preview notice); logo, text nav (Shop all and
+  categories), "Bag (n)" text control; mobile "Menu" disclosure.
+- Collection: left-aligned heading with count; underlined text-link filters; cards
+  are flat image tiles + name + price (+ "2 sizes"); plain "Sold out" text.
+- Product page: gallery about 7/12, sticky buy box about 5/12 (breadcrumb, title,
+  price, bordered size tiles with prices, quantity stepper, full-width
+  "Add to bag — price", tax/shipping note), `<details>` accordions below, sticky
+  mobile add-to-bag bar.
+- Cart drawer: right panel "Your bag (n)", thumbnail lines with stepper and
+  "Remove", sticky subtotal footer and full-width Checkout.
+- Hairlines (espresso ~15%) instead of gold frames; gold only as small accents on
+  dark bands; Bodoni for product names and one or two headings only.
+- Packshots: flat stone studio backdrop with a soft floor shadow and a small corner
+  "Placeholder illustration" note (section 6 superseded on backdrop and marker).
+
 ## 7. Assets still needed from the brand
 
 Product names, handles and real SKUs; packaging dimensions and materials; front/back/side
