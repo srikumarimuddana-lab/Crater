@@ -459,8 +459,8 @@ test('product gallery: reserved ratios, alt text, only the first image eager, an
     return;
   }
 
-  if (testInfo.project.name === 'mobile-390') {
-    // A scroll-snap strip with a static "i / n" label on each slide and thumbnail anchors.
+  {
+    // Below lg: a scroll-snap strip with a static "i / n" label on each slide and thumbnail anchors.
     expect(await strip.evaluate((el) => getComputedStyle(el).scrollSnapType)).toContain('x');
     expect(await strip.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
     await expect(gallery.getByText(`1 / ${n}`)).toBeVisible();

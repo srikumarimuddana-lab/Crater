@@ -44,8 +44,8 @@ async function interceptStripeCheckout(page: Page) {
 
 async function startCheckoutFromCart(page: Page, reached: string[]): Promise<FakeSession> {
   await page.goto('/cart');
-  await expect(page.getByText('Mineral Serum').first()).toBeVisible();
-  await page.getByRole('button', { name: /^checkout/i }).click();
+  await expect(page.locator('#bag-lines').getByText('Mineral Serum')).toBeVisible();
+  await page.getByRole('complementary').getByRole('button', { name: /^checkout/i }).click();
   await expect(page.getByRole('heading', { name: 'Fake hosted checkout' })).toBeVisible();
   expect(reached).toHaveLength(1);
   const sessions = await fakeSessions();
@@ -102,7 +102,7 @@ test('buys the serum: redirect to hosted checkout, signed webhook, confirmed ord
 
   // The completed cart is closed: the bag is empty and the old cookie cart is not reusable.
   await page.goto('/cart');
-  await expect(page.getByText('Your bag is empty')).toBeVisible();
+  await expect(page.locator('#bag-lines').getByText('Your bag is empty')).toBeVisible();
   const cart = await (await page.request.get('/api/storefront/cart')).json();
   expect(cart.cart).toBeNull();
 });
@@ -149,11 +149,11 @@ test('a duplicate webhook delivery, or a new event for the same session, still y
 test('the bag is a Postgres-backed cookie cart that survives reload and a fresh page in the same browser', async ({ page, context }) => {
   await addSerumToBag(page);
   await page.goto('/cart');
-  await expect(page.getByText('Mineral Serum').first()).toBeVisible();
+  await expect(page.locator('#bag-lines').getByText('Mineral Serum')).toBeVisible();
 
   await page.reload();
-  await expect(page.getByText('Mineral Serum').first()).toBeVisible();
-  await expect(page.getByText('Your bag is empty')).toHaveCount(0);
+  await expect(page.locator('#bag-lines').getByText('Mineral Serum')).toBeVisible();
+  await expect(page.locator('#bag-lines').getByText('Your bag is empty')).toHaveCount(0);
 
   const cookies = await context.cookies();
   const cart = cookies.find((c) => c.name === 'crater_cart');
@@ -162,11 +162,11 @@ test('the bag is a Postgres-backed cookie cart that survives reload and a fresh 
   // A second tab shares the cookie and sees the same cart; a different shopper does not.
   const tab = await context.newPage();
   await tab.goto('/cart');
-  await expect(tab.getByText('Mineral Serum').first()).toBeVisible();
+  await expect(tab.locator('#bag-lines').getByText('Mineral Serum')).toBeVisible();
   const other = await page.context().browser()!.newContext();
   const stranger = await other.newPage();
   await stranger.goto(new URL('/cart', page.url()).toString());
-  await expect(stranger.getByText('Your bag is empty')).toBeVisible();
+  await expect(stranger.locator('#bag-lines').getByText('Your bag is empty')).toBeVisible();
   await other.close();
 
   // And the data really is in Postgres, in server-priced integer minor units.
