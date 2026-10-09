@@ -143,6 +143,18 @@ describe('Stripe tax rates: ensure and resolve', () => {
     expect(rates.filter((r) => r.active)).toHaveLength(7);
   });
 
+  it('re-creating a rate archived earlier uses a fresh idempotency key (Stripe replays keys for 24 hours)', async () => {
+    const { api, rates } = fakeTaxRates(false);
+    await ensureTaxRates({ taxRates: api } as unknown as TaxRateApi, TAX_RATES);
+    const firstKey = (api.create.mock.calls.find((c) => c[0].metadata.crater_tax_key === 'CA_GST') as unknown as [unknown, { idempotencyKey: string }])[1].idempotencyKey;
+    for (const r of rates) r.active = false; // an owner archives everything in the dashboard
+    api.create.mockClear();
+    await ensureTaxRates({ taxRates: api } as unknown as TaxRateApi, TAX_RATES);
+    const secondKey = (api.create.mock.calls.find((c) => c[0].metadata.crater_tax_key === 'CA_GST') as unknown as [unknown, { idempotencyKey: string }])[1].idempotencyKey;
+    expect(secondKey).not.toBe(firstKey);
+    expect(rates.filter((r) => r.active)).toHaveLength(7);
+  });
+
   it('pages through more than one list page and ignores rates it does not own', async () => {
     const { api, rates } = fakeTaxRates(true);
     for (let i = 0; i < 230; i++) rates.unshift({ ...rates[0], id: `txr_other_${i}`, metadata: { team: 'other' } });

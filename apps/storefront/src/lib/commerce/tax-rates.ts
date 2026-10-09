@@ -80,11 +80,11 @@ export function rateMatches(table: TaxTable, rate: StripeTaxRate, key: TaxKey): 
 }
 
 /** Every active rate that carries one of our keys, grouped by key. */
-export async function listCraterRates(api: TaxRateApi, table: TaxTable): Promise<Map<TaxKey, StripeTaxRate[]>> {
+export async function listCraterRates(api: TaxRateApi, table: TaxTable, active = true): Promise<Map<TaxKey, StripeTaxRate[]>> {
   const found = new Map<TaxKey, StripeTaxRate[]>();
   let after: string | undefined;
   for (let page = 0; page < MAX_PAGES; page++) {
-    const res = await api.taxRates.list({ active: true, limit: 100, ...(after ? { starting_after: after } : {}) });
+    const res = await api.taxRates.list({ active, limit: 100, ...(after ? { starting_after: after } : {}) });
     for (const rate of res.data) {
       const key = rate.metadata?.[TAX_KEY_METADATA];
       if (key && keysOf(table).includes(key as TaxKey)) found.set(key as TaxKey, [...(found.get(key as TaxKey) ?? []), rate]);
@@ -103,6 +103,9 @@ export type EnsureReport = { key: TaxKey; id: string; action: 'kept' | 'created'
  */
 export async function ensureTaxRates(api: TaxRateApi, table: TaxTable, log: (line: string) => void = () => {}): Promise<EnsureReport> {
   const existing = await listCraterRates(api, table);
+  // Archived rates of the same key make the idempotency key unique per generation: Stripe replays a key for 24 hours,
+  // and replaying the creation of a rate we just archived would hand the archived one back.
+  const archivedBefore = await listCraterRates(api, table, false);
   const report: EnsureReport = [];
   for (const key of keysOf(table)) {
     const rates = existing.get(key) ?? [];
@@ -121,7 +124,7 @@ export async function ensureTaxRates(api: TaxRateApi, table: TaxTable, log: (lin
     // The idempotency key is derived from the rate content, so a retried run cannot create a second rate.
     const want = desiredParams(table, key);
     const created = await api.taxRates.create(want, {
-      idempotencyKey: `crater-taxrate-${key}-${want.percentage}-${want.state ?? 'XX'}-${want.tax_type}-${rates.length}`,
+      idempotencyKey: `crater-taxrate-${key}-${want.percentage}-${want.state ?? 'XX'}-${want.tax_type}-g${rates.length + (archivedBefore.get(key)?.length ?? 0)}`,
     });
     log(`created ${created.id} (${key} ${want.percentage}%)`);
     report.push({ key, id: created.id, action: rates.length ? 'replaced' : 'created', archived });

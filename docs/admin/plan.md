@@ -97,6 +97,10 @@ Code: `src/lib/admin/**`, migration `db/migrations/0004_admin.sql` (the plan's "
 - **Stock:** `variants.inventory_quantity` stays "available". Committed = units on paid (PAID or PARTIALLY_REFUNDED), unfulfilled order lines, and on hand = available + committed. Every change writes an append-only `inventory_movements` row (the webhook writes `ORDER_PAID` in its own transaction). The audit log and movements are append-only by trigger (UPDATE, DELETE and TRUNCATE are refused, owner included).
 - **Webhook:** stores the address from `collected_information.shipping_details` (API 2026-08-26.dahlia) and logs each verified event's outcome (`PROCESSED`, `DUPLICATE`, `REJECTED`, `FAILED`) in `commerce.webhook_events`. Events with a bad signature are not logged.
 - **Overview:** paid = PAID, PARTIALLY_REFUNDED or REFUNDED, by `processed_at`. Periods are calendar days in `TIMEZONE`. Net sales equals gross sales until Slice 2 adds refunds. Webhook health counts FAILED and REJECTED events in the last 24 hours.
+- **Tax, timezone, reasons (docs/tax.md):** `TIMEZONE` defaults to `America/Regina`. Migration `0005_tax.sql` adds the bag's ship-to province, the checkout's expected tax and the order's per-rate tax lines, tax province and collected shipping province. The webhook records Stripe's own per-rate tax (it fetches `total_details.breakdown` because event payloads omit it; a failed fetch answers 5xx so Stripe retries) and holds the order PENDING with `TAX_PROVINCE_MISMATCH` or `TAX_AMOUNT_MISMATCH` (more than 1 cent per line). `AdminOrder.taxLines` is null without `orders:read_prices`.
+- **Stock reasons:** RECEIVED, COUNT_CORRECTION, DAMAGED, EXPIRED, RETURN_RESTOCK, SAMPLES_GIFTS, LOST_STOLEN, OTHER, with sign rules in `permissions.ts` (`REASON_SIGN`). Fulfilment may use RECEIVED, COUNT_CORRECTION, DAMAGED and EXPIRED; OTHER needs a note.
+- **Publish gate** gains `HAS_COST` (every sellable variant has a cost). The sample seed fills missing costs at about 35% of price (sample data, never overwrites a cost staff entered). `settings.get()` (capability `overview:read`) returns the read-only timezone and tax table.
+- **Staff:** `npm run admin:create-staff -- --role <ADMIN|FULFILMENT|BOOKKEEPER|SUPPORT> --email <email> [--name <name>]` reads the password from stdin only, refuses OWNER and duplicate emails, and writes a `staff.created` audit row.
 - **Dev bootstrap:** `ADMIN_DEV_STAFF` seeds MFA-enrolled staff only with `COMMERCE_DB=memory`. It is refused at config time and at seeding time otherwise (unit-tested).
 
 ## 4. Slice 1 scope (build now)
@@ -104,7 +108,7 @@ Code: `src/lib/admin/**`, migration `db/migrations/0004_admin.sql` (the plan's "
 1. Sign-in, TOTP enrolment, sign-out, session handling, rate limit, `admin:create-owner`.
 2. Staff and roles: list staff and their roles (read-only), and an audit log tab.
 3. Overview: Gross sales, Net sales, Orders, AOV ("–" with no orders), Low stock and Webhook health
-   for Today / 7 / 30 days in the store timezone (America/Toronto until the owner decides), plus a
+   for Today / 7 / 30 days in the store timezone (America/Regina), plus a
    Sales by day table.
 4. Orders:
    - index with filters by payment and fulfilment status;
