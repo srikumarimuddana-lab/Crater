@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useId, useRef } from 'react';
+import { useActionState, useEffect, useId, useRef, useState } from 'react';
 import { setProvince } from '@/app/actions/cart';
 import { buttonClassName } from '@/components/ui/button';
 import { cartErrors, recovery, taxCopy } from '@/lib/content/shop-copy';
@@ -27,6 +27,13 @@ export function ProvinceForm({
 }) {
   const [state, action, pending] = useActionState(setProvince, initialProvinceState);
   const selectRef = useRef<HTMLSelectElement>(null);
+  // Controlled, so the shown value follows the saved province (React resets uncontrolled fields after an action).
+  const [value, setValue] = useState<string>(provinceCode ?? '');
+  const [seen, setSeen] = useState<ProvinceCode | null>(provinceCode);
+  if (provinceCode !== seen) {
+    setSeen(provinceCode);
+    setValue(provinceCode ?? '');
+  }
   const hydrated = useHydrated();
   const uid = useId();
   const selectId = `${uid}-province`;
@@ -58,11 +65,12 @@ export function ProvinceForm({
           ref={selectRef}
           id={selectId}
           name="province"
-          defaultValue={provinceCode ?? ''}
+          value={value}
           required
           aria-describedby={describe}
           aria-invalid={problem || describedBy ? true : undefined}
           onChange={(e) => {
+            setValue(e.currentTarget.value);
             if (e.currentTarget.value) e.currentTarget.form?.requestSubmit();
           }}
           className="focus-ring min-h-11 min-w-0 flex-1 rounded-xs border border-espresso/60 bg-ivory px-3 text-espresso"

@@ -110,7 +110,7 @@ describe('tax engine: rate table', () => {
 describe('Stripe tax rates: ensure and resolve', () => {
   it('creates one exclusive rate per key with the documented attributes, and a second run changes nothing', async () => {
     const { api, rates } = fakeTaxRates(false);
-    const first = await ensureTaxRates(api as unknown as TaxRateApi, TAX_RATES);
+    const first = await ensureTaxRates({ taxRates: api } as unknown as TaxRateApi, TAX_RATES);
     expect(first.map((r) => r.action)).toEqual(TAX_KEYS.map(() => 'created'));
     expect(rates).toHaveLength(7);
     const sk = rates.find((r) => r.metadata?.crater_tax_key === 'SK_PST')!;
@@ -119,7 +119,7 @@ describe('Stripe tax rates: ensure and resolve', () => {
     expect(gst).toMatchObject({ display_name: 'GST', percentage: 5, country: 'CA', state: null });
     api.create.mockClear();
     api.update.mockClear();
-    const second = await ensureTaxRates(api as unknown as TaxRateApi, TAX_RATES);
+    const second = await ensureTaxRates({ taxRates: api } as unknown as TaxRateApi, TAX_RATES);
     expect(second.map((r) => r.action)).toEqual(TAX_KEYS.map(() => 'kept'));
     expect(api.create).not.toHaveBeenCalled();
     expect(api.update).not.toHaveBeenCalled();
@@ -132,7 +132,7 @@ describe('Stripe tax rates: ensure and resolve', () => {
     stale.percentage = 5; // the province changed its rate: the old Stripe object is now wrong
     const dupe = { ...rates.find((r) => r.metadata?.crater_tax_key === 'CA_GST')!, id: 'txr_dupe' };
     rates.push(dupe);
-    const report = await ensureTaxRates(api as unknown as TaxRateApi, TAX_RATES);
+    const report = await ensureTaxRates({ taxRates: api } as unknown as TaxRateApi, TAX_RATES);
     expect(report.find((r) => r.key === 'SK_PST')).toMatchObject({ action: 'replaced', archived: [stale.id] });
     expect(report.find((r) => r.key === 'CA_GST')).toMatchObject({ action: 'kept', archived: ['txr_dupe'] });
     expect(stale.active).toBe(false);
@@ -146,7 +146,7 @@ describe('Stripe tax rates: ensure and resolve', () => {
   it('pages through more than one list page and ignores rates it does not own', async () => {
     const { api, rates } = fakeTaxRates(true);
     for (let i = 0; i < 230; i++) rates.unshift({ ...rates[0], id: `txr_other_${i}`, metadata: { team: 'other' } });
-    const ids = await resolveTaxRateIds(api as unknown as TaxRateApi, TAX_RATES, ['CA_GST', 'SK_PST']);
+    const ids = await resolveTaxRateIds({ taxRates: api } as unknown as TaxRateApi, TAX_RATES, ['CA_GST', 'SK_PST']);
     expect([...ids]).toEqual([['CA_GST', 'txr_test_CA_GST'], ['SK_PST', 'txr_test_SK_PST']]);
     expect(api.list.mock.calls.length).toBeGreaterThan(2);
   });
@@ -154,9 +154,9 @@ describe('Stripe tax rates: ensure and resolve', () => {
   it('resolve fails for a missing, archived or outdated rate (and says how to fix it)', async () => {
     const { api, rates } = fakeTaxRates(true);
     rates.find((r) => r.metadata?.crater_tax_key === 'SK_PST')!.active = false;
-    await expect(resolveTaxRateIds(api as unknown as TaxRateApi, TAX_RATES, ['SK_PST'])).rejects.toThrow(/npm run stripe:tax-rates/);
+    await expect(resolveTaxRateIds({ taxRates: api } as unknown as TaxRateApi, TAX_RATES, ['SK_PST'])).rejects.toThrow(/npm run stripe:tax-rates/);
     rates.find((r) => r.metadata?.crater_tax_key === 'CA_GST')!.percentage = 7;
-    await expect(resolveTaxRateIds(api as unknown as TaxRateApi, TAX_RATES, ['CA_GST'])).rejects.toThrow(/out of date/);
+    await expect(resolveTaxRateIds({ taxRates: api } as unknown as TaxRateApi, TAX_RATES, ['CA_GST'])).rejects.toThrow(/out of date/);
     expect(rateMatches(TAX_RATES, { ...rates[0], inclusive: true }, 'CA_GST')).toBe(false);
   });
 
@@ -168,11 +168,11 @@ describe('Stripe tax rates: ensure and resolve', () => {
     for (const bad of [undefined, '', 'sk_test_', 'pk_test_abc', 'garbage']) expect(() => checkKey({ STRIPE_SECRET_KEY: bad })).toThrow(/STRIPE_SECRET_KEY/);
     const { api } = fakeTaxRates(false);
     const lines: string[] = [];
-    const report = await runTaxRatesScript({ env: { STRIPE_SECRET_KEY: 'sk_test_SECRETVALUE123' }, api: api as unknown as TaxRateApi, log: (l) => lines.push(l) });
+    const report = await runTaxRatesScript({ env: { STRIPE_SECRET_KEY: 'sk_test_SECRETVALUE123' }, api: { taxRates: api } as unknown as TaxRateApi, log: (l) => lines.push(l) });
     expect(report).toHaveLength(7);
     expect(lines.join('\n')).not.toContain('SECRETVALUE');
     expect(lines.join('\n')).toContain('test mode');
-    await expect(runTaxRatesScript({ env: { STRIPE_SECRET_KEY: 'sk_live_x1' }, api: api as unknown as TaxRateApi, log: () => {} })).rejects.toThrow(/live/);
+    await expect(runTaxRatesScript({ env: { STRIPE_SECRET_KEY: 'sk_live_x1' }, api: { taxRates: api } as unknown as TaxRateApi, log: () => {} })).rejects.toThrow(/live/);
   });
 });
 
@@ -287,6 +287,11 @@ describe.each(REPO_KINDS)('tax in the cart and checkout [%s repository]', (kind)
 
   run('tax-rate ids are looked up once per process and cached; a Stripe failure clears the cache', async () => {
     const h = await setup();
+    let n = 0;
+    h.stripe.create.mockImplementation((async () => {
+      const id = `cs_test_cache${++n}`;
+      return { id, url: `https://checkout.stripe.com/c/pay/${id}` };
+    }) as never);
     const a = await cartWith(h, [{ merchandiseId: V.hero30 }], 'SK');
     const b = await cartWith(h, [{ merchandiseId: V.oil100 }], 'SK');
     await h.checkout.createCheckoutSession(a.id);

@@ -68,20 +68,31 @@ test('the drawer has the same province control and tax lines', async ({ page }) 
   await expect(dlg.getByLabel('Ship to province')).toHaveValue('SK');
 });
 
-test('checkout without a province lands on /cart with the error and focuses the select', async ({ page }) => {
+test('/cart with the province error shows the message and focuses the select', async ({ page }) => {
+  // The checkout route sends the shopper here when no province is set (covered by the backend integration
+  // tests; the default e2e server runs in fixture mode, which refuses checkout before it looks at the province).
   await addLemonBalm(page);
-  await page.goto('/cart');
-  await page.getByRole('button', { name: /^checkout$/i }).click();
-  await expect(page).toHaveURL(/\/cart\?checkout_error=PROVINCE_REQUIRED$/);
+  await page.goto('/cart?checkout_error=PROVINCE_REQUIRED');
   const alert = page.locator('main [role=alert]');
   await expect(alert).toContainText('Choose the province you are shipping to');
   await expect(provinceSelect(page)).toBeFocused();
   await expect(provinceSelect(page)).toHaveAttribute('aria-describedby', /bag-error/);
+  await expect(provinceSelect(page)).toHaveAttribute('aria-invalid', 'true');
 
-  // Once a province is chosen the error is resolved.
+  // Once a province is chosen the error is resolved and removed.
   await chooseProvince(page, page.locator('main'), 'SK');
   await expect(page.locator('main [role=alert]')).toHaveCount(0);
   await expect(page.locator('main').getByTestId('bag-total')).toContainText('$26.64');
+});
+
+test('fixture-mode checkout still refuses with the demo message after a province is chosen', async ({ page }) => {
+  await addLemonBalm(page);
+  await page.goto('/cart');
+  await chooseProvince(page, page.locator('main'), 'SK');
+  await expect(page.locator('main').getByTestId('bag-total')).toBeVisible();
+  await page.getByRole('button', { name: /^checkout$/i }).click();
+  await expect(page).toHaveURL(/\/cart\?checkout_error=FIXTURE_MODE$/);
+  await expect(page.locator('main [role=alert]')).toContainText('Checkout is switched off in preview');
 });
 
 test('an unknown province code is refused with a message and leaves the bag unchanged', async ({ page }) => {
