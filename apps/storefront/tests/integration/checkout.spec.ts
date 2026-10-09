@@ -134,6 +134,17 @@ test('buys the hero product: redirect to hosted checkout, signed webhook, confir
   });
   expect(await getInventory(HERO_30)).toBe(39);
 
+  // Admin Slice 1: the webhook snapshots the address Stripe collected and writes the stock movement in the same transaction.
+  const stored = await db().query(
+    `select o.shipping_address, o.fulfilment_status,
+            (select json_agg(json_build_object('delta', m.delta, 'reason', m.reason, 'after', m.available_after, 'sku', m.sku))
+               from commerce.inventory_movements m where m.order_id = o.id) as movements
+       from commerce.orders o`,
+  );
+  expect(stored.rows[0].shipping_address).toMatchObject({ name: 'Test Buyer', line1: '100 Sample Street', city: 'Toronto', province: 'ON', postalCode: 'M5V 2T6', country: 'CA' });
+  expect(stored.rows[0].fulfilment_status).toBe('UNFULFILLED');
+  expect(stored.rows[0].movements).toEqual([{ delta: -1, reason: 'ORDER_PAID', after: 39, sku: HERO_30 }]);
+
   // The completed cart is closed and the cookie is gone: the bag is the normal empty bag, never "expired".
   await page.goto('/cart');
   await expect(page.locator('#bag-lines').getByText('Your bag is empty')).toBeVisible();
