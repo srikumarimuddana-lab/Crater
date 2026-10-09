@@ -96,10 +96,15 @@ and `tests/e2e/product-cart.spec.ts`.
 `cartLinesAdd/Update/Remove`) with `userErrors`/`warnings`. Fixture mode shows a
 clear demo message at checkout; Stripe test mode redirects to Stripe Checkout.
 
-- [ ] Backend: unit tests for every cart userError/warning, repricing, expiry,
+- [x] Backend: unit tests for every cart userError/warning, repricing, expiry,
   checkout refusals (fixture, live key, empty/invalid cart, foreign redirect host),
   webhook signature, duplicate delivery, subtotal mismatch, and inventory; Postgres
   parity tests against a local cluster.
+  Evidence (2026-10-09): typecheck/lint/build pass; Vitest 145/145 against a fresh
+  local Postgres 16 (98 pass + 47 Postgres skips without it), re-run by the
+  coordinator; migrate/seed idempotent; `commerce` schema with RLS on all 12
+  tables; homepage e2e 12/12. Open: tax, shipping rates, admin UI, order emails,
+  rate limiting, scheduled `purgeExpiredCarts()`.
 - [ ] UI: e2e for variant selection, unavailable variants, add/update/remove,
   drawer focus/Escape/return-focus, no-JS cart page, fixture checkout message.
 - [ ] Inspect product, cart, and checkout-result screens at 390/768/1440. Confirm
