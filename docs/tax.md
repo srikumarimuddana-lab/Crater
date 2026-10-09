@@ -12,7 +12,7 @@ taxability and filing before live sales.
 | Business location | Saskatchewan; sells online within Canada |
 | Tax registrations | GST (federal) and Saskatchewan PST |
 | Cost price | Tracked per variant; required before a product can be published |
-| Staff | Two people to start (Owner plus one staff member; role to confirm) |
+| Staff | Two people: the Owner and one Fulfilment staff member (confirmed 2026-10-09) |
 | Stock-adjustment reasons | Chosen by the architect (below) |
 
 ## How tax is calculated (free; no Stripe Tax)
@@ -76,5 +76,6 @@ For the Slice 2 ledger, cost-based write-offs map as follows:
 - The Owner is created with `npm run admin:create-owner`.
 - The second staff member is created with `npm run admin:create-staff -- --role <ROLE>`,
   with the password typed on stdin and an authenticator set up at first sign-in.
-- Suggested role: FULFILMENT if they pack orders, ADMIN if they also manage products. Owner
-  to confirm.
+- Confirmed: the second staff member is **FULFILMENT**:
+  `npm run admin:create-staff -- --role FULFILMENT --email <their email>`. They see orders
+  without prices, packing slips, and inventory with the stock-role reasons.
