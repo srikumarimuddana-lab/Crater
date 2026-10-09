@@ -35,7 +35,6 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
         ) : result.status === 'processing' ? (
           <div>
             <FocusHeading>{confirmation.processing.heading}</FocusHeading>
-            <div aria-hidden="true" className="ornament mt-5 w-32" />
             <p className="mt-6" role="status">
               {confirmation.processing.body}
             </p>
@@ -47,7 +46,6 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
         ) : result.status === 'unpaid' ? (
           <div>
             <FocusHeading>{confirmation.unpaid.heading}</FocusHeading>
-            <div aria-hidden="true" className="ornament mt-5 w-32" />
             <p className="mt-6">{confirmation.unpaid.body}</p>
             <Link href="/cart" className={buttonClassName('primary', 'mt-8')}>
               {confirmation.unpaid.action}
@@ -56,7 +54,6 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
         ) : (
           <div>
             <FocusHeading>{confirmation.not_found.heading}</FocusHeading>
-            <div aria-hidden="true" className="ornament mt-5 w-32" />
             <p className="mt-6">{confirmation.not_found.body}</p>
             <Link href="/#collection" className={buttonClassName('primary', 'mt-8')}>
               {confirmation.not_found.action}
@@ -78,7 +75,6 @@ function Paid({ order, mode }: { order: Order; mode: ReturnType<typeof commerceM
   return (
     <div>
       <FocusHeading>{c.heading}</FocusHeading>
-      <div aria-hidden="true" className="ornament mt-5 w-32" />
       {mode === 'stripe-test' ? <p className="mt-6 font-semibold">{c.testOrderNote}</p> : null}
       {mode === 'fixture' ? <p className="mt-6 font-semibold">{c.fixtureOrderNote}</p> : null}
       <p className="mt-6">
@@ -91,7 +87,7 @@ function Paid({ order, mode }: { order: Order; mode: ReturnType<typeof commerceM
         <h2 id="ordered-items" className="text-3xl">
           {c.itemsLabel}
         </h2>
-        <ul className="mt-4 divide-y divide-gold-deep/30 border-y border-gold-deep/30">
+        <ul className="mt-4 divide-y divide-espresso/15 border-y border-espresso/15">
           {order.lineItems.map((item) => (
             <li key={item.variantId} className="flex flex-wrap items-baseline justify-between gap-x-4 py-3">
               <span>
@@ -109,7 +105,7 @@ function Paid({ order, mode }: { order: Order; mode: ReturnType<typeof commerceM
               <dd className="tabular-nums">{value}</dd>
             </div>
           ))}
-          <div className="flex justify-between gap-4 border-t border-gold-deep/50 pt-3">
+          <div className="flex justify-between gap-4 border-t border-espresso/15 pt-3">
             <dt className="font-semibold">{c.total}</dt>
             <dd className="text-price">{formatMoney(order.totalPrice)}</dd>
           </div>

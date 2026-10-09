@@ -105,10 +105,19 @@ clear demo message at checkout; Stripe test mode redirects to Stripe Checkout.
   coordinator; migrate/seed idempotent; `commerce` schema with RLS on all 12
   tables; homepage e2e 12/12. Open: tax, shipping rates, admin UI, order emails,
   rate limiting, scheduled `purgeExpiredCarts()`.
-- [ ] UI: e2e for variant selection, unavailable variants, add/update/remove,
+- [x] UI: e2e for variant selection, unavailable variants, add/update/remove,
   drawer focus/Escape/return-focus, no-JS cart page, fixture checkout message.
-- [ ] Inspect product, cart, and checkout-result screens at 390/768/1440. Confirm
+- [x] Inspect product, cart, and checkout-result screens at 390/768/1440. Confirm
   no fabricated claims, reviews, or stock. Commit the phase.
+  Evidence (2026-10-09): typecheck/lint/build pass; Vitest 98 + 47 Postgres skips
+  (145/145 with Postgres); Playwright 70 passed, 2 skipped (sticky bar is
+  mobile-only) across 390/768/1440, incl. no-JS cart, axe on product/drawer/cart,
+  fixture checkout with no request to Stripe. Coordinator review of screenshots
+  fixed the mobile sticky bar appearing before the shopper reached the size
+  picker (J2.8). Not exercised: Stripe test-mode redirect and webhook end to end,
+  Postgres-backed carts in the browser, drawer reduced-motion transition. Gaps:
+  J6.2 price-changed banner, inline network-failure recovery (falls back to the
+  error page), single product image, generic 404 copy for non-product URLs.
 
 **Exit:** A shopper can browse, choose a variant, manage a cart, and reach Stripe
 test Checkout; a paid test session creates an order through the webhook.

@@ -1,39 +1,65 @@
 import Link from 'next/link';
 import { loadCart } from '@/app/_lib/cart';
-import { commerceMode } from '@/lib/commerce';
+import { commerceMode, getStorefront } from '@/lib/commerce';
+import type { Collection } from '@/lib/commerce/types';
+import { productPage } from '@/lib/content/shop-copy';
 import { BagControls } from './commerce/bag-controls';
+
+const linkClass =
+  'focus-ring inline-flex min-h-11 items-center text-[0.9375rem] font-semibold text-espresso underline-offset-[0.45em] hover:underline hover:decoration-1';
 
 /** Server-rendered from the private cart cookie, so any page using it is dynamic and uncached. */
 export async function SiteHeader() {
   const { cart } = await loadCart();
   const mode = commerceMode();
+  let collections: Collection[] = [];
+  try {
+    collections = await getStorefront().collections();
+  } catch {
+    // The header still works without category links.
+  }
+  const links = [
+    { href: '/#collection', label: productPage.shopAll },
+    ...collections.map((c) => ({ href: `/?category=${c.handle}#collection`, label: c.title })),
+  ];
+
   return (
-    <header className="on-dark border-b border-gold/30 bg-forest-deep text-ivory">
-      <div className="page-gutter grid min-h-20 grid-cols-[1fr_auto_1fr] items-center gap-4">
-        <span aria-hidden="true" className="hidden text-eyebrow text-gold md:block">
-          Skincare atelier
-        </span>
-        <Link
-          href="/"
-          className="focus-ring col-start-2 inline-flex min-h-11 items-center font-display text-2xl tracking-[0.32em] text-gold-light uppercase md:text-3xl"
-        >
+    <header className="border-b border-espresso/15 bg-ivory">
+      <div className="page-gutter flex min-h-16 items-center justify-between gap-4 md:min-h-20">
+        <Link href="/" className="focus-ring inline-flex min-h-11 items-center font-display text-2xl tracking-[0.2em] text-forest uppercase">
           Crater
         </Link>
-        <nav aria-label="Primary" className="col-start-3 justify-self-end">
-          <ul className="flex items-center gap-1 sm:gap-2">
-            <li>
-              <Link
-                href="/#collection"
-                className="focus-ring inline-flex min-h-11 items-center px-2 text-eyebrow text-ivory underline-offset-[0.4em] hover:text-gold-light hover:underline"
-              >
-                Shop
-              </Link>
-            </li>
-            <li>
-              <BagControls cart={cart} mode={mode} />
-            </li>
+        <nav aria-label="Primary" className="hidden lg:block">
+          <ul className="flex items-center gap-7">
+            {links.map((l) => (
+              <li key={l.href}>
+                <Link href={l.href} className={linkClass}>
+                  {l.label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </nav>
+        <div className="flex items-center gap-1">
+          <details className="relative lg:hidden">
+            <summary className={`${linkClass} cursor-pointer list-none px-2 [&::-webkit-details-marker]:hidden`}>Menu</summary>
+            <nav
+              aria-label="Menu"
+              className="absolute right-0 z-20 mt-2 w-64 border border-espresso/15 bg-ivory p-2 shadow-sm"
+            >
+              <ul>
+                {links.map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href} className={`${linkClass} w-full px-2`}>
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </details>
+          <BagControls cart={cart} mode={mode} />
+        </div>
       </div>
     </header>
   );

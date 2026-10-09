@@ -9,6 +9,7 @@ import {
   cartErrors,
   cartWarnings,
   checkoutErrorFallback,
+  productPage,
   quantity as quantityCopy,
   recovery,
 } from '@/lib/content/shop-copy';
@@ -87,23 +88,22 @@ export function CartLines({
       <div role="status" aria-live="polite" aria-atomic="true" className={problems.length || announcement ? 'mb-4' : undefined}>
         {announcement ? <p className="sr-only">{announcement}</p> : null}
         {problems.map((text) => (
-          <p key={text} className="text-small mb-2 rounded-xs border border-gold-deep bg-parchment px-3 py-2 text-espresso">
+          <p key={text} className="text-small mb-2 rounded-xs border border-espresso/40 bg-parchment px-3 py-2 text-espresso">
             {text}
           </p>
         ))}
       </div>
 
       {lines.length === 0 ? (
-        <div className="py-8 text-center">
+        <div className="py-6">
           <p className="font-display text-2xl text-espresso">{expired ? recovery.cartExpiredHeading : bag.emptyHeading}</p>
           <p className="mt-2 text-walnut">{expired ? recovery.cartExpiredBody : bag.emptyBody}</p>
-          <div aria-hidden="true" className="ornament mx-auto mt-6 w-32" />
-          <Link href="/#collection" onClick={onContinue} className={buttonClassName('primary', 'mt-8')}>
+          <Link href="/#collection" onClick={onContinue} className={buttonClassName('primary', 'mt-6')}>
             {bag.continueShopping}
           </Link>
         </div>
       ) : (
-        <ul aria-label={bag.linesLabel} className="divide-y divide-gold-deep/30 border-y border-gold-deep/30">
+        <ul aria-label={bag.linesLabel} className="divide-y divide-espresso/15 border-y border-espresso/15">
           {lines.map((line) => (
             <LineItem
               key={line.id}
@@ -141,29 +141,33 @@ function LineItem({
   const atMin = line.quantity <= 1;
 
   return (
-    <li className="grid grid-cols-[4.5rem_1fr] gap-x-4 gap-y-3 py-5" aria-busy={busy || undefined}>
-      <div className="relative aspect-[4/5] overflow-hidden rounded-xs bg-forest-deep ring-1 ring-gold-deep/40">
+    <li className="grid grid-cols-[4.5rem_1fr_auto] gap-x-4 gap-y-3 py-5" aria-busy={busy || undefined}>
+      <div className="relative aspect-[4/5] overflow-hidden rounded-xs border border-espresso/15 bg-parchment">
         {line.imageUrl ? (
           <Image src={line.imageUrl} alt="" width={160} height={200} unoptimized className="h-full w-full object-cover" />
         ) : null}
       </div>
       <div className="min-w-0">
-        <p className="font-display text-xl leading-tight">
-          <Link href={`/products/${line.handle}`} className="focus-ring hover:underline hover:decoration-gold-deep hover:underline-offset-4">
+        <p className="font-display text-lg leading-tight">
+          <Link href={`/products/${line.handle}`} className="focus-ring hover:underline hover:decoration-1 hover:underline-offset-4">
             {line.title}
           </Link>
         </p>
         <p className="text-small text-walnut">{line.optionLabel || line.variantTitle}</p>
         <p className="text-small text-walnut">
-          {bag.unitPrice} <Price money={line.unitPrice} className="font-semibold text-espresso" />
+          <Price money={line.unitPrice} /> {bag.unitPrice.toLowerCase()}
         </p>
-        {!line.available ? <p className="text-small mt-1 font-semibold text-espresso">Currently unavailable</p> : null}
+        {!line.available ? <p className="text-small mt-1 font-semibold text-espresso">{productPage.soldOut}</p> : null}
       </div>
+      <p className="text-right">
+        <span className="sr-only">{bag.lineTotal}: </span>
+        <Price money={line.lineTotal} className="font-semibold tabular-nums" />
+      </p>
 
-      <div className="col-span-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+      <div className="col-span-2 col-start-2 flex flex-wrap items-center gap-x-5 gap-y-2">
         <form action={updateAction} onSubmit={guard}>
           <input type="hidden" name="lineId" value={line.id} />
-          <div role="group" aria-label={quantityCopy.input(line.title, line.variantTitle)} className="inline-flex items-center rounded-xs border border-walnut">
+          <div role="group" aria-label={quantityCopy.input(line.title, line.variantTitle)} className="inline-flex items-center rounded-xs border border-espresso/40">
             <button
               type="submit"
               name="quantity"
@@ -174,7 +178,7 @@ function LineItem({
             >
               <span aria-hidden="true">−</span>
             </button>
-            <span className="min-w-10 px-1 text-center font-semibold tabular-nums" aria-live="off">
+            <span className="min-w-10 px-1 text-center font-semibold tabular-nums">
               <span className="sr-only">{quantityCopy.input(line.title, line.variantTitle)}: </span>
               {line.quantity}
             </span>
@@ -189,27 +193,20 @@ function LineItem({
               <span aria-hidden="true">+</span>
             </button>
           </div>
-          {atMax ? <p className="text-small mt-1 text-walnut">{quantityCopy.atMaximum(line.maxQuantity)}</p> : null}
         </form>
 
-        <p className="text-right">
-          <span className="text-small block text-walnut">
-            {bag.lineTotal}
-          </span>
-          <Price money={line.lineTotal} className="text-price" />
-        </p>
-
-        <form action={removeAction} onSubmit={guard} className="w-full sm:w-auto">
+        <form action={removeAction} onSubmit={guard}>
           <input type="hidden" name="lineId" value={line.id} />
           <button
             type="submit"
             aria-label={quantityCopy.remove(line.title, line.variantTitle)}
             {...soft(busy)}
-            className="focus-ring inline-flex min-h-11 items-center px-1 text-small font-semibold text-espresso underline underline-offset-4 hover:text-forest-hover aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+            className="focus-ring text-small inline-flex min-h-11 items-center px-1 font-semibold text-espresso underline underline-offset-4 hover:text-forest-hover aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
           >
             {quantityCopy.removeButton}
           </button>
         </form>
+        {atMax ? <p className="text-small w-full text-walnut">{quantityCopy.atMaximum(line.maxQuantity)}</p> : null}
       </div>
     </li>
   );
@@ -229,7 +226,7 @@ export function CartSummary({ cart, checkoutUrl = '/api/checkout' }: { cart: Car
   return (
     <div>
       <dl className="flex items-baseline justify-between gap-4">
-        <dt className="text-eyebrow text-walnut">{bag.subtotal}</dt>
+        <dt className="font-semibold">{bag.subtotal}</dt>
         <dd>
           <Price money={cart.subtotal} className="text-price" />
         </dd>

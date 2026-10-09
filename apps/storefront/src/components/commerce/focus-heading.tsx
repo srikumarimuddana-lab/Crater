@@ -9,7 +9,7 @@ export function FocusHeading({ children, className }: { children: React.ReactNod
     ref.current?.focus();
   }, []);
   return (
-    <h1 ref={ref} tabIndex={-1} className={`${className ?? ''} focus:outline-none`}>
+    <h1 ref={ref} tabIndex={-1} className={`${className ?? ''} !text-[clamp(2rem,1.6rem+1.4vw,2.75rem)] focus:outline-none`}>
       {children}
     </h1>
   );

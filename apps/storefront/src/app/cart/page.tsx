@@ -30,10 +30,9 @@ export default async function CartPage({ searchParams }: Props) {
   return (
     <PageShell>
       <div className="page-gutter py-10 md:py-16">
-        <h1 id="bag-page-title" tabIndex={-1} className="focus:outline-none">
+        <h1 id="bag-page-title" tabIndex={-1} className="!text-[clamp(2rem,1.6rem+1.4vw,2.75rem)] focus:outline-none">
           {bag.title}
         </h1>
-        <div aria-hidden="true" className="ornament mt-5 w-32" />
 
         {errorText ? (
           <div role="alert" className="mt-8 rounded-xs border border-espresso bg-parchment px-5 py-4">
@@ -64,7 +63,7 @@ export default async function CartPage({ searchParams }: Props) {
           </section>
 
           {cart && hasLines ? (
-            <aside aria-label={bag.summaryLabel} className="h-fit rounded-xs border border-gold-deep/50 bg-parchment p-5 lg:sticky lg:top-6">
+            <aside aria-label={bag.summaryLabel} className="h-fit rounded-xs border border-espresso/15 bg-parchment p-5 lg:sticky lg:top-6">
               <CartSummary cart={cart} />
               <p className="text-small mt-4 text-walnut">{bag.sampleNote}</p>
             </aside>

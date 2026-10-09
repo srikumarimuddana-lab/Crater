@@ -2,8 +2,8 @@ import type { CatalogSeed, CollectionRecord, ProductRecord, VariantRecord } from
 import type { Image } from './types';
 
 /**
- * PREVIEW CATALOG SEED. Derived from the six products in src/lib/content/fixtures.ts
- * (same handles, titles, images, preview copy); a unit test keeps them in sync.
+ * PREVIEW CATALOG SEED. The six sample products (formerly src/lib/content/fixtures.ts, now retired)
+ * — same handles, titles, images and preview copy; tests/unit/catalog.test.ts guards them.
  *
  * Everything here is a marked sample: names, prices, sizes, SKUs, and stock levels are
  * placeholders for development and say nothing about real inventory or approved claims.

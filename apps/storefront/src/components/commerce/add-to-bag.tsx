@@ -2,9 +2,12 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react';
 import { addToCart } from '@/app/actions/cart';
+import { formatMoney } from '@/lib/commerce/money';
+import type { MoneyV2 } from '@/lib/commerce/types';
 import { buttonClassName } from '@/components/ui/button';
 import {
   addToBag,
+  bag,
   cartErrors,
   cartWarnings,
   productPage,
@@ -25,17 +28,33 @@ export function AddToBag({
   productTitle,
   variantTitle,
   available,
+  price,
 }: {
   variantId: string;
   productHandle: string;
   productTitle: string;
   variantTitle: string;
   available: boolean;
+  price: MoneyV2;
 }) {
   const [state, action, pending] = useActionState(addToCart, initialCartActionState);
   const [qty, setQty] = useState('1');
   const [dismissedTs, setDismissedTs] = useState(0);
   const handled = useRef(0);
+  const mainButton = useRef<HTMLButtonElement>(null);
+  const [mainOffscreen, setMainOffscreen] = useState(false);
+
+  // Small screens: a sticky bar offers Add to bag once the main button has scrolled up out of view.
+  useEffect(() => {
+    const el = mainButton.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    // Only once the shopper has scrolled past it (button above the viewport), not before they reach it.
+    const io = new IntersectionObserver(([entry]) =>
+      setMainOffscreen(!entry.isIntersecting && entry.boundingClientRect.top < 0),
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   const added = state.status === 'added';
   const showAdded = added && state.ts !== dismissedTs;
@@ -64,11 +83,21 @@ export function AddToBag({
     setQty(String(Math.min(MAX_LINE_QUANTITY, Math.max(1, base + delta))));
   };
 
+  const label = !available
+    ? addToBag.unavailable
+    : pending
+      ? addToBag.pending
+      : showAdded
+        ? addToBag.added
+        : `${addToBag.idle} — ${formatMoney(price)}`;
+
   const stepper =
     'focus-ring inline-flex size-11 items-center justify-center text-xl leading-none hover:bg-parchment';
 
   return (
+    <>
     <form
+      id="add-to-bag-form"
       action={action}
       // The browser would otherwise block out-of-range values before the server can answer with copy.
       noValidate
@@ -81,10 +110,10 @@ export function AddToBag({
       <input type="hidden" name="productHandle" value={productHandle} />
 
       <div>
-        <label htmlFor="quantity" className="text-eyebrow block text-walnut">
+        <label htmlFor="quantity" className="text-small block font-semibold">
           {productPage.quantityLabel}
         </label>
-        <div className="mt-2 inline-flex items-center rounded-xs border border-walnut">
+        <div className="mt-2 inline-flex items-center rounded-xs border border-espresso/40">
           <button
             type="button"
             onClick={() => step(-1)}
@@ -128,6 +157,7 @@ export function AddToBag({
 
       <button
         type="submit"
+        ref={mainButton}
         disabled={!available}
         aria-busy={pending || undefined}
         aria-disabled={pending || undefined}
@@ -136,8 +166,10 @@ export function AddToBag({
         }}
         className={buttonClassName('primary', 'w-full disabled:cursor-not-allowed disabled:bg-walnut/80 disabled:text-ivory')}
       >
-        {!available ? addToBag.unavailable : pending ? addToBag.pending : showAdded ? addToBag.added : addToBag.idle}
+        {label}
       </button>
+
+      <p className="text-small -mt-2 text-walnut">{bag.taxShippingNote}</p>
 
       <div role="status" aria-live="polite" aria-atomic="true" className="min-h-6">
         {feedback.map((text) => (
@@ -147,5 +179,22 @@ export function AddToBag({
         ))}
       </div>
     </form>
+
+    {available && mainOffscreen ? (
+      <div data-testid="sticky-add-to-bag" className="fixed inset-x-0 bottom-0 z-30 border-t border-espresso/15 bg-ivory p-3 lg:hidden">
+        <button
+          type="submit"
+          form="add-to-bag-form"
+          aria-disabled={pending || undefined}
+          onClick={(e) => {
+            if (pending) e.preventDefault();
+          }}
+          className={buttonClassName('primary', 'w-full')}
+        >
+          {label}
+        </button>
+      </div>
+    ) : null}
+    </>
   );
 }

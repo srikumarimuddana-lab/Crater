@@ -53,7 +53,7 @@ test('home renders shopping content without WebGL', async ({ page }) => {
   await page.goto('/');
 
   // Collection: six sample cards with price and size, and working filter links.
-  const collection = page.getByRole('region', { name: /shop the collection/i });
+  const collection = page.getByRole('region', { name: /shop all/i });
   await expect(collection.getByRole('listitem').filter({ has: page.getByRole('heading', { level: 3 }) })).toHaveCount(6);
   await expect(collection.getByText('Sample product', { exact: true })).toHaveCount(6);
 
@@ -68,12 +68,12 @@ test('home renders shopping content without WebGL', async ({ page }) => {
 
   await collection.getByRole('link', { name: 'Cleansers' }).click();
   await expect(page).toHaveURL(/\?category=cleansers#collection$/);
-  const filtered = page.getByRole('region', { name: /shop the collection/i });
+  const filtered = page.getByRole('region', { name: /shop all/i });
   await expect(filtered.getByRole('heading', { level: 3 })).toHaveText(['Gel Cleanser']);
   await expect(filtered.getByRole('link', { name: 'Cleansers' })).toHaveAttribute('aria-current', 'page');
 
   await filtered.getByRole('link', { name: 'All products' }).click();
-  await expect(page.getByRole('region', { name: /shop the collection/i }).getByRole('heading', { level: 3 })).toHaveCount(6);
+  await expect(page.getByRole('region', { name: /shop all/i }).getByRole('heading', { level: 3 })).toHaveCount(6);
 
   // No canvas is required for any of the above.
   await expect(page.locator('canvas')).toHaveCount(0);

@@ -72,33 +72,58 @@ export default async function ProductPage({ params, searchParams }: Props) {
         v.selectedOptions.every((s) => s.name === optionName || variant.selectedOptions.some((c) => c.name === s.name && c.value === s.value)),
     );
 
+  const list = (items: string[]) => <ul className="list-disc space-y-1 pl-5">{items.map((b) => <li key={b}>{b}</li>)}</ul>;
   const sections = [
-    { key: 'benefits', ...detailsSections.benefits, body: <ul className="list-disc space-y-1 pl-5">{product.details.benefits.map((b) => <li key={b}>{b}</li>)}</ul> },
-    { key: 'ingredients', ...detailsSections.ingredients, body: <ul className="list-disc space-y-1 pl-5">{product.details.ingredients.map((b) => <li key={b}>{b}</li>)}</ul> },
+    { key: 'benefits', ...detailsSections.benefits, body: list(product.details.benefits) },
     { key: 'howToUse', ...detailsSections.howToUse, body: <p>{product.details.howToUse}</p> },
+    { key: 'ingredients', ...detailsSections.ingredients, body: list(product.details.ingredients) },
     { key: 'precautions', ...detailsSections.precautions, body: <p>{product.details.precautions}</p> },
+    { key: 'shippingReturns', ...detailsSections.shippingReturns, body: <p>{detailsSections.shippingReturns.body}</p> },
   ];
+
+  const collections = await getStorefront().collections();
+  const category = collections.find((c) => c.title.toLowerCase().startsWith(product.productType.toLowerCase()));
+  const priceFor = (optionName: string, value: string) =>
+    product.variants.find(
+      (v) =>
+        v.selectedOptions.some((s) => s.name === optionName && s.value === value) &&
+        v.selectedOptions.every((s) => s.name === optionName || variant.selectedOptions.some((c) => c.name === s.name && c.value === s.value)),
+    )?.price;
 
   return (
     <PageShell>
-      <article aria-labelledby="product-title" className="page-gutter py-8 md:py-14 lg:py-20">
-        <nav aria-label={productPage.breadcrumbLabel} className="mb-6">
-          <Link href="/#collection" className="focus-ring text-small inline-flex min-h-11 items-center font-semibold text-espresso underline underline-offset-4">
-            <span aria-hidden="true" className="mr-2">←</span>
-            {productPage.backToCollection}
-          </Link>
+      <article aria-labelledby="product-title" className="page-gutter pt-4 pb-24 md:pt-6 lg:pb-20">
+        <nav aria-label={productPage.breadcrumbLabel} className="text-small">
+          <ol className="flex flex-wrap items-center gap-x-2 text-walnut">
+            <li>
+              <Link href="/#collection" className="focus-ring inline-flex min-h-11 items-center underline underline-offset-4">
+                {productPage.shopAll}
+              </Link>
+            </li>
+            {category ? (
+              <li className="flex items-center gap-x-2">
+                <span aria-hidden="true">/</span>
+                <Link
+                  href={`/?category=${category.handle}#collection`}
+                  className="focus-ring inline-flex min-h-11 items-center underline underline-offset-4"
+                >
+                  {category.title}
+                </Link>
+              </li>
+            ) : null}
+          </ol>
         </nav>
 
-        <div className="grid grid-cols-1 gap-x-12 gap-y-8 lg:grid-cols-2">
-          <figure className="mx-auto w-full max-w-[34rem] lg:mx-0 lg:max-w-none">
-            <div className="relative mx-4 aspect-square overflow-hidden rounded-xs bg-forest-deep ring-1 ring-gold-deep/60 ring-offset-[6px] ring-offset-ivory sm:aspect-[4/5] md:mx-0 lg:ring-offset-8">
+        <div className="mt-2 grid grid-cols-1 gap-x-12 gap-y-8 lg:grid-cols-12">
+          <figure className="lg:col-span-7">
+            <div className="relative aspect-square overflow-hidden rounded-xs border border-espresso/15 bg-parchment sm:aspect-[4/5]">
               {image ? (
                 <Image
                   src={image.url}
                   alt={image.altText}
                   width={image.width}
                   height={image.height}
-                  sizes="(min-width: 64rem) 560px, 100vw"
+                  sizes="(min-width: 64rem) 700px, 100vw"
                   unoptimized
                   preload
                   className="h-full w-full object-cover object-[50%_60%]"
@@ -106,44 +131,41 @@ export default async function ProductPage({ params, searchParams }: Props) {
               ) : null}
             </div>
             {image?.placeholder ? (
-              <figcaption className="text-small mt-5 text-walnut">{previewCopy.imagePlaceholderCaption}</figcaption>
+              <figcaption className="text-small mt-3 text-walnut">{previewCopy.imagePlaceholderCaption}</figcaption>
             ) : null}
           </figure>
 
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-6 lg:col-span-5 lg:sticky lg:top-6 lg:self-start">
             <header>
-              {product.sample ? (
-                <p className="text-eyebrow w-fit rounded-full border border-gold-deep bg-parchment px-3 py-1 text-espresso">
-                  {previewCopy.sampleChip}
-                </p>
-              ) : null}
-              <h1 id="product-title" className="mt-4">
+              {product.sample ? <p className="text-small text-walnut">{previewCopy.sampleChip}</p> : null}
+              <h1 id="product-title" className="mt-1 !text-[clamp(2rem,1.6rem+1.4vw,2.75rem)]">
                 {product.title}
               </h1>
-              <div aria-hidden="true" className="ornament mt-5 w-32" />
+              <p className="mt-3 max-w-[48ch] text-walnut">{product.description}</p>
+              <p aria-live="polite" aria-atomic="true" className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="sr-only">{productPage.priceLabel}: </span>
+                <Price money={variant.price} className="text-price" />
+                {product.sample ? <span className="text-small text-walnut">{previewCopy.samplePriceLabel}</span> : null}
+              </p>
             </header>
 
-            <p className="max-w-[48ch] text-walnut">{product.description}</p>
-
-            <p aria-live="polite" aria-atomic="true" className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="sr-only">{productPage.priceLabel}: </span>
-              <Price money={variant.price} className="text-price" />
-              {product.sample ? <span className="text-small text-walnut">{previewCopy.samplePriceLabel}</span> : null}
-            </p>
-
             {variantMissing ? (
-              <p role="status" className="text-small rounded-xs border border-gold-deep bg-parchment px-3 py-2">
+              <p role="status" className="text-small rounded-xs border border-espresso/40 bg-parchment px-3 py-2">
                 {productPage.variantNotFound}
               </p>
             ) : null}
 
             {product.options.map((option) => (
               <fieldset key={option.id} className="min-w-0">
-                <legend className="text-eyebrow text-walnut">{productPage.optionLegend(option.name)}</legend>
-                <ul className="mt-3 flex flex-wrap gap-2">
+                <legend className="text-small font-semibold">
+                  {option.name}: <span className="font-normal text-walnut">{variant.selectedOptions.find((s) => s.name === option.name)?.value}</span>
+                  <span className="sr-only">. {productPage.optionLegend(option.name)}</span>
+                </legend>
+                <ul className="mt-3 grid grid-cols-2 gap-2">
                   {option.optionValues.map((ov) => {
                     const selected = variant.selectedOptions.some((s) => s.name === option.name && s.value === ov.name);
                     const ok = optionAvailable(option.name, ov.name);
+                    const price = priceFor(option.name, ov.name);
                     return (
                       <li key={ov.id}>
                         <Link
@@ -151,18 +173,21 @@ export default async function ProductPage({ params, searchParams }: Props) {
                           scroll={false}
                           aria-current={selected ? 'true' : undefined}
                           className={
-                            'focus-ring inline-flex min-h-11 flex-col items-center justify-center rounded-xs border px-5 py-1 text-[0.9375rem] font-semibold transition-colors duration-180 motion-reduce:transition-none ' +
-                            (selected ? 'border-forest bg-forest text-gold-light ' : 'border-walnut text-espresso hover:bg-parchment ') +
-                            (ok ? '' : 'border-dashed')
+                            'focus-ring flex min-h-14 flex-col justify-center rounded-xs border px-4 py-2 text-base transition-colors motion-reduce:transition-none ' +
+                            (selected ? 'border-2 border-forest bg-ivory ' : 'border-espresso/30 hover:border-espresso ') +
+                            (ok ? '' : 'text-walnut ')
                           }
                         >
-                          <span>{ov.name}</span>
-                          {ok ? null : (
-                            <span className="text-xs font-normal">
-                              <span className="sr-only">, </span>
-                              {productPage.optionUnavailableSuffix}
-                            </span>
-                          )}
+                          <span className={`font-semibold ${ok ? '' : 'line-through'}`}>{ov.name}</span>
+                          <span className="text-small text-walnut">
+                            {ok ? null : (
+                              <>
+                                {productPage.soldOut}
+                                {price ? <span aria-hidden="true"> · </span> : null}
+                              </>
+                            )}
+                            {price ? <Price money={price} /> : null}
+                          </span>
                         </Link>
                       </li>
                     );
@@ -171,7 +196,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
               </fieldset>
             ))}
 
-            <div aria-live="polite" className="space-y-1">
+            <div aria-live="polite" className="space-y-1 empty:hidden">
               {!anyAvailable ? <p className="font-semibold">{productPage.allUnavailable}</p> : null}
               {anyAvailable && !variant.availableForSale ? (
                 <p className="font-semibold">{productPage.variantUnavailable(variant.title)}</p>
@@ -186,21 +211,33 @@ export default async function ProductPage({ params, searchParams }: Props) {
               productTitle={product.title}
               variantTitle={variant.title}
               available={variant.availableForSale}
+              price={variant.price}
             />
-          </div>
-        </div>
 
-        <div className="mt-14 grid grid-cols-1 gap-x-12 gap-y-10 border-t border-gold-deep/40 pt-10 md:mt-20 md:grid-cols-2">
-          <p className="text-small text-walnut md:col-span-2">{detailsSections.sectionNote}</p>
-          {sections.map((s) => (
-            <section key={s.key} aria-labelledby={`details-${s.key}`}>
-              <h2 id={`details-${s.key}`} className="text-3xl md:text-3xl">
-                {s.heading}
-              </h2>
-              <div className="mt-4 text-espresso">{s.body}</div>
-              <p className="text-small mt-3 text-walnut">{s.disclaimer}</p>
-            </section>
-          ))}
+            <div className="border-t border-espresso/15">
+              {sections.map((sec) => (
+                <details key={sec.key} className="group border-b border-espresso/15">
+                  <summary className="focus-ring flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 font-semibold [&::-webkit-details-marker]:hidden">
+                    {sec.heading}
+                    <span aria-hidden="true" className="text-xl leading-none group-open:hidden">+</span>
+                    <span aria-hidden="true" className="hidden text-xl leading-none group-open:inline">−</span>
+                  </summary>
+                  <div className="pb-5">
+                    {sec.body}
+                    <p className="text-small mt-3 text-walnut">{sec.disclaimer}</p>
+                  </div>
+                </details>
+              ))}
+            </div>
+            <p className="text-small -mt-3 text-walnut">{detailsSections.sectionNote}</p>
+
+            <dl aria-label={productPage.keyFacts} className="text-small grid grid-cols-[auto_1fr] gap-x-6 gap-y-1">
+              <dt className="font-semibold">{productPage.sizeFact}</dt>
+              <dd className="text-walnut">{variant.title}</dd>
+              <dt className="font-semibold">{productPage.categoryFact}</dt>
+              <dd className="text-walnut">{product.productType}</dd>
+            </dl>
+          </div>
         </div>
       </article>
     </PageShell>

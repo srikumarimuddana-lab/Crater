@@ -3,7 +3,8 @@
 Build a premium cosmetics/skincare ecommerce storefront with an editorial identity,
 one cinematic 3D product story, and a clear purchase journey. This repository
 contains the development toolkit, the specifications, and the storefront in
-`apps/storefront` (Phase 1 complete: static homepage on marked fixture data).
+`apps/storefront` (Phases 1–2 complete: shop UI and own commerce backend with
+Stripe Checkout, running on marked sample data).
 
 ## Start here
 
@@ -47,7 +48,8 @@ contains the development toolkit, the specifications, and the storefront in
   needs inspection in the browser when available. Record skipped checks honestly.
 - Commands available now: `npm run check:setup`, `npm run doctor:setup`, and
   `npm run test:hooks`. Storefront (run in `apps/storefront`): `npm run typecheck`,
-  `npm run lint`, `npm run build`, and `npm run test:e2e` (needs a prior build).
+  `npm run lint`, `npm run test:unit`, `npm run build`, `npm run test:e2e` (needs a
+  prior build), and `npm run db:migrate` / `db:seed` (needs a Postgres URL).
 - No Git hooks are installed. Claude lifecycle hooks are advisory, perform no
   network calls or edits, and do not launch builds, tests, or extra agents.
 

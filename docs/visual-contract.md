@@ -118,6 +118,9 @@ assets, copy or distinctive layout). This section overrides earlier composition 
   "Remove", sticky subtotal footer and full-width Checkout.
 - Hairlines (espresso ~15%) instead of gold frames; gold only as small accents on
   dark bands; Bodoni for product names and one or two headings only.
+- As built: no ornaments on any page; buttons sentence case (not uppercase),
+  2px radius, 48px+ tall; size picker as bordered tiles with prices; mobile sticky
+  add-to-bag bar only after scrolling past the main button.
 - Packshots: flat stone studio backdrop with a soft floor shadow and a small corner
   "Placeholder illustration" note (section 6 superseded on backdrop and marker).
 

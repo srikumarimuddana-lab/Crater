@@ -5,11 +5,11 @@ import type { ComponentProps, ReactNode } from 'react';
 type Variant = 'primary' | 'secondary' | 'gold' | 'outline-light';
 
 const base =
-  'inline-flex min-h-13 items-center justify-center gap-2 rounded-xs px-8 text-[0.9375rem] font-semibold ' +
-  'uppercase tracking-[0.12em] transition-colors duration-180 motion-reduce:transition-none focus-ring';
+  'inline-flex min-h-12 items-center justify-center gap-2 rounded-xs px-6 text-base font-semibold ' +
+  'tracking-[0.02em] transition-colors duration-180 motion-reduce:transition-none focus-ring';
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-forest text-gold-light hover:bg-forest-hover',
+  primary: 'bg-forest text-ivory hover:bg-forest-hover',
   secondary: 'border border-espresso text-espresso hover:bg-parchment',
   gold: 'bg-gold text-forest-deep hover:bg-gold-light',
   'outline-light': 'border border-gold-light text-ivory hover:bg-forest-hover',

@@ -158,3 +158,14 @@ No tracker loads before the owner approves a consent policy. Never infer a purch
 8. Approved benefits, INCI lists, usage, precautions, claim evidence, selling markets.
 9. Consent policy, analytics provider, newsletter consent wording.
 10. Whether test and fixture banners show on every page or only on bag and checkout.
+
+## Implementation notes (coordinator, 2026-10-09)
+
+- J1.1 as built: filters are links with `aria-current="page"` (work without
+  JavaScript) instead of `aria-pressed` chips; the count is in a live region.
+- J2.6: the product-page quantity allows up to 10 and the server clamps to stock
+  with a warning; the bag stepper limits to min(10, stock).
+- J2.8 (added): on small screens a sticky "Add to bag" bar appears only after the
+  shopper scrolls past the main button.
+- Not yet built: J6.2 price-changed banner; inline recovery for network failures
+  (falls back to the error page with "Try again").

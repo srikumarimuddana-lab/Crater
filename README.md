@@ -4,8 +4,11 @@ A Claude Code development kit for a premium cosmetics/skincare ecommerce site
 with an editorial design, cinematic 3D product storytelling, and a clear purchase
 journey.
 
-**Status:** Phase 1 (static foundation, fixture data) is implemented in
-`apps/storefront`; see `apps/storefront/README.md`. Phases 2–6 are not started.
+**Status:** Phases 1–2 are implemented in `apps/storefront`: a Forest & Gilt
+storefront with product pages, bag, and checkout hand-off on Crater's own
+Storefront-API-shaped backend (Postgres-ready) with Stripe Checkout, in sample
+mode. Stripe test keys, Supabase, and Phases 3–6 are next; see
+`docs/implementation-plan.md`.
 
 ## Included
 

@@ -54,6 +54,9 @@ export const browse = {
   filterLabel: 'Filter by collection',
   allChip: 'All',
   viewProduct: (title: string) => `View ${title}`,
+  sortLabel: 'Sort by',
+  sortApply: 'Apply',
+  sortOptions: { featured: 'Featured', title: 'Name', 'price-asc': 'Price, low to high', 'price-desc': 'Price, high to low' },
   count: (n: number) => (n === 1 ? '1 product' : `${n} products`),
   emptyCollection: 'There are no products in this collection yet.',
   listLoadError: 'We could not load the collection. Please refresh the page.',
@@ -82,6 +85,13 @@ export const productPage = {
   notFoundHeading: 'We could not find that product',
   notFoundBody: 'The link may be out of date. The collection lists everything that is currently available.',
   notFoundAction: 'Browse the collection',
+  soldOut: 'Sold out',
+  sizeCount: (n: number) => `${n} sizes`,
+  fromPrice: 'From',
+  shopAll: 'Shop all',
+  keyFacts: 'Key facts',
+  sizeFact: 'Size',
+  categoryFact: 'Category',
 } as const;
 
 /**
@@ -106,6 +116,11 @@ export const detailsSections = {
   ingredients: { heading: 'Ingredients', disclaimer: 'Preview copy. The brand has not yet supplied the ingredient list.' },
   howToUse: { heading: 'How to use', disclaimer: 'Preview copy. Directions are pending approval.' },
   precautions: { heading: 'Precautions', disclaimer: 'Preview copy. Precautions are pending approval; do not rely on this text.' },
+  shippingReturns: {
+    heading: 'Shipping & returns',
+    disclaimer: 'Preview copy. Shipping and returns policies have not been set for this preview store.',
+    body: 'Shipping and returns details will be added before launch.',
+  },
   sectionNote: 'Sample product details are placeholders and are not product information.',
 } as const;
 

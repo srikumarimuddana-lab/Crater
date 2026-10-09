@@ -7,7 +7,7 @@ const bagButton = (page: Page) => page.getByRole('button', { name: /^open bag/i 
 const drawer = (page: Page) => page.getByRole('dialog', { name: /your bag/i });
 
 async function addToBag(page: Page) {
-  await page.getByRole('button', { name: /^add to bag$/i }).click();
+  await page.locator('#add-to-bag-form').getByRole('button', { name: /^add to bag/i }).click();
 }
 
 async function seriousViolations(page: Page, include?: string) {
@@ -26,7 +26,7 @@ test('J1.3 / J2.1 a card opens its product page with title, price and packshot i
   expect(html).toContain('/products/mineral-serum/packshot.svg');
 
   await page.goto('/');
-  await page.getByRole('region', { name: /shop the collection/i }).getByRole('link', { name: 'Cloud Cream' }).click();
+  await page.getByRole('region', { name: /shop all/i }).getByRole('link', { name: 'Cloud Cream' }).click();
   await expect(page).toHaveURL(/\/products\/cloud-cream$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Cloud Cream' })).toBeVisible();
   await expect(page.getByText('Sample product', { exact: true })).toBeVisible();
@@ -36,13 +36,13 @@ test('J1.3 / J2.1 a card opens its product page with title, price and packshot i
 test('J2.2 switching size updates the price and URL, and survives back and reload', async ({ page }) => {
   await page.goto('/products/mineral-serum');
   const fieldset = page.getByRole('group', { name: /choose a size/i });
-  await expect(fieldset.getByRole('link', { name: '30 mL' })).toHaveAttribute('aria-current', 'true');
+  await expect(fieldset.getByRole('link', { name: /^30 mL/ })).toHaveAttribute('aria-current', 'true');
   await expect(page.getByText('$68.00 CAD').first()).toBeVisible();
 
-  await fieldset.getByRole('link', { name: '15 mL' }).click();
+  await fieldset.getByRole('link', { name: /^15 mL/ }).click();
   await expect(page).toHaveURL(/\?size=15\+mL$/);
   await expect(page.getByText('$42.00 CAD').first()).toBeVisible();
-  await expect(fieldset.getByRole('link', { name: '15 mL' })).toHaveAttribute('aria-current', 'true');
+  await expect(fieldset.getByRole('link', { name: /^15 mL/ })).toHaveAttribute('aria-current', 'true');
 
   await page.goBack();
   await expect(page).toHaveURL(/\/products\/mineral-serum$/);
@@ -61,24 +61,24 @@ test('J2.3 an unknown size falls back to the default with a message', async ({ p
 test('J2.4 a sold-out shade is marked unavailable and cannot be added', async ({ page }) => {
   await page.goto('/products/lip-cheek-balm?shade=Shade+01');
   const shade = page.getByRole('group', { name: /choose a shade/i });
-  await expect(shade.getByRole('link', { name: /Shade 01.*currently unavailable/i })).toBeVisible();
+  await expect(shade.getByRole('link', { name: /Shade 01.*Sold out/i })).toBeVisible();
   await expect(page.getByText(/Shade 01 is currently unavailable/i)).toBeVisible();
   const add = page.getByRole('button', { name: /currently unavailable/i });
   await expect(add).toBeDisabled();
   await expect(bagButton(page)).toHaveAccessibleName(/empty/i);
 
   await shade.getByRole('link', { name: /^Shade 02/ }).click();
-  await expect(page.getByRole('button', { name: /^add to bag$/i })).toBeEnabled();
+  await expect(page.locator('#add-to-bag-form').getByRole('button', { name: /^add to bag/i })).toBeEnabled();
 });
 
 test('J2.4 / J6.3 the server refuses an out-of-stock add and says so without "Added"', async ({ page }) => {
   // Without JavaScript the disabled button cannot be bypassed in the UI, so drive the form directly.
   await page.goto('/products/lip-cheek-balm?shade=Shade+01');
   await page.evaluate(() => {
-    const btn = document.querySelector<HTMLButtonElement>('form button[type=submit]');
+    const btn = document.querySelector<HTMLButtonElement>('#add-to-bag-form button[type=submit]');
     if (btn) btn.disabled = false;
   });
-  await page.locator('form button[type=submit]').click();
+  await page.locator('#add-to-bag-form button[type=submit]').click();
   await expect(page.getByText(/out of stock right now/i)).toBeVisible();
   await expect(page.getByText(/added to (your )?bag/i)).toHaveCount(0);
   await expect(drawer(page)).toBeHidden();
@@ -196,7 +196,7 @@ test.describe('without JavaScript', () => {
   test('J3.6 / J6.6 add from the product page, then update and remove on /cart', async ({ page }) => {
     await page.goto('/products/mineral-serum?size=15+mL');
     await expect(page.getByRole('heading', { level: 1, name: 'Mineral Serum' })).toBeVisible();
-    await page.getByRole('button', { name: /^add to bag$/i }).click();
+    await page.locator('#add-to-bag-form').getByRole('button', { name: /^add to bag/i }).click();
     await expect(page.getByText(/added to your bag/i)).toBeVisible();
 
     await page.goto('/cart');
@@ -295,4 +295,19 @@ test('accessibility: no serious violations on the product page, the open drawer 
 
   await page.goto('/products/lip-cheek-balm?shade=Shade+01');
   expect(await seriousViolations(page)).toEqual([]);
+});
+
+test('J2.8 on small screens the sticky add-to-bag bar appears only after scrolling past the main button', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile-390', 'The sticky bar is a small-screen pattern (hidden from lg up).');
+  await page.goto('/products/mineral-serum');
+  const sticky = page.getByTestId('sticky-add-to-bag');
+  // Before the shopper reaches the size picker and main button, no sticky bar covers them.
+  await expect(sticky).toHaveCount(0);
+  // Open the detail sections so the page is long enough to scroll fully past the main button.
+  await page.evaluate(() => document.querySelectorAll('details').forEach((d) => d.setAttribute('open', '')));
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(sticky).toBeVisible();
+  await expect(sticky.getByRole('button', { name: /add to bag/i })).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(sticky).toHaveCount(0);
 });

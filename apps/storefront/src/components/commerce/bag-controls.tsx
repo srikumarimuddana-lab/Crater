@@ -17,15 +17,6 @@ const useHydrated = () =>
     () => false,
   );
 
-function BagIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M5 8h14l-1 12H6L5 8Z" strokeLinejoin="round" />
-      <path d="M9 8V6a3 3 0 0 1 6 0v2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 /**
  * Header bag trigger plus the cart drawer (native modal <dialog>).
  * Before hydration, and on /cart itself, the trigger is a plain link to /cart.
@@ -63,21 +54,8 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
   const close = () => dialogRef.current?.close();
 
   const triggerClass =
-    'focus-ring relative inline-flex min-h-11 min-w-11 items-center justify-center gap-2 px-2 text-eyebrow text-ivory hover:text-gold-light';
-  const triggerInner = (
-    <>
-      <BagIcon />
-      <span className="hidden sm:inline">Bag</span>
-      {count > 0 ? (
-        <span
-          aria-hidden="true"
-          className="inline-flex min-w-5 items-center justify-center rounded-full bg-gold px-1.5 text-xs font-bold text-forest-deep"
-        >
-          {count}
-        </span>
-      ) : null}
-    </>
-  );
+    'focus-ring inline-flex min-h-11 items-center px-2 text-[0.9375rem] font-semibold text-espresso underline-offset-[0.45em] hover:underline hover:decoration-1';
+  const triggerInner = <span aria-hidden="true">{count > 0 ? `Bag (${count})` : 'Bag'}</span>;
 
   return (
     <>
@@ -118,12 +96,29 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
           // Only the backdrop targets the dialog element itself (it has no padding).
           if (e.target === e.currentTarget) close();
         }}
+        onKeyDown={(e) => {
+          // Native modal dialogs let Tab leave for the browser UI; keep it cycling inside.
+          if (e.key !== 'Tab') return;
+          const els = Array.from(
+            e.currentTarget.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])'),
+          ).filter((el) => !el.hasAttribute('disabled') && el.getClientRects().length > 0);
+          if (els.length === 0) return;
+          const i = els.indexOf(document.activeElement as HTMLElement);
+          if (e.shiftKey && i <= 0) {
+            e.preventDefault();
+            els[els.length - 1].focus();
+          } else if (!e.shiftKey && i === els.length - 1) {
+            e.preventDefault();
+            els[0].focus();
+          }
+        }}
         className="bag-dialog on-light bg-ivory text-espresso"
       >
         <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between gap-4 border-b border-gold-deep/40 px-5 py-3">
-            <h2 id="bag-drawer-title" tabIndex={-1} className="text-2xl focus:outline-none md:text-3xl">
+          <div className="flex items-center justify-between gap-4 border-b border-espresso/15 px-5 py-3">
+            <h2 id="bag-drawer-title" tabIndex={-1} className="!text-2xl focus:outline-none">
               {bag.title}
+              {count > 0 ? ` (${count})` : ''}
             </h2>
             <button
               type="button"
@@ -137,14 +132,14 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
 
           <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4">
             {mode === 'stripe-test' ? (
-              <p role="note" className="text-small mb-4 rounded-xs bg-espresso px-3 py-2 font-semibold text-gold-light">
+              <p role="note" className="text-small mb-4 rounded-xs bg-espresso px-3 py-2 font-semibold text-ivory">
                 {stripeTestModeBanner}
               </p>
             ) : null}
             {notices.length > 0 ? (
               <div role="status" className="mb-4 space-y-2">
                 {notices.map((text) => (
-                  <p key={text} className="text-small rounded-xs border border-gold-deep bg-parchment px-3 py-2">
+                  <p key={text} className="text-small rounded-xs border border-espresso/40 bg-parchment px-3 py-2">
                     {text}
                   </p>
                 ))}
@@ -155,9 +150,9 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
           </div>
 
           {cart && cart.lines.length > 0 ? (
-            <div className="border-t border-gold-deep/40 bg-parchment px-5 py-4">
+            <div className="border-t border-espresso/15 bg-ivory px-5 py-4">
               <CartSummary cart={cart} />
-              <Link href="/cart" className="focus-ring text-small mt-3 inline-flex min-h-11 items-center font-semibold underline underline-offset-4">
+              <Link href="/cart" className="focus-ring text-small mt-1 inline-flex min-h-11 items-center font-semibold underline underline-offset-4">
                 {bag.viewFullBag}
               </Link>
             </div>
