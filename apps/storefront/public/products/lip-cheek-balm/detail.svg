@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000" role="img" aria-label="Illustration placeholder: Lip &amp; Cheek Balm texture">
+  <title>Illustration placeholder: Lip &amp; Cheek Balm texture</title>
+  <defs>
+    <linearGradient id="gilt" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8C6A2F"/><stop offset="0.45" stop-color="#E2CB97"/><stop offset="1" stop-color="#8C6A2F"/></linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="#EEE8DD"/>
+  
+    <circle cx="400" cy="560" r="190" fill="url(#gilt)"/>
+    <circle cx="400" cy="560" r="160" fill="#B2614E" opacity="0.85"/>
+    <path d="M300 520 C360 480 450 500 500 560" fill="none" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="10" stroke-linecap="round"/>
+  <text x="40" y="958" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#5C4330">Placeholder illustration</text>
+</svg>

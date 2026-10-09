@@ -214,6 +214,7 @@ export const checkoutErrors: Record<CheckoutFailureCode, string> = {
   FIXTURE_MODE: `${fixtureCheckout.heading}. ${fixtureCheckout.body}`,
   EMPTY_CART: 'Your bag is empty. Add an item before checking out.',
   CART_INVALID: 'Some items in your bag are no longer available in the quantity requested. Please review your bag and try again.',
+  PRICE_CHANGED: 'A price in your bag has changed since you added it. Please review the new subtotal, then continue to checkout.',
   PAYMENT_PROVIDER_UNAVAILABLE: 'Checkout is temporarily unavailable. Your bag is saved. Please try again in a moment.',
   FORBIDDEN: 'We could not start checkout from here. Please open your bag on this site and try again.',
 };
@@ -284,10 +285,19 @@ export const recovery = {
   priceChanged: (title: string, was: MoneyV2, now: MoneyV2) =>
     `The price of ${title} changed from ${formatPrice(was)} to ${formatPrice(now)}. Please review your bag.`,
   priceChangedGeneric: 'Some prices in your bag have changed. Please review your subtotal before checking out.',
+  /** Button that confirms the shopper has seen the new prices (cartPriceChangesAcknowledge). */
+  priceChangedAcknowledge: 'Accept new prices',
+  priceChangedAcknowledged: 'Thank you. Your bag now shows the current prices.',
   itemUnavailable: (title: string) => `${title} is no longer available and was removed from your bag.`,
   /** A timed-out add may or may not have succeeded; never replay it silently. */
   addUncertain: 'We could not confirm that this item was added. Please check your bag before adding it again.',
   errorPageHeading: 'Something went wrong',
   errorPageBody: 'Please try again, or return to the collection.',
   errorPageHome: 'Return home',
+  /** Global 404 for addresses that are not product pages. */
+  pageNotFoundHeading: 'We could not find that page',
+  pageNotFoundBody: 'The address may be mistyped or out of date. You can continue from the collection.',
+  pageNotFoundAction: 'Shop all',
+  /** Inline recovery when a bag action could not reach the server. */
+  checkBag: 'Check your bag',
 } as const;

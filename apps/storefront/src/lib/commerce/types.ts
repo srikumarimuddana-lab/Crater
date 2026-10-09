@@ -155,6 +155,12 @@ export type CartLine = {
   merchandise: ProductVariant;
   cost: CartLineCost;
   attributes: Attribute[];
+  /**
+   * Crater addition (no Storefront equivalent): the unit price the shopper was
+   * shown when the line was added, updated, or last acknowledged. When it differs
+   * from `cost.amountPerQuantity`, the price changed since the shopper saw it.
+   */
+  priceAtAdd: MoneyV2;
 };
 
 export type Attribute = { key: string; value: string };
@@ -187,6 +193,8 @@ export type Cart = {
   buyerIdentity: CartBuyerIdentity;
   note: string | null;
   attributes: Attribute[];
+  /** Crater addition: true when any line's current unit price differs from `priceAtAdd`. */
+  hasPriceChanges: boolean;
 };
 
 export type CartLineInput = {
@@ -247,7 +255,12 @@ export type CartMutationPayload = {
 
 export type CheckoutSessionResult =
   | { ok: true; redirectUrl: string }
-  | { ok: false; code: 'FIXTURE_MODE' | 'EMPTY_CART' | 'CART_INVALID' | 'PAYMENT_PROVIDER_UNAVAILABLE'; message: string };
+  | {
+      ok: false;
+      /** PRICE_CHANGED: a line's price changed since the shopper saw it; they must review it first. */
+      code: 'FIXTURE_MODE' | 'EMPTY_CART' | 'CART_INVALID' | 'PRICE_CHANGED' | 'PAYMENT_PROVIDER_UNAVAILABLE';
+      message: string;
+    };
 
 export type OrderFinancialStatus = 'PENDING' | 'PAID' | 'REFUNDED' | 'PARTIALLY_REFUNDED' | 'VOIDED';
 
@@ -298,4 +311,9 @@ export interface Storefront {
   cartLinesRemove(args: { cartId: ID; lineIds: ID[] }): Promise<CartMutationPayload>;
   cartBuyerIdentityUpdate(args: { cartId: ID; buyerIdentity: Partial<CartBuyerIdentity> }): Promise<CartMutationPayload>;
   cartNoteUpdate(args: { cartId: ID; note: string }): Promise<CartMutationPayload>;
+  /**
+   * Crater addition: the shopper has seen the current prices; set every line's
+   * `priceAtAdd` to its current unit price. Returns MISSING_CART like other mutations.
+   */
+  cartPriceChangesAcknowledge(args: { cartId: ID }): Promise<CartMutationPayload>;
 }

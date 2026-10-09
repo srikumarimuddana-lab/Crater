@@ -86,4 +86,46 @@ for (const [handle, draw] of Object.entries(shapes)) {
   fs.mkdirSync(path.join(out, handle), { recursive: true });
   fs.writeFileSync(path.join(out, handle, 'packshot.svg'), svg);
 }
-console.log('wrote', Object.keys(shapes).length, 'packshots');
+// Second view per product: a texture close-up (placeholder), same studio backdrop.
+const textures = {
+  'mineral-serum': `
+    <ellipse cx="400" cy="560" rx="150" ry="110" fill="${c.glassGreen}" opacity="0.18"/>
+    <path d="M400 330 C470 450 500 520 470 590 C445 650 355 650 330 590 C300 520 330 450 400 330 Z" fill="#F4EEDD" stroke="${c.goldDeep}" stroke-opacity="0.45" stroke-width="2"/>
+    <ellipse cx="370" cy="560" rx="18" ry="34" fill="#FFFFFF" opacity="0.7"/>`,
+  'cloud-cream': `
+    <path d="M190 600 C260 470 380 500 420 560 C460 620 560 600 610 520 C640 640 520 700 400 690 C290 680 210 660 190 600 Z" fill="#F7F1E4" stroke="${c.goldDeep}" stroke-opacity="0.35" stroke-width="2"/>
+    <path d="M300 600 C340 570 400 580 430 610" fill="none" stroke="${c.goldDeep}" stroke-opacity="0.3" stroke-width="3"/>`,
+  'gel-cleanser': `
+    <ellipse cx="400" cy="580" rx="190" ry="88" fill="${c.glassGreen}" opacity="0.32"/>
+    <ellipse cx="410" cy="572" rx="120" ry="50" fill="${c.glassGreen}" opacity="0.22"/>
+    <ellipse cx="340" cy="552" rx="34" ry="10" fill="#FFFFFF" opacity="0.55"/><circle cx="470" cy="600" r="9" fill="#FFFFFF" opacity="0.6"/>`,
+  'balancing-toner': `
+    <ellipse cx="400" cy="600" rx="210" ry="70" fill="${c.glassAmber}" opacity="0.2"/>
+    <ellipse cx="400" cy="590" rx="150" ry="44" fill="${c.glassAmber}" opacity="0.28"/>
+    <ellipse cx="350" cy="580" rx="40" ry="10" fill="#FFFFFF" opacity="0.5"/>`,
+  'facial-mist': Array.from({ length: 26 }, (_, i) => {
+    const x = 220 + ((i * 97) % 360), y = 420 + ((i * 53) % 260), r = 6 + (i % 4) * 3;
+    return `<circle cx="${x}" cy="${y}" r="${r}" fill="${c.glassGreen}" opacity="0.25"/><circle cx="${x - r / 3}" cy="${y - r / 3}" r="${r / 3}" fill="#FFFFFF" opacity="0.7"/>`;
+  }).join(''),
+  'lip-cheek-balm': `
+    <circle cx="400" cy="560" r="190" fill="url(#gilt)"/>
+    <circle cx="400" cy="560" r="160" fill="#B2614E" opacity="0.85"/>
+    <path d="M300 520 C360 480 450 500 500 560" fill="none" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="10" stroke-linecap="round"/>`,
+};
+
+for (const [handle, art] of Object.entries(textures)) {
+  const name = names[handle];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000" role="img" aria-label="Illustration placeholder: ${esc(name)} texture">
+  <title>Illustration placeholder: ${esc(name)} texture</title>
+  <defs>
+    <linearGradient id="gilt" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c.goldDeep}"/><stop offset="0.45" stop-color="${c.goldLight}"/><stop offset="1" stop-color="${c.goldDeep}"/></linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="${c.studio}"/>
+  ${art}
+  <text x="40" y="958" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="${c.walnut}">Placeholder illustration</text>
+</svg>
+`;
+  fs.writeFileSync(path.join(out, handle, 'detail.svg'), svg);
+}
+
+console.log('wrote', Object.keys(shapes).length, 'packshots and', Object.keys(textures).length, 'detail views');
