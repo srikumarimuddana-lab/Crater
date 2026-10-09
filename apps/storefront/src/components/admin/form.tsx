@@ -111,9 +111,9 @@ export function Field({ name, label, type = 'text', as = 'input', defaultValue =
         {required ? <span className="a-req">Required</span> : null}
       </label>
       {as === 'textarea' ? (
-        <textarea {...common} rows={rows} maxLength={maxLength} defaultValue={value} />
+        <textarea key={value} {...common} rows={rows} maxLength={maxLength} defaultValue={value} />
       ) : as === 'select' ? (
-        <select {...common} defaultValue={value}>
+        <select key={value} {...common} defaultValue={value}>
           {options?.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
@@ -121,7 +121,7 @@ export function Field({ name, label, type = 'text', as = 'input', defaultValue =
           ))}
         </select>
       ) : (
-        <input {...common} type={type} inputMode={inputMode} autoComplete={autoComplete} maxLength={maxLength} pattern={pattern} placeholder={placeholder} defaultValue={value} />
+        <input key={value} {...common} type={type} inputMode={inputMode} autoComplete={autoComplete} maxLength={maxLength} pattern={pattern} placeholder={placeholder} defaultValue={value} />
       )}
       {hint ? (
         <p id={hintId} className="a-hint">

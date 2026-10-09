@@ -31,8 +31,8 @@ test('adjust dialog and login have no serious accessibility violations', async (
   await expect(page.getByRole('dialog')).toBeVisible();
   expect(await serious(page)).toEqual([]);
 
-  const anon = await browser.newPage({ baseURL });
+  const anon = await (await browser.newContext({ baseURL })).newPage();
   await anon.goto('/admin/login');
   expect(await serious(anon)).toEqual([]);
-  await anon.close();
+  await anon.context().close();
 });
