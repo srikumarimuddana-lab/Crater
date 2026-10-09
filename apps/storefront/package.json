@@ -15,7 +15,9 @@
     "test:e2e": "playwright test",
     "test:unit": "vitest run",
     "db:migrate": "node db/migrate.mjs",
-    "db:seed": "node db/seed.mjs"
+    "db:seed": "node db/seed.mjs",
+    "test:integration": "node scripts/test-integration.mjs",
+    "test:integration:pg": "bash scripts/with-test-postgres.sh"
   },
   "dependencies": {
     "next": "16.3.8",

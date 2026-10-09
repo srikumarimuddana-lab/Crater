@@ -67,6 +67,7 @@ export const browse = {
 
 export const productPage = {
   galleryImage: 'Image',
+  galleryStrip: 'Image gallery, scroll sideways for more',
   galleryThumbnails: 'Choose an image',
   galleryJump: (n: number, total: number) => `Show image ${n} of ${total}`,
   priceLabel: 'Price',
@@ -155,7 +156,7 @@ export const bag = {
   /** Visible trigger text. The accessible name must contain it (WCAG 2.5.3), so extra words are visually hidden. */
   triggerVisible: (totalQuantity: number) => (totalQuantity > 0 ? `Bag (${totalQuantity})` : 'Bag'),
   triggerHiddenSuffix: (totalQuantity: number) =>
-    totalQuantity === 0 ? ', empty' : totalQuantity === 1 ? ' item' : ' items',
+    totalQuantity === 0 ? ' (empty)' : totalQuantity === 1 ? ' item' : ' items',
   countBadgeLabel: (totalQuantity: number) => items(totalQuantity),
   closeLabel: 'Close bag',
   emptyHeading: 'Your bag is empty',

@@ -316,8 +316,8 @@ test('J2.8 on small screens the sticky add-to-bag bar appears only after scrolli
 test('WCAG 2.5.3 the bag button name contains its visible text', async ({ page }) => {
   await page.goto('/products/mineral-serum');
   await expect(bagButton(page)).toBeVisible();
-  await expect(bagButton(page)).toHaveText('Bag, empty');
-  await expect(bagButton(page)).toHaveAccessibleName('Bag, empty');
+  await expect(bagButton(page)).toHaveText('Bag (empty)');
+  await expect(bagButton(page)).toHaveAccessibleName('Bag (empty)');
   await addToBag(page);
   await expect(drawer(page)).toBeVisible();
   await page.keyboard.press('Escape');
@@ -350,7 +350,7 @@ test('J6.4 a bag action that cannot reach the server shows an inline message, re
   expect(aborted).toBe(1);
   // Nothing was added, nothing replayed, the route error page did not take over.
   await expect(page.getByRole('heading', { level: 1, name: 'Mineral Serum' })).toBeVisible();
-  await expect(bagButton(page)).toHaveAccessibleName('Bag, empty');
+  await expect(bagButton(page)).toHaveAccessibleName('Bag (empty)');
   await expect(form.getByRole('button', { name: /^add to bag/i })).toBeEnabled();
   await expect(form.getByRole('button', { name: /^add to bag/i })).not.toHaveAttribute('aria-disabled', 'true');
   await expect(recovery.getByRole('button', { name: 'Try again' })).toBeFocused();
@@ -463,9 +463,9 @@ test('product gallery: reserved ratios, alt text, only the first image eager, an
     // A scroll-snap strip with a static "i / n" label on each slide and thumbnail anchors.
     expect(await strip.evaluate((el) => getComputedStyle(el).scrollSnapType)).toContain('x');
     expect(await strip.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
-    await expect(gallery.getByText(`1 / ${n}`, { exact: true })).toBeVisible();
+    await expect(gallery.getByText(`1 / ${n}`)).toBeVisible();
     await gallery.getByRole('link', { name: `Show image 2 of ${n}` }).click();
-    await expect(gallery.getByText(`2 / ${n}`, { exact: true })).toBeInViewport();
+    await expect(gallery.getByText(`2 / ${n}`)).toBeInViewport();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
   }

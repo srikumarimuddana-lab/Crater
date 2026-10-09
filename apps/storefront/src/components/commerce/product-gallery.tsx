@@ -17,10 +17,14 @@ export function ProductGallery({ images, idPrefix = 'gallery' }: { images: Produ
   return (
     <section aria-label={productPage.galleryLabel} className="lg:col-span-7">
       <ul
+        // A scroll container must be reachable by keyboard (arrow keys scroll it) when it can scroll.
+        tabIndex={many ? 0 : undefined}
+        aria-label={many ? productPage.galleryStrip : undefined}
         className={
-          many
+          'focus-ring ' +
+          (many
             ? 'flex gap-3 snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:block lg:space-y-4 lg:overflow-visible'
-            : ''
+            : '')
         }
       >
         {images.map((image, i) => (
