@@ -82,7 +82,7 @@ export function sessionEvent(
 
 /** Builds a paid session body matching what our create() call asked Stripe for. */
 export function paidSession(h: Harness, overrides: Record<string, unknown> = {}) {
-  const params = h.stripe.create.mock.calls.at(-1)?.[0] as unknown as {
+  const params = (h.stripe.create.mock.calls as unknown as unknown[][]).at(-1)?.[0] as {
     metadata: { cart_id: string; checkout_id: string };
     line_items: { quantity: number; price_data: { unit_amount: number } }[];
   };

@@ -110,12 +110,13 @@ function addInto(
 ) {
   inputs.forEach((input, i) => {
     const path = [...basePath, String(i)];
-    const quantity = input?.quantity ?? 1;
-    const qErr = checkQuantity(quantity, [...path, 'quantity'], false);
+    const rawQuantity: unknown = input?.quantity === undefined ? 1 : input.quantity;
+    const qErr = checkQuantity(rawQuantity, [...path, 'quantity'], false);
     if (qErr) userErrors.push(qErr);
     const attributes = validateAttributes(input?.attributes, [...path, 'attributes'], userErrors);
     const found = lookupVariant(index, input?.merchandiseId, [...path, 'merchandiseId'], userErrors);
     if (qErr || !found) return;
+    const quantity = rawQuantity as number;
 
     const { variant, product } = found;
     const existing = next.lines.find((l) => l.variantId === variant.id);

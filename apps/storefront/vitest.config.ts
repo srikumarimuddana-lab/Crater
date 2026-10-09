@@ -13,5 +13,7 @@ export default defineConfig({
     include: ['tests/unit/**/*.test.ts'],
     environment: 'node',
     testTimeout: 20_000,
+    // Postgres suites share one throwaway database, so test files run one at a time.
+    fileParallelism: false,
   },
 });
