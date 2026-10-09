@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import type Stripe from 'stripe';
 import { isCartDead, lineHasPriceChange } from './cart-logic';
 import { readConfig, stripeUsable, type CommerceConfig } from './config';
@@ -150,7 +150,9 @@ export function createCheckoutService(deps: CheckoutDeps) {
         shipping_address_collection: { allowed_countries: ['CA'] },
         phone_number_collection: { enabled: false },
         ...(checkout.buyerEmail ? { customer_email: checkout.buyerEmail } : {}),
-        success_url: `${cfg.siteUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        // Lands on /api/checkout/complete, which clears the shopper's cart cookie when the session is theirs
+        // and then redirects to /checkout/success.
+        success_url: `${cfg.siteUrl}/api/checkout/complete?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${cfg.siteUrl}/cart?checkout=cancelled`,
         // TODO(owner decision): Stripe Tax (paid add-on) is intentionally NOT enabled, and no
         // shipping_options are configured, so no tax or shipping is charged. Do not invent rates.
@@ -193,6 +195,30 @@ export function createCheckoutService(deps: CheckoutDeps) {
       }
     }
     return { status: 'processing', order: null };
+  }
+
+  /**
+   * True only when Stripe confirms that this finished Checkout Session was started from THIS cart:
+   * the session's metadata carries the one-way digest of the cart id (never the id), and it must equal
+   * the digest of the cookie cart. Any doubt (malformed ids, fixture mode, an open or unfinished session,
+   * a Stripe error, a different cart) answers false, so callers keep the cookie.
+   */
+  async function sessionBelongsToCart(sessionId: string, cartId: ID): Promise<boolean> {
+    if (!isStripeSessionId(sessionId) || !isCartId(cartId)) return false;
+    const cfg = config();
+    if (!stripeUsable(cfg)) return false;
+    try {
+      const s = await deps.stripe(cfg.stripeSecretKey as string).checkout.sessions.retrieve(sessionId);
+      if (s.status !== 'complete') return false;
+      const theirs = s.metadata?.cart_id;
+      if (typeof theirs !== 'string') return false;
+      const a = Buffer.from(theirs);
+      const b = Buffer.from(cartRefOf(cartId));
+      return a.length === b.length && timingSafeEqual(a, b);
+    } catch (error) {
+      logger.error('session lookup for cart reconciliation failed', error, { session: redactSession(sessionId) });
+      return false;
+    }
   }
 
   async function handleStripeWebhook(rawBody: string, signature: string | null): Promise<{ status: number; body: Record<string, unknown> }> {
@@ -299,7 +325,7 @@ export function createCheckoutService(deps: CheckoutDeps) {
     return { handled: false, reason: outcome.kind };
   }
 
-  return { createCheckoutSession, getCheckoutResult, handleStripeWebhook };
+  return { createCheckoutSession, getCheckoutResult, sessionBelongsToCart, handleStripeWebhook };
 }
 
 export type CheckoutService = ReturnType<typeof createCheckoutService>;

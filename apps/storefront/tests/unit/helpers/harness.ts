@@ -8,15 +8,15 @@ import { createStorefront } from '@/lib/commerce/storefront';
 import type { StripeClient } from '@/lib/commerce/stripe-client';
 import type { Cart } from '@/lib/commerce/types';
 
-// Seeded variant ids (see catalog-seed.ts).
+// Seeded variant ids (see catalog-seed.ts; ids start at 11 so retired skincare ids never alias).
 export const V = {
-  serum30: 'gid://crater/ProductVariant/1', // $68.00, qty 40, default variant
-  serum15: 'gid://crater/ProductVariant/2', // $42.00, qty 25
-  cream50: 'gid://crater/ProductVariant/3', // $58.00, qty 30
-  creamRefill: 'gid://crater/ProductVariant/4', // $50.00, qty 2 (low stock)
-  cleanser: 'gid://crater/ProductVariant/5', // $34.00
-  balm01: 'gid://crater/ProductVariant/8', // qty 0 (sold out)
-  balm02: 'gid://crater/ProductVariant/9', // qty 18
+  hero30: 'gid://crater/ProductVariant/11', // Lemon Balm & Oat Extract 30 mL, $24.00, qty 40, default variant of the hero
+  hero60: 'gid://crater/ProductVariant/12', // Lemon Balm & Oat Extract 60 mL, $38.00, qty 25
+  peppermint30: 'gid://crater/ProductVariant/13', // Peppermint & Ginger Extract 30 mL, $22.00, qty 35
+  hawthorn30: 'gid://crater/ProductVariant/17', // Hawthorn & Rose Hip Extract 30 mL, $26.00, qty 2 (low stock)
+  oil100: 'gid://crater/ProductVariant/23', // Calendula & Almond Body Oil 100 mL, $30.00, qty 22 (single variant)
+  chamomile30: 'gid://crater/ProductVariant/15', // Chamomile & Linden Extract 30 mL, $24.00, qty 30 (purchasable)
+  chamomile60: 'gid://crater/ProductVariant/16', // Chamomile & Linden Extract 60 mL, $38.00, qty 0 (SOLD OUT)
 } as const;
 
 export const TEST_ENV = {

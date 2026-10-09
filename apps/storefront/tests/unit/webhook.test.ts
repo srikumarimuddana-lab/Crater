@@ -13,7 +13,7 @@ describe.each(REPO_KINDS)('Stripe webhook and fulfilment [%s repository]', (kind
   /** Fills a cart, starts checkout, returns the pieces needed to simulate Stripe's callbacks. */
   async function started(
     h: Harness,
-    lines: { merchandiseId: string; quantity?: number }[] = [{ merchandiseId: V.serum30, quantity: 2 }, { merchandiseId: V.cream50 }],
+    lines: { merchandiseId: string; quantity?: number }[] = [{ merchandiseId: V.hero30, quantity: 2 }, { merchandiseId: V.peppermint30 }],
   ) {
     const cart = await cartWith(h, lines);
     const r = await h.checkout.createCheckoutSession(cart.id);
@@ -61,7 +61,7 @@ describe.each(REPO_KINDS)('Stripe webhook and fulfilment [%s repository]', (kind
   run('paid session creates order #1001 from the snapshot, decrements stock, completes the cart', async () => {
     const h = await setup();
     const cart = await started(h);
-    const before = { serum: await quantity(h, V.serum30), cream: await quantity(h, V.cream50) };
+    const before = { serum: await quantity(h, V.hero30), cream: await quantity(h, V.peppermint30) };
     const r = await deliver(h, sessionEvent('checkout.session.completed', paidSession(h)));
     expect(r.status).toBe(200);
     expect(await h.repo.countOrders()).toBe(1);
@@ -73,45 +73,45 @@ describe.each(REPO_KINDS)('Stripe webhook and fulfilment [%s repository]', (kind
       email: 'buyer@example.com',
       financialStatus: 'PAID',
       currencyCode: 'CAD',
-      subtotalPrice: { amount: '194.00' },
+      subtotalPrice: { amount: '70.00' },
       totalShippingPrice: { amount: '0.00' },
       totalTax: { amount: '0.00' },
-      totalPrice: { amount: '194.00' },
+      totalPrice: { amount: '70.00' },
       lineItems: [
-        { title: 'Mineral Serum', variantTitle: '30 mL', quantity: 2, originalUnitPrice: { amount: '68.00' }, originalTotalPrice: { amount: '136.00' }, variantId: V.serum30 },
-        { title: 'Cloud Cream', quantity: 1, originalTotalPrice: { amount: '58.00' } },
+        { title: 'Lemon Balm & Oat Extract', variantTitle: '30 mL', quantity: 2, originalUnitPrice: { amount: '24.00' }, originalTotalPrice: { amount: '48.00' }, variantId: V.hero30 },
+        { title: 'Peppermint & Ginger Extract', quantity: 1, originalTotalPrice: { amount: '22.00' } },
       ],
     });
     expect(result.order!.id).toMatch(/^gid:\/\/crater\/Order\/\d+$/);
-    expect(await quantity(h, V.serum30)).toBe(before.serum! - 2);
-    expect(await quantity(h, V.cream50)).toBe(before.cream! - 1);
+    expect(await quantity(h, V.hero30)).toBe(before.serum! - 2);
+    expect(await quantity(h, V.peppermint30)).toBe(before.cream! - 1);
     // The completed cart is gone for the shopper.
     expect(await h.storefront.cart({ id: cart.id })).toBeNull();
-    expect((await h.storefront.cartLinesAdd({ cartId: cart.id, lines: [{ merchandiseId: V.serum30 }] })).userErrors[0].code).toBe('MISSING_CART');
+    expect((await h.storefront.cartLinesAdd({ cartId: cart.id, lines: [{ merchandiseId: V.hero30 }] })).userErrors[0].code).toBe('MISSING_CART');
   });
 
   run('duplicate deliveries (same event, or different event for the same session) create one order and decrement once', async () => {
     const h = await setup();
     await started(h);
-    const before = await quantity(h, V.serum30);
+    const before = await quantity(h, V.hero30);
     const body = sessionEvent('checkout.session.completed', paidSession(h), 'evt_dup_1');
     expect((await deliver(h, body)).status).toBe(200);
     expect((await deliver(h, body)).status).toBe(200);
     expect((await deliver(h, sessionEvent('checkout.session.async_payment_succeeded', paidSession(h), 'evt_dup_2'))).status).toBe(200);
     expect(await h.repo.countOrders()).toBe(1);
-    expect(await quantity(h, V.serum30)).toBe(before! - 2);
+    expect(await quantity(h, V.hero30)).toBe(before! - 2);
   });
 
   run('simultaneous deliveries of one event are processed once', async () => {
     const h = await setup();
     await started(h);
-    const before = await quantity(h, V.serum30);
+    const before = await quantity(h, V.hero30);
     const body = sessionEvent('checkout.session.completed', paidSession(h), 'evt_race');
     const other = sessionEvent('checkout.session.async_payment_succeeded', paidSession(h), 'evt_race_b');
     const results = await Promise.all([deliver(h, body), deliver(h, body), deliver(h, other), deliver(h, body)]);
     expect(results.map((r) => r.status)).toEqual([200, 200, 200, 200]);
     expect(await h.repo.countOrders()).toBe(1);
-    expect(await quantity(h, V.serum30)).toBe(before! - 2);
+    expect(await quantity(h, V.hero30)).toBe(before! - 2);
   });
 
   run('amount mismatch is flagged: order PENDING, redacted warning, nothing silently trusted', async () => {
@@ -121,7 +121,7 @@ describe.each(REPO_KINDS)('Stripe webhook and fulfilment [%s repository]', (kind
     const session = paidSession(h, { amount_subtotal: 100, amount_total: 100 });
     expect((await deliver(h, sessionEvent('checkout.session.completed', session))).status).toBe(200);
     const order = await h.repo.getOrderBySessionId(SESSION_ID);
-    expect(order).toMatchObject({ financialStatus: 'PENDING', subtotalMinor: 19400, totalMinor: 100 });
+    expect(order).toMatchObject({ financialStatus: 'PENDING', subtotalMinor: 7000, totalMinor: 100 });
     expect(order!.reviewFlags).toEqual(expect.arrayContaining(['AMOUNT_MISMATCH']));
     // The buyer-facing result never shows an order Crater has not confirmed.
     expect(await h.checkout.getCheckoutResult(SESSION_ID)).toEqual({ status: 'processing', order: null });
@@ -144,21 +144,21 @@ describe.each(REPO_KINDS)('Stripe webhook and fulfilment [%s repository]', (kind
 
   run('stock that vanished between checkout and payment floors at zero and flags INVENTORY_SHORT', async () => {
     const h = await setup();
-    await started(h, [{ merchandiseId: V.creamRefill, quantity: 2 }]);
-    await h.repo.updateVariant(V.creamRefill, { quantity: 1 });
+    await started(h, [{ merchandiseId: V.hawthorn30, quantity: 2 }]);
+    await h.repo.updateVariant(V.hawthorn30, { quantity: 1 });
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     await deliver(h, sessionEvent('checkout.session.completed', paidSession(h)));
     const order = await h.repo.getOrderBySessionId(SESSION_ID);
     expect(order!.financialStatus).toBe('PAID'); // the money is real
     expect(order!.reviewFlags).toContain('INVENTORY_SHORT');
-    expect(await quantity(h, V.creamRefill)).toBe(0);
+    expect(await quantity(h, V.hawthorn30)).toBe(0);
   });
 
   run('order names are sequential from #1001', async () => {
     const h = await setup();
     for (const [i, sessionId] of ['cs_test_aaaaaaaaaaaa1', 'cs_test_bbbbbbbbbbbb2'].entries()) {
       h.stripe.create.mockResolvedValueOnce({ id: sessionId, url: `https://checkout.stripe.com/c/pay/${sessionId}` } as never);
-      await started(h, [{ merchandiseId: V.cleanser }]);
+      await started(h, [{ merchandiseId: V.oil100 }]);
       await deliver(h, sessionEvent('checkout.session.completed', paidSession(h, { id: sessionId }), `evt_seq_${i}`));
     }
     const names = [];
@@ -187,7 +187,7 @@ describe.each(REPO_KINDS)('Stripe webhook and fulfilment [%s repository]', (kind
     expect(await h.storefront.cart({ id: cart.id })).not.toBeNull();
 
     h.stripe.create.mockResolvedValueOnce({ id: 'cs_test_expired00001', url: 'https://checkout.stripe.com/c/pay/cs_test_expired00001' } as never);
-    await h.storefront.cartLinesAdd({ cartId: cart.id, lines: [{ merchandiseId: V.cleanser }] });
+    await h.storefront.cartLinesAdd({ cartId: cart.id, lines: [{ merchandiseId: V.oil100 }] });
     await h.checkout.createCheckoutSession(cart.id);
     await deliver(h, sessionEvent('checkout.session.expired', paidSession(h, { id: 'cs_test_expired00001', payment_status: 'unpaid' }), 'evt_e'));
     expect((await h.repo.getCheckoutBySessionId('cs_test_expired00001'))!.status).toBe('expired');
@@ -230,7 +230,7 @@ describe.each(REPO_KINDS)('getCheckoutResult [%s repository]', (kind) => {
     const ids = ['cs_test_buyerone00001', 'cs_test_buyertwo00002'];
     for (const [i, id] of ids.entries()) {
       h.stripe.create.mockResolvedValueOnce({ id, url: `https://checkout.stripe.com/c/pay/${id}` } as never);
-      const cart = await cartWith(h, [{ merchandiseId: i === 0 ? V.serum30 : V.cleanser }]);
+      const cart = await cartWith(h, [{ merchandiseId: i === 0 ? V.hero30 : V.oil100 }]);
       await h.checkout.createCheckoutSession(cart.id);
       await deliver(h, sessionEvent('checkout.session.completed', paidSession(h, { id, customer_details: { email: `buyer${i}@example.com` } }), `evt_r${i}`));
     }
@@ -238,13 +238,13 @@ describe.each(REPO_KINDS)('getCheckoutResult [%s repository]', (kind) => {
     const two = await h.checkout.getCheckoutResult(ids[1]);
     expect(one.order!.email).toBe('buyer0@example.com');
     expect(two.order!.email).toBe('buyer1@example.com');
-    expect(one.order!.lineItems[0].title).toBe('Mineral Serum');
-    expect(two.order!.lineItems[0].title).toBe('Gel Cleanser');
+    expect(one.order!.lineItems[0].title).toBe('Lemon Balm & Oat Extract');
+    expect(two.order!.lineItems[0].title).toBe('Calendula & Almond Body Oil');
   });
 
   run('asks Stripe when a session has no order yet, and degrades to "processing" if Stripe is unreachable', async () => {
     const h = await makeHarness({ repo: await makeRepo(kind) });
-    const cart = await cartWith(h, [{ merchandiseId: V.serum30 }]);
+    const cart = await cartWith(h, [{ merchandiseId: V.hero30 }]);
     await h.checkout.createCheckoutSession(cart.id);
     expect(await h.checkout.getCheckoutResult(SESSION_ID)).toEqual({ status: 'unpaid', order: null });
     h.stripe.retrieve.mockResolvedValueOnce({ id: SESSION_ID, payment_status: 'paid', status: 'complete' });

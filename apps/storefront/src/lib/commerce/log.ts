@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 /**
  * Redacting diagnostics. Cart ids are bearer secrets and Stripe session ids tie to a
- * buyer, so neither is ever logged in full. Keys and signing secrets are scrubbed from
+ * buyer, so neither is ever logged in full. Keys, signing secrets and Checkout Session ids are scrubbed from
  * any error text.
  */
 
@@ -15,7 +15,7 @@ export function redactSession(id: string): string {
   return id.length > 14 ? `${id.slice(0, 8)}…${id.slice(-4)}` : '…';
 }
 
-const SECRET = /\b(?:sk|rk|pk|whsec)_(?:test_|live_)?[A-Za-z0-9_]+|postgres(?:ql)?:\/\/\S+|gid:\/\/crater\/Cart\/[A-Za-z0-9_-]+/g;
+const SECRET = /\b(?:sk|rk|pk|whsec)_(?:test_|live_)?[A-Za-z0-9_]+|\bcs_(?:test|live)_[A-Za-z0-9]+|postgres(?:ql)?:\/\/\S+|gid:\/\/crater\/Cart\/[A-Za-z0-9_-]+/g;
 
 export function scrub(text: string): string {
   return text.replace(SECRET, '[redacted]');

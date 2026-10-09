@@ -15,6 +15,8 @@ export type CartLineView = {
   optionLabel: string;
   imageUrl: string | null;
   unitPrice: MoneyV2;
+  /** The unit price the shopper last saw, set only when it differs from `unitPrice`. */
+  previousUnitPrice: MoneyV2 | null;
   lineTotal: MoneyV2;
   available: boolean;
 };
@@ -22,6 +24,8 @@ export type CartLineView = {
 export type CartView = {
   totalQuantity: number;
   subtotal: MoneyV2;
+  /** True while any line's current price differs from the price the shopper last saw. */
+  hasPriceChanges: boolean;
   lines: CartLineView[];
 };
 
@@ -59,3 +63,11 @@ export const OPEN_BAG_EVENT = 'crater:open-bag';
 
 /** Detail of the OPEN_BAG_EVENT CustomEvent. */
 export type OpenBagDetail = { notices: string[] };
+
+/** Result of the acknowledgePrices Server Action. */
+export type AckState = {
+  status: 'idle' | 'acknowledged' | 'error';
+  ts: number;
+};
+
+export const initialAckState: AckState = { status: 'idle', ts: 0 };

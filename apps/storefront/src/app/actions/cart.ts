@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { getStorefront } from '@/lib/commerce';
 import { clearCartId, getCartId, setCartId } from '@/lib/commerce/cart-cookie';
 import type { Cart, CartErrorCode, CartMutationPayload } from '@/lib/commerce/types';
-import { MAX_LINE_QUANTITY, type CartActionState } from '@/components/commerce/cart-types';
+import { MAX_LINE_QUANTITY, type AckState, type CartActionState } from '@/components/commerce/cart-types';
 
 /**
  * Cart Server Actions. They accept only variant/line IDs and quantities (never prices), read the
@@ -161,4 +161,22 @@ export async function updateLine(_prev: CartActionState, formData: FormData): Pr
 
 export async function removeLine(_prev: CartActionState, formData: FormData): Promise<CartActionState> {
   return mutateLine(formData, (cartId, lineId) => getStorefront().cartLinesRemove({ cartId, lineIds: [lineId] }), 'removed');
+}
+
+/**
+ * The shopper has seen the current prices (cartPriceChangesAcknowledge). Takes no input: the cart is
+ * the one in the cookie, and prices always come from the server. Works as a plain form post.
+ */
+export async function acknowledgePrices(): Promise<AckState> {
+  const ts = Date.now() + Math.random();
+  try {
+    const cartId = await getCartId();
+    if (!cartId) return { status: 'error', ts };
+    const payload = await getStorefront().cartPriceChangesAcknowledge({ cartId });
+    if (!payload.cart && payload.userErrors.some((e) => e.code === 'MISSING_CART')) await clearCartId();
+    revalidatePath('/', 'layout');
+    return { status: payload.cart && payload.userErrors.length === 0 ? 'acknowledged' : 'error', ts };
+  } catch {
+    return { status: 'error', ts };
+  }
 }

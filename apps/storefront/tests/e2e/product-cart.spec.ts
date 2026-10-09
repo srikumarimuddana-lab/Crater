@@ -21,60 +21,60 @@ async function seriousViolations(page: Page, include?: string) {
 }
 
 test('J1.3 / J2.1 a card opens its product page with title, price and packshot in the server HTML', async ({ page, request }) => {
-  const html = await (await request.get('/products/mineral-serum')).text();
-  expect(html).toContain('Mineral Serum');
-  expect(html).toContain('$68.00 CAD');
-  expect(html).toContain('/products/mineral-serum/packshot.svg');
+  const html = await (await request.get('/products/lemon-balm-oat-extract')).text();
+  expect(html).toContain('Lemon Balm & Oat Extract');
+  expect(html).toContain('$24.00 CAD');
+  expect(html).toContain('/products/lemon-balm-oat-extract/packshot.svg');
 
   await page.goto('/');
-  await page.getByRole('region', { name: /shop all/i }).getByRole('link', { name: 'Cloud Cream' }).click();
-  await expect(page).toHaveURL(/\/products\/cloud-cream$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Cloud Cream' })).toBeVisible();
+  await page.getByRole('region', { name: /shop all/i }).getByRole('link', { name: 'Peppermint & Ginger Extract' }).click();
+  await expect(page).toHaveURL(/\/products\/peppermint-ginger-extract$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Peppermint & Ginger Extract' })).toBeVisible();
   await expect(page.getByText('Sample product', { exact: true })).toBeVisible();
   await expect(page.locator('canvas')).toHaveCount(0);
 });
 
 test('J2.2 switching size updates the price and URL, and survives back and reload', async ({ page }) => {
-  await page.goto('/products/mineral-serum');
+  await page.goto('/products/lemon-balm-oat-extract');
   const fieldset = page.getByRole('group', { name: /choose a size/i });
   await expect(fieldset.getByRole('link', { name: /^30 mL/ })).toHaveAttribute('aria-current', 'true');
-  await expect(page.getByText('$68.00 CAD').first()).toBeVisible();
+  await expect(page.getByText('$24.00 CAD').first()).toBeVisible();
 
-  await fieldset.getByRole('link', { name: /^15 mL/ }).click();
+  await fieldset.getByRole('link', { name: /^60 mL/ }).click();
   await expect(page).toHaveURL(/\?size=15\+mL$/);
-  await expect(page.getByText('$42.00 CAD').first()).toBeVisible();
-  await expect(fieldset.getByRole('link', { name: /^15 mL/ })).toHaveAttribute('aria-current', 'true');
+  await expect(page.getByText('$38.00 CAD').first()).toBeVisible();
+  await expect(fieldset.getByRole('link', { name: /^60 mL/ })).toHaveAttribute('aria-current', 'true');
 
   await page.goBack();
-  await expect(page).toHaveURL(/\/products\/mineral-serum$/);
-  await expect(page.getByText('$68.00 CAD').first()).toBeVisible();
+  await expect(page).toHaveURL(/\/products\/lemon-balm-oat-extract$/);
+  await expect(page.getByText('$24.00 CAD').first()).toBeVisible();
 
-  await page.goto('/products/mineral-serum?size=15+mL');
-  await expect(page.getByText('$42.00 CAD').first()).toBeVisible();
+  await page.goto('/products/lemon-balm-oat-extract?size=60+mL');
+  await expect(page.getByText('$38.00 CAD').first()).toBeVisible();
 });
 
 test('J2.3 an unknown size falls back to the default with a message', async ({ page }) => {
-  await page.goto('/products/mineral-serum?size=bogus');
+  await page.goto('/products/lemon-balm-oat-extract?size=bogus');
   await expect(page.getByText(/not available for this product/i)).toBeVisible();
-  await expect(page.getByText('$68.00 CAD').first()).toBeVisible();
+  await expect(page.getByText('$24.00 CAD').first()).toBeVisible();
 });
 
-test('J2.4 a sold-out shade is marked unavailable and cannot be added', async ({ page }) => {
-  await page.goto('/products/lip-cheek-balm?shade=Shade+01');
-  const shade = page.getByRole('group', { name: /choose a shade/i });
-  await expect(shade.getByRole('link', { name: /Shade 01.*Sold out/i })).toBeVisible();
-  await expect(page.getByText(/Shade 01 is currently unavailable/i)).toBeVisible();
+test('J2.4 a sold-out size is marked unavailable and cannot be added', async ({ page }) => {
+  await page.goto('/products/chamomile-linden-extract?size=60+mL');
+  const shade = page.getByRole('group', { name: /choose a size/i });
+  await expect(shade.getByRole('link', { name: /^60 mL.*Sold out/i })).toBeVisible();
+  await expect(page.getByText(/60 mL is currently unavailable/i)).toBeVisible();
   const add = page.getByRole('button', { name: /currently unavailable/i });
   await expect(add).toBeDisabled();
   await expect(bagButton(page)).toHaveAccessibleName(/empty/i);
 
-  await shade.getByRole('link', { name: /^Shade 02/ }).click();
+  await shade.getByRole('link', { name: /^30 mL/ }).click();
   await expect(page.locator('#add-to-bag-form').getByRole('button', { name: /^add to bag/i })).toBeEnabled();
 });
 
 test('J2.4 / J6.3 the server refuses an out-of-stock add and says so without "Added"', async ({ page }) => {
   // Without JavaScript the disabled button cannot be bypassed in the UI, so drive the form directly.
-  await page.goto('/products/lip-cheek-balm?shade=Shade+01');
+  await page.goto('/products/chamomile-linden-extract?size=60+mL');
   await page.evaluate(() => {
     const btn = document.querySelector<HTMLButtonElement>('#add-to-bag-form button[type=submit]');
     if (btn) btn.disabled = false;
@@ -86,19 +86,19 @@ test('J2.4 / J6.3 the server refuses an out-of-stock add and says so without "Ad
 });
 
 test('J2.5 / J6.3 low stock shows the real count and an add of 5 is clamped to 2 with a warning', async ({ page }) => {
-  await page.goto('/products/cloud-cream?size=Refill+50+mL');
+  await page.goto('/products/hawthorn-rose-hip-extract?size=30+mL');
   await expect(page.getByText('Low stock: 2 available')).toBeVisible();
   await page.getByLabel('Quantity', { exact: true }).fill('5');
   await addToBag(page);
 
   await expect(drawer(page)).toBeVisible();
-  await expect(drawer(page).getByRole('listitem').filter({ hasText: 'Cloud Cream' })).toContainText('2');
-  await expect(drawer(page).getByText(/limited quantity of Cloud Cream/i)).toBeVisible();
+  await expect(drawer(page).getByRole('listitem').filter({ hasText: 'Hawthorn & Rose Hip Extract' })).toContainText('2');
+  await expect(drawer(page).getByText(/limited quantity of Hawthorn & Rose Hip Extract/i)).toBeVisible();
   await expect(bagButton(page)).toHaveAccessibleName('Bag (2) items');
 });
 
 test('J2.6 / J6.1 out-of-range quantity is explained inline and nothing is added', async ({ page }) => {
-  await page.goto('/products/mineral-serum');
+  await page.goto('/products/lemon-balm-oat-extract');
   const qty = page.getByLabel('Quantity', { exact: true });
   await qty.fill('11');
   await addToBag(page);
@@ -109,15 +109,15 @@ test('J2.6 / J6.1 out-of-range quantity is explained inline and nothing is added
 });
 
 test('J2.7 / J3.2 add opens the drawer with focus inside; Escape closes it and returns focus to the bag button', async ({ page }) => {
-  await page.goto('/products/mineral-serum');
+  await page.goto('/products/lemon-balm-oat-extract');
   await expect(bagButton(page)).toBeVisible();
   await addToBag(page);
 
   const dlg = drawer(page);
   await expect(dlg).toBeVisible();
   await expect.poll(() => dlg.evaluate((el) => el.contains(document.activeElement))).toBe(true);
-  await expect(dlg.getByRole('link', { name: 'Mineral Serum' })).toBeVisible();
-  await expect(dlg.getByText('$68.00 CAD').first()).toBeVisible();
+  await expect(dlg.getByRole('link', { name: 'Lemon Balm & Oat Extract' })).toBeVisible();
+  await expect(dlg.getByText('$24.00 CAD').first()).toBeVisible();
   await expect(bagButton(page)).toHaveAccessibleName('Bag (1) item');
 
   // Tab stays inside the modal.
@@ -139,21 +139,21 @@ test('J2.7 / J3.2 add opens the drawer with focus inside; Escape closes it and r
 });
 
 test('J3.3 / J3.4 drawer quantity update and remove, then the empty state', async ({ page }) => {
-  await page.goto('/products/mineral-serum');
+  await page.goto('/products/lemon-balm-oat-extract');
   await addToBag(page);
   const dlg = drawer(page);
   await expect(dlg).toBeVisible();
 
-  await dlg.getByRole('button', { name: /increase quantity of mineral serum/i }).click();
+  await dlg.getByRole('button', { name: /increase quantity of lemon balm/i }).click();
   await expect(bagButton(page)).toHaveAccessibleName('Bag (2) items');
-  await expect(dlg.getByText('$136.00 CAD').first()).toBeVisible();
+  await expect(dlg.getByText('$48.00 CAD').first()).toBeVisible();
   await expect(dlg.getByRole('button', { name: /increase quantity/i })).toBeFocused();
   await expect(dlg.getByText('Taxes and shipping are confirmed at checkout.')).toBeVisible();
 
   await dlg.getByRole('button', { name: /decrease quantity/i }).click();
   await expect(bagButton(page)).toHaveAccessibleName('Bag (1) item');
 
-  await dlg.getByRole('button', { name: /remove mineral serum/i }).click();
+  await dlg.getByRole('button', { name: /remove lemon balm/i }).click();
   await expect(dlg.getByText('Your bag is empty')).toBeVisible();
   await expect(dlg.getByRole('button', { name: /^checkout$/i })).toHaveCount(0);
   await expect(bagButton(page)).toHaveAccessibleName(/empty/i);
@@ -162,7 +162,7 @@ test('J3.3 / J3.4 drawer quantity update and remove, then the empty state', asyn
 });
 
 test('J3.7 increase is disabled at the quantity limit', async ({ page }) => {
-  await page.goto('/products/mineral-serum');
+  await page.goto('/products/lemon-balm-oat-extract');
   await page.getByLabel('Quantity', { exact: true }).fill('10');
   await addToBag(page);
   const dlg = drawer(page);
@@ -176,17 +176,17 @@ test('J3.6 /cart: update, remove and the empty state', async ({ page }) => {
   await expect(main.getByText('Your bag is empty')).toBeVisible();
   await expect(page.getByRole('button', { name: /^checkout$/i })).toHaveCount(0);
 
-  await page.goto('/products/gel-cleanser');
+  await page.goto('/products/peppermint-ginger-extract');
   await addToBag(page);
   await expect(drawer(page)).toBeVisible();
   await page.keyboard.press('Escape');
 
   await page.goto('/cart');
   await expect(page.getByRole('heading', { level: 1, name: /your bag/i })).toBeVisible();
-  await page.getByRole('button', { name: /increase quantity of gel cleanser/i }).click();
-  await expect(main.getByText('$68.00 CAD').first()).toBeVisible();
-  await expect(main.getByRole('link', { name: 'Gel Cleanser' })).toHaveAttribute('href', '/products/gel-cleanser');
-  await page.getByRole('button', { name: /remove gel cleanser/i }).click();
+  await page.getByRole('button', { name: /increase quantity of peppermint/i }).click();
+  await expect(main.getByText('$44.00 CAD').first()).toBeVisible();
+  await expect(main.getByRole('link', { name: 'Peppermint & Ginger Extract' })).toHaveAttribute('href', '/products/peppermint-ginger-extract');
+  await page.getByRole('button', { name: /remove peppermint/i }).click();
   await expect(main.getByText('Your bag is empty')).toBeVisible();
   await expect(main.getByRole('link', { name: /continue shopping/i })).toBeVisible();
 });
@@ -195,29 +195,29 @@ test.describe('without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
 
   test('J3.6 / J6.6 add from the product page, then update and remove on /cart', async ({ page }) => {
-    await page.goto('/products/mineral-serum?size=15+mL');
-    await expect(page.getByRole('heading', { level: 1, name: 'Mineral Serum' })).toBeVisible();
+    await page.goto('/products/lemon-balm-oat-extract?size=60+mL');
+    await expect(page.getByRole('heading', { level: 1, name: 'Lemon Balm & Oat Extract' })).toBeVisible();
     await page.locator('#add-to-bag-form').getByRole('button', { name: /^add to bag/i }).click();
     await expect(page.getByText(/added to your bag/i)).toBeVisible();
 
     await page.goto('/cart');
     const main = page.locator('main');
-    await expect(main.getByText('$42.00 CAD').first()).toBeVisible();
+    await expect(main.getByText('$38.00 CAD').first()).toBeVisible();
     await expect(page.getByRole('link', { name: /^bag \(1\) item/i })).toHaveAttribute('href', '/cart');
 
     const checkout = page.locator('main form[action="/api/checkout"]');
     await expect(checkout).toHaveAttribute('method', 'post');
 
-    await page.getByRole('button', { name: /increase quantity of mineral serum/i }).click();
-    await expect(main.getByText('$84.00 CAD').first()).toBeVisible();
+    await page.getByRole('button', { name: /increase quantity of lemon balm/i }).click();
+    await expect(main.getByText('$76.00 CAD').first()).toBeVisible();
 
-    await page.getByRole('button', { name: /remove mineral serum/i }).click();
+    await page.getByRole('button', { name: /remove lemon balm/i }).click();
     await expect(main.getByText('Your bag is empty')).toBeVisible();
   });
 });
 
 test('J4.1 fixture mode: checkout stays on the site with the demo message and keeps the bag', async ({ page }) => {
-  await page.goto('/products/mineral-serum');
+  await page.goto('/products/lemon-balm-oat-extract');
   await addToBag(page);
   await page.keyboard.press('Escape');
   await page.goto('/cart');
@@ -229,7 +229,7 @@ test('J4.1 fixture mode: checkout stays on the site with the demo message and ke
   await expect(page).toHaveURL(/\/cart\?checkout_error=FIXTURE_MODE$/);
   const alert = page.locator('main [role=alert]');
   await expect(alert).toContainText('Checkout is switched off in preview');
-  await expect(page.locator('main').getByRole('link', { name: 'Mineral Serum' })).toBeVisible();
+  await expect(page.locator('main').getByRole('link', { name: 'Lemon Balm & Oat Extract' })).toBeVisible();
   expect(requests.some((h) => h.endsWith('stripe.com'))).toBe(false);
 });
 
@@ -264,16 +264,16 @@ test('J1.4 an unknown product renders the styled 404 with a way back', async ({ 
 });
 
 test('metadata: product pages are noindex while sample, cart pages are noindex', async ({ page }) => {
-  for (const path of ['/products/mineral-serum', '/cart']) {
+  for (const path of ['/products/lemon-balm-oat-extract', '/cart']) {
     await page.goto(path);
     await expect(page.locator('meta[name=robots]')).toHaveAttribute('content', /noindex/);
   }
-  await page.goto('/products/mineral-serum');
-  await expect(page).toHaveTitle(/Mineral Serum/);
+  await page.goto('/products/lemon-balm-oat-extract');
+  await expect(page).toHaveTitle(/Lemon Balm & Oat Extract/);
 });
 
 test('mobile document flow: no horizontal scroll on the product page and /cart', async ({ page }) => {
-  for (const path of ['/products/mineral-serum', '/cart']) {
+  for (const path of ['/products/lemon-balm-oat-extract', '/cart']) {
     await page.goto(path);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
@@ -281,7 +281,7 @@ test('mobile document flow: no horizontal scroll on the product page and /cart',
 });
 
 test('accessibility: no serious violations on the product page, the open drawer and /cart', async ({ page }) => {
-  await page.goto('/products/mineral-serum');
+  await page.goto('/products/lemon-balm-oat-extract');
   expect(await seriousViolations(page)).toEqual([]);
 
   await addToBag(page);
@@ -294,13 +294,13 @@ test('accessibility: no serious violations on the product page, the open drawer 
   await page.goto('/cart');
   expect(await seriousViolations(page)).toEqual([]);
 
-  await page.goto('/products/lip-cheek-balm?shade=Shade+01');
+  await page.goto('/products/chamomile-linden-extract?size=60+mL');
   expect(await seriousViolations(page)).toEqual([]);
 });
 
 test('J2.8 on small screens the sticky add-to-bag bar appears only after scrolling past the main button', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile-390', 'The sticky bar is a small-screen pattern (hidden from lg up).');
-  await page.goto('/products/mineral-serum');
+  await page.goto('/products/lemon-balm-oat-extract');
   const sticky = page.getByTestId('sticky-add-to-bag');
   // Before the shopper reaches the size picker and main button, no sticky bar covers them.
   await expect(sticky).toHaveCount(0);
@@ -314,7 +314,7 @@ test('J2.8 on small screens the sticky add-to-bag bar appears only after scrolli
 });
 
 test('WCAG 2.5.3 the bag button name contains its visible text', async ({ page }) => {
-  await page.goto('/products/mineral-serum');
+  await page.goto('/products/lemon-balm-oat-extract');
   await expect(bagButton(page)).toBeVisible();
   await expect(bagButton(page)).toHaveText('Bag (empty)');
   await expect(bagButton(page)).toHaveAccessibleName('Bag (empty)');
@@ -327,12 +327,12 @@ test('WCAG 2.5.3 the bag button name contains its visible text', async ({ page }
 });
 
 test('J6.4 a bag action that cannot reach the server shows an inline message, re-enables controls and never replays', async ({ page }) => {
-  await page.goto('/products/mineral-serum');
+  await page.goto('/products/lemon-balm-oat-extract');
   await expect(bagButton(page)).toBeVisible(); // hydrated: the trigger is a button only after hydration
 
   let blocked = true;
   let aborted = 0;
-  await page.route('**/products/mineral-serum*', (route) => {
+  await page.route('**/products/lemon-balm-oat-extract*', (route) => {
     const request = route.request();
     if (blocked && request.method() === 'POST' && request.headers()['next-action']) {
       aborted += 1;
@@ -349,7 +349,7 @@ test('J6.4 a bag action that cannot reach the server shows an inline message, re
   await expect(recovery.getByRole('alert')).toContainText('could not confirm that this item was added');
   expect(aborted).toBe(1);
   // Nothing was added, nothing replayed, the route error page did not take over.
-  await expect(page.getByRole('heading', { level: 1, name: 'Mineral Serum' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Lemon Balm & Oat Extract' })).toBeVisible();
   await expect(bagButton(page)).toHaveAccessibleName('Bag (empty)');
   await expect(form.getByRole('button', { name: /^add to bag/i })).toBeEnabled();
   await expect(form.getByRole('button', { name: /^add to bag/i })).not.toHaveAttribute('aria-disabled', 'true');
@@ -373,19 +373,19 @@ test('J6.4 a bag action that cannot reach the server shows an inline message, re
 });
 
 test('J6.4 a failed bag update shows Try again in the drawer and the quantity stays as the server has it', async ({ page }) => {
-  await page.goto('/products/mineral-serum');
+  await page.goto('/products/lemon-balm-oat-extract');
   await expect(bagButton(page)).toBeVisible();
   await addToBag(page);
   const dlg = drawer(page);
   await expect(dlg).toBeVisible();
 
   let blocked = true;
-  await page.route('**/products/mineral-serum*', (route) => {
+  await page.route('**/products/lemon-balm-oat-extract*', (route) => {
     const request = route.request();
     return blocked && request.method() === 'POST' && request.headers()['next-action'] ? route.abort('failed') : route.continue();
   });
 
-  await dlg.getByRole('button', { name: /increase quantity of mineral serum/i }).click();
+  await dlg.getByRole('button', { name: /increase quantity of lemon balm/i }).click();
   const recovery = dlg.getByTestId('action-recovery');
   await expect(recovery.getByRole('alert')).toContainText('We could not reach the store');
   // The add-uncertain wording is for adds only.
@@ -396,14 +396,14 @@ test('J6.4 a failed bag update shows Try again in the drawer and the quantity st
   blocked = false;
   await recovery.getByRole('button', { name: 'Try again' }).click();
   await expect(recovery).toHaveCount(0);
-  await dlg.getByRole('button', { name: /increase quantity of mineral serum/i }).click();
+  await dlg.getByRole('button', { name: /increase quantity of lemon balm/i }).click();
   await expect(bagButton(page)).toHaveAccessibleName('Bag (2) items');
 });
 
 test('J6.4 without JavaScript the add form still posts as a plain form', async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false });
   const page = await context.newPage();
-  await page.goto('/products/mineral-serum');
+  await page.goto('/products/lemon-balm-oat-extract');
   // The Server Action form renders a hidden action id and posts to the page itself.
   await expect(page.locator('#add-to-bag-form input[name^="$ACTION_"]').first()).toBeAttached();
   await context.close();
@@ -411,7 +411,7 @@ test('J6.4 without JavaScript the add form still posts as a plain form', async (
 
 test('motion: with reduced motion the bag drawer has no transition and is open immediately after Add', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/products/mineral-serum');
+  await page.goto('/products/lemon-balm-oat-extract');
   await expect(bagButton(page)).toBeVisible();
   await addToBag(page);
   const dlg = drawer(page);
@@ -423,7 +423,7 @@ test('motion: with reduced motion the bag drawer has no transition and is open i
 });
 
 test('product gallery: reserved ratios, alt text, only the first image eager, and a position label per slide', async ({ page }, testInfo) => {
-  await page.goto('/products/mineral-serum');
+  await page.goto('/products/lemon-balm-oat-extract');
   const gallery = page.getByRole('region', { name: /product images/i });
   const imgs = gallery.locator('ul').first().locator('img');
   const n = await imgs.count();
@@ -486,20 +486,20 @@ test.describe('mobile menu', () => {
 
   const menu = (page: Page) => page.locator('details', { has: page.locator('summary', { hasText: 'Menu' }) });
 
-  test('is closed on the next page after following a link, and for same-page links', async ({ page }) => {
-    await page.goto('/products/mineral-serum');
+  test('lists the same columns as the mega menu, and closes after following a link or same-page link', async ({ page }) => {
+    await page.goto('/products/lemon-balm-oat-extract');
     await expect(bagButton(page)).toBeVisible(); // hydrated
     await menu(page).locator('summary').click();
     await expect(menu(page)).toHaveJSProperty('open', true);
+    for (const heading of ['Formats', 'Rituals', 'Explore']) await expect(menu(page).getByText(heading, { exact: true })).toBeVisible();
     await menu(page).getByRole('link', { name: 'Shop all' }).click();
     await expect(page).toHaveURL(/\/#collection$/);
     await expect(menu(page)).toHaveJSProperty('open', false);
 
     // A link that only changes the query on the same page.
     await menu(page).locator('summary').click();
-    const category = menu(page).getByRole('link').nth(1);
-    await category.click();
-    await expect(page).toHaveURL(/\?category=/);
+    await menu(page).getByRole('link', { name: 'Body oils' }).click();
+    await expect(page).toHaveURL(/\?category=body-oils/);
     await expect(menu(page)).toHaveJSProperty('open', false);
 
     // Back and Forward do not restore an open menu.
@@ -512,12 +512,64 @@ test.describe('mobile menu', () => {
     test.use({ javaScriptEnabled: false });
 
     test('a full navigation starts with the menu closed', async ({ page }) => {
-      await page.goto('/products/mineral-serum');
+      await page.goto('/products/lemon-balm-oat-extract');
       await menu(page).locator('summary').click();
       await expect(menu(page)).toHaveJSProperty('open', true);
-      await menu(page).getByRole('link').nth(1).click();
-      await expect(page).toHaveURL(/\?category=/);
+      await menu(page).getByRole('link', { name: 'Body oils' }).click();
+      await expect(page).toHaveURL(/\?category=body-oils/);
       await expect(menu(page)).toHaveJSProperty('open', false);
     });
   });
+});
+
+const HANDLES = [
+  'lemon-balm-oat-extract',
+  'peppermint-ginger-extract',
+  'chamomile-linden-extract',
+  'hawthorn-rose-hip-extract',
+  'dandelion-root-extract',
+  'nettle-leaf-extract',
+  'calendula-almond-body-oil',
+  'lavender-jojoba-body-oil',
+  'evening-ritual-kit',
+];
+
+test('regulatory: every product page shows the licence notice next to the buy box, and no health claims', async ({ page }) => {
+  for (const handle of HANDLES) {
+    await page.goto(`/products/${handle}`);
+    const notice = page.getByTestId('npn-notice');
+    await expect(notice).toHaveText('Sample product. Not a licensed natural health product. No health claims are made.');
+    await expect(notice).toBeVisible();
+    // The notice sits above the add button, in the same column.
+    const n = (await notice.boundingBox())!;
+    const add = (await page.locator('#add-to-bag-form').boundingBox())!;
+    expect(n.y).toBeLessThan(add.y);
+    // The details heading is "What it is" (not "Benefits"), without claim-adjacent disclaimers.
+    await expect(page.locator('summary', { hasText: 'What it is' })).toBeVisible();
+    await expect(page.locator('summary', { hasText: 'Benefits' })).toHaveCount(0);
+    await expect(page.getByText('Not an approved claim')).toHaveCount(0);
+  }
+});
+
+test('J2.x size labels and single-option products', async ({ page }) => {
+  await page.goto('/products/lemon-balm-oat-extract');
+  const sizes = page.getByRole('group', { name: /choose a size/i });
+  await expect(sizes.getByRole('link')).toHaveText([/^30 mL/, /^60 mL/]);
+
+  // A kit has one option: shown as a plain line, no one-tile picker.
+  await page.goto('/products/evening-ritual-kit');
+  await expect(page.getByRole('group', { name: /choose a size/i })).toHaveCount(0);
+  await expect(page.locator('main').getByText('Size: Set of 3')).toBeVisible();
+  await expect(page.getByText('$74.00 CAD').first()).toBeVisible();
+  await expect(page.locator('#add-to-bag-form').getByRole('button', { name: /^add to bag/i })).toBeEnabled();
+
+  await page.goto('/products/calendula-almond-body-oil');
+  await expect(page.getByRole('group', { name: /choose a size/i })).toHaveCount(0);
+  await expect(page.locator('main').getByText('Size: 100 mL')).toBeVisible();
+});
+
+test('J2.4 the sold-out 60 mL of Chamomile & Linden does not block its purchasable 30 mL', async ({ page }) => {
+  await page.goto('/products/chamomile-linden-extract');
+  await expect(page.getByText('$24.00 CAD').first()).toBeVisible();
+  await expect(page.locator('#add-to-bag-form').getByRole('button', { name: /^add to bag/i })).toBeEnabled();
 });

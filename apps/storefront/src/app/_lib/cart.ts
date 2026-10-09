@@ -9,6 +9,7 @@ export function toCartView(cart: Cart): CartView {
   return {
     totalQuantity: cart.totalQuantity,
     subtotal: cart.cost.subtotalAmount,
+    hasPriceChanges: cart.hasPriceChanges,
     lines: cart.lines.nodes.map((line) => {
       const m = line.merchandise;
       const stock = m.quantityAvailable;
@@ -22,6 +23,7 @@ export function toCartView(cart: Cart): CartView {
         optionLabel: m.selectedOptions.map((o) => `${o.name}: ${o.value}`).join(', '),
         imageUrl: m.image?.url ?? null,
         unitPrice: line.cost.amountPerQuantity,
+        previousUnitPrice: line.priceAtAdd.amount !== line.cost.amountPerQuantity.amount ? line.priceAtAdd : null,
         lineTotal: line.cost.totalAmount,
         available: m.availableForSale,
       };

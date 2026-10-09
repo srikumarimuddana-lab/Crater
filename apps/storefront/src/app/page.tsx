@@ -1,16 +1,19 @@
-import Image from 'next/image';
 import Link from 'next/link';
-import { Price } from '@/components/commerce/price';
 import { ProductCard } from '@/components/commerce/product-card';
-import { PreviewBanner } from '@/components/preview-banner';
-import { SiteFooter } from '@/components/site-footer';
-import { SiteHeader } from '@/components/site-header';
-import { ButtonLink } from '@/components/ui/button';
-import { commerceMode, getStorefront } from '@/lib/commerce';
+import {
+  FeaturedCarousel,
+  Hero,
+  JournalTeaser,
+  RitualTiles,
+  StoryBlock,
+  ValueTiles,
+  ValuesRows,
+  type RitualTileData,
+} from '@/components/home-sections';
+import { PageShell } from '@/components/page-shell';
+import { getStorefront } from '@/lib/commerce';
 import type { Collection, Product, ProductsQueryArgs } from '@/lib/commerce/types';
-import { browse, previewCopy, productPage } from '@/lib/content/shop-copy';
-
-const HERO_HANDLE = 'mineral-serum';
+import { browse, home, productPage } from '@/lib/content/shop-copy';
 
 type SortKey = keyof typeof browse.sortOptions;
 const SORTS: Record<SortKey, Pick<ProductsQueryArgs, 'sortKey' | 'reverse'>> = {
@@ -24,6 +27,8 @@ const isSort = (v: unknown): v is SortKey => typeof v === 'string' && Object.pro
 type HomeProps = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
+
+const categoryOf = (href: string) => new URLSearchParams(href.split('#')[0].split('?')[1] ?? '').get('category') ?? undefined;
 
 export default async function Home({ searchParams }: HomeProps) {
   const { category, sort } = await searchParams;
@@ -43,9 +48,25 @@ export default async function Home({ searchParams }: HomeProps) {
     loadFailed = true;
   }
 
-  const hero = all.find((p) => p.handle === HERO_HANDLE) ?? all[0];
-  const heroVariant = hero?.variants[0];
-  const heroImage = hero?.featuredImage;
+  const hero = all.find((p) => p.handle === home.hero.productHandle) ?? all[0];
+  const byHandle = new Map(all.map((p) => [p.handle, p]));
+  const featured = home.featured.productHandles.map((h) => byHandle.get(h)).filter((p): p is Product => Boolean(p));
+
+  // Ritual tiles borrow the first product of each collection as a stand-in image until photography exists.
+  const ritualTiles: RitualTileData[] = await Promise.all(
+    home.shopByRitual.tiles.map(async (tile) => {
+      const handle = categoryOf(tile.href);
+      let image: Product['featuredImage'] = null;
+      if (handle && !loadFailed) {
+        try {
+          image = (await storefront.products({ first: 1, collection: handle })).nodes[0]?.featuredImage ?? null;
+        } catch {
+          // The tile still works as a text link.
+        }
+      }
+      return { label: tile.label, description: tile.description, href: tile.href, image };
+    }),
+  );
 
   const hrefFor = (handle: string | undefined) => {
     const q = new URLSearchParams();
@@ -56,61 +77,16 @@ export default async function Home({ searchParams }: HomeProps) {
   };
 
   return (
-    <>
-      <PreviewBanner mode={commerceMode()} />
-      <SiteHeader />
-      <main id="main" tabIndex={-1} className="focus:outline-none">
-        {hero && heroVariant ? (
-          <section aria-labelledby="hero-title" className="bg-parchment">
-            <div className="page-gutter grid grid-cols-1 gap-x-10 gap-y-6 py-8 md:grid-cols-12 md:grid-rows-[auto_1fr] md:py-14 lg:py-20">
-              <div className="md:col-span-5 md:row-start-1 md:self-start">
-                <p className="text-small text-walnut">{previewCopy.sampleChip}</p>
-                <h1 id="hero-title" className="mt-3 !text-[clamp(2.25rem,1.4rem+3vw,4rem)]">
-                  {hero.title}
-                </h1>
-                <p className="mt-4 max-w-[34ch] text-walnut">{hero.description}</p>
-              </div>
+    <PageShell>
+      {hero && hero.variants[0] ? <Hero product={hero} /> : null}
+      <ValueTiles />
+      <FeaturedCarousel products={featured} />
+      <RitualTiles tiles={ritualTiles} />
+      <StoryBlock />
+      <ValuesRows />
+      <JournalTeaser />
 
-              <figure className="md:col-span-7 md:col-start-6 md:row-span-2 md:row-start-1">
-                <div className="relative aspect-square w-full overflow-hidden rounded-xs bg-forest-deep md:aspect-[4/5]">
-                  {heroImage ? (
-                    <Image
-                      src={heroImage.url}
-                      alt={heroImage.altText}
-                      width={heroImage.width}
-                      height={heroImage.height}
-                      sizes="(min-width: 80rem) 700px, (min-width: 48rem) 55vw, 100vw"
-                      unoptimized
-                      preload
-                      className="h-full w-full object-cover object-[50%_60%]"
-                    />
-                  ) : null}
-                </div>
-                {heroImage?.placeholder ? (
-                  <figcaption className="text-small mt-3 text-walnut">Illustration placeholder — not a product photo.</figcaption>
-                ) : null}
-              </figure>
-
-              <div className="flex flex-col gap-5 md:col-span-5 md:row-start-2 md:self-start">
-                <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <span className="text-small text-walnut">{heroVariant.title}</span>
-                  <Price money={heroVariant.price} className="text-price" />
-                  <span className="text-small text-walnut">Sample price</span>
-                </p>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <ButtonLink href={`/products/${hero.handle}`} variant="primary">
-                    Shop the serum
-                  </ButtonLink>
-                  <ButtonLink href="#collection" variant="secondary">
-                    View the collection
-                  </ButtonLink>
-                </div>
-              </div>
-            </div>
-          </section>
-        ) : null}
-
-        <section id="collection" aria-labelledby="collection-title" className="page-gutter py-12 md:py-16 lg:py-20">
+        <section id="collection" aria-labelledby="collection-title" className="page-gutter border-t border-espresso/15 py-12 md:py-16 lg:py-20">
           <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
             <div>
               <h2 id="collection-title" className="!text-[clamp(1.75rem,1.3rem+1.6vw,2.5rem)]">
@@ -148,7 +124,7 @@ export default async function Home({ searchParams }: HomeProps) {
           </div>
 
           <nav aria-label="Filter products" className="mt-6 border-b border-espresso/15">
-            <ul className="flex flex-wrap gap-x-6">
+            <ul className="-mx-5 flex gap-x-6 overflow-x-auto px-5 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
               {[{ handle: undefined, title: 'All products' }, ...categories].map(({ handle, title }) => {
                 const current = handle === activeCategory;
                 return (
@@ -157,7 +133,7 @@ export default async function Home({ searchParams }: HomeProps) {
                       href={hrefFor(handle)}
                       aria-current={current ? 'page' : undefined}
                       className={
-                        'focus-ring inline-flex min-h-11 items-center border-b-2 text-base transition-colors motion-reduce:transition-none ' +
+                        'focus-ring inline-flex min-h-11 items-center whitespace-nowrap border-b-2 text-base transition-colors motion-reduce:transition-none ' +
                         (current ? 'border-forest font-semibold text-forest' : 'border-transparent text-espresso hover:border-espresso/40')
                       }
                     >
@@ -181,8 +157,6 @@ export default async function Home({ searchParams }: HomeProps) {
             </ul>
           )}
         </section>
-      </main>
-      <SiteFooter />
-    </>
+    </PageShell>
   );
 }

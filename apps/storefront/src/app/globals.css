@@ -239,3 +239,9 @@
 body:has(.bag-dialog[open]) {
   overflow: hidden;
 }
+
+/* Featured carousel: a thin native scrollbar keeps the list scrollable (and visible) without JavaScript. */
+.featured-scroller {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-walnut) transparent;
+}

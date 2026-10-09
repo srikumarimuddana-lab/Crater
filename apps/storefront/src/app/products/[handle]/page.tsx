@@ -76,7 +76,8 @@ export default async function ProductPage({ params, searchParams }: Props) {
         v.selectedOptions.every((s) => s.name === optionName || variant.selectedOptions.some((c) => c.name === s.name && c.value === s.value)),
     );
 
-  const list = (items: string[]) => <ul className="list-disc space-y-1 pl-5">{items.map((b) => <li key={b}>{b}</li>)}</ul>;
+  const list = (items: string[]) =>
+    items.length === 1 ? <p>{items[0]}</p> : <ul className="list-disc space-y-1 pl-5">{items.map((b) => <li key={b}>{b}</li>)}</ul>;
   const sections = [
     { key: 'benefits', ...detailsSections.benefits, body: list(product.details.benefits) },
     { key: 'howToUse', ...detailsSections.howToUse, body: <p>{product.details.howToUse}</p> },
@@ -141,7 +142,15 @@ export default async function ProductPage({ params, searchParams }: Props) {
               </p>
             ) : null}
 
-            {product.options.map((option) => (
+            {product.options
+              .filter((option) => option.optionValues.length === 1)
+              .map((option) => (
+                <p key={option.id} className="text-small font-semibold">
+                  {option.name}: <span className="font-normal text-walnut">{option.optionValues[0].name}</span>
+                </p>
+              ))}
+
+            {product.options.filter((option) => option.optionValues.length > 1).map((option) => (
               <fieldset key={option.id} className="min-w-0">
                 <legend className="text-small font-semibold">
                   {option.name}: <span className="font-normal text-walnut">{variant.selectedOptions.find((s) => s.name === option.name)?.value}</span>
@@ -190,6 +199,10 @@ export default async function ProductPage({ params, searchParams }: Props) {
               {low ? <p className="text-small font-semibold text-espresso">{low}</p> : null}
             </div>
 
+            <p role="note" data-testid="npn-notice" className="text-small border-l-2 border-forest pl-3 text-walnut">
+              {productPage.npnNotice}
+            </p>
+
             <AddToBag
               key={variant.id}
               variantId={variant.id}
@@ -210,7 +223,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
                   </summary>
                   <div className="pb-5">
                     {sec.body}
-                    <p className="text-small mt-3 text-walnut">{sec.disclaimer}</p>
+                    {sec.disclaimer ? <p className="text-small mt-3 text-walnut">{sec.disclaimer}</p> : null}
                   </div>
                 </details>
               ))}

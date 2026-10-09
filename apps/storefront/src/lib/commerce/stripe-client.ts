@@ -12,7 +12,7 @@ export interface StripeClient {
         params: Stripe.Checkout.SessionCreateParams,
         options: { idempotencyKey: string },
       ): Promise<{ id: string; url: string | null }>;
-      retrieve(id: string): Promise<{ id: string; payment_status: string; status: string | null }>;
+      retrieve(id: string): Promise<{ id: string; payment_status: string; status: string | null; metadata?: Record<string, string> | null }>;
     };
   };
   webhooks: {

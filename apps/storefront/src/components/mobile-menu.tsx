@@ -25,7 +25,7 @@ export function MobileMenu({ children }: { children: ReactNode }) {
       <summary className={summaryClass}>Menu</summary>
       <nav
         aria-label="Menu"
-        className="absolute right-0 z-20 mt-2 w-64 border border-espresso/15 bg-ivory p-2 shadow-sm"
+        className="absolute left-0 z-20 mt-2 max-h-[calc(100dvh-8rem)] w-[min(20rem,calc(100vw-2.5rem))] overflow-y-auto border border-espresso/15 bg-ivory p-2 shadow-sm"
         onClick={(e) => {
           // Same-page links (a #fragment or the current query) change neither path nor search.
           if ((e.target as HTMLElement).closest('a') && ref.current) ref.current.open = false;

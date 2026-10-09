@@ -24,10 +24,11 @@ test.afterAll(async () => {
   await closeDb();
 });
 
-const SERUM_30 = 'SAMPLE-MSR-30'; // Mineral Serum 30 mL, $68.00, 40 in stock after a reset
+const HERO_30 = 'SAMPLE-LBO-30'; // Lemon Balm & Oat Extract 30 mL, $24.00, 40 in stock after a reset
+const HERO_NAME = 'Lemon Balm & Oat Extract';
 
-async function addSerumToBag(page: Page) {
-  await page.goto('/products/mineral-serum');
+async function addHeroToBag(page: Page) {
+  await page.goto('/products/lemon-balm-oat-extract');
   await page.locator('#add-to-bag-form').getByRole('button', { name: /^add to bag/i }).click();
   await expect(page.getByRole('dialog', { name: /your bag/i })).toBeVisible();
 }
@@ -67,7 +68,7 @@ async function interceptStripeCheckout(page: Page): Promise<Interception> {
 
 async function startCheckoutFromCart(page: Page, intercepted: Interception): Promise<FakeSession> {
   await page.goto('/cart');
-  await expect(page.locator('#bag-lines').getByRole('link', { name: 'Mineral Serum' })).toBeVisible();
+  await expect(page.locator('#bag-lines').getByRole('link', { name: HERO_NAME })).toBeVisible();
   await page.getByRole('complementary').getByRole('button', { name: /^checkout/i }).click();
   await expect(page.getByRole('heading', { name: 'Fake hosted checkout' })).toBeVisible();
   const { reached, checkoutResponses } = intercepted;
@@ -81,17 +82,18 @@ async function startCheckoutFromCart(page: Page, intercepted: Interception): Pro
   return session;
 }
 
-test('buys the serum: redirect to hosted checkout, signed webhook, confirmed order, stock and bag updated', async ({ page }) => {
+test('buys the hero product: redirect to hosted checkout, signed webhook, confirmed order, stock and bag updated', async ({ page }) => {
   const intercepted = await interceptStripeCheckout(page);
-  await addSerumToBag(page);
-  const before = await getInventory(SERUM_30);
+  await addHeroToBag(page);
+  const before = await getInventory(HERO_30);
   expect(before).toBe(40);
 
   const session = await startCheckoutFromCart(page, intercepted);
   // Server-authoritative money, and return URLs on the integration origin (not a dev default).
-  expect(session).toMatchObject({ amount_subtotal: 6800, amount_total: 6800, currency: 'cad', payment_status: 'unpaid' });
-  expect(session.line_items_requested).toEqual([{ quantity: 1, unit_amount: 6800, name: 'Mineral Serum — 30 mL' }]);
-  expect(session.success_url).toBe('http://127.0.0.1:3300/checkout/success?session_id={CHECKOUT_SESSION_ID}');
+  expect(session).toMatchObject({ amount_subtotal: 2400, amount_total: 2400, currency: 'cad', payment_status: 'unpaid' });
+  expect(session.line_items_requested).toEqual([{ quantity: 1, unit_amount: 2400, name: `${HERO_NAME} — 30 mL` }]);
+  // Stripe returns the buyer to /api/checkout/complete, which reconciles the cart cookie and 303s to the confirmation.
+  expect(session.success_url).toBe('http://127.0.0.1:3300/api/checkout/complete?session_id={CHECKOUT_SESSION_ID}');
   expect(session.cancel_url).toBe('http://127.0.0.1:3300/cart?checkout=cancelled');
   expect(session.client_reference_id).toMatch(/^chk_[a-f0-9]{32}$/);
 
@@ -99,18 +101,25 @@ test('buys the serum: redirect to hosted checkout, signed webhook, confirmed ord
   await page.goto(`/checkout/success?session_id=${session.id}`);
   await expect(page.getByText('Thank you. Your order is confirmed')).toHaveCount(0);
   expect(await getOrders()).toEqual([]);
-  expect(await getInventory(SERUM_30)).toBe(40);
+  expect(await getInventory(HERO_30)).toBe(40);
 
   const paid = await payFakeSession(session.id);
   const hook = await sendSignedWebhook('checkout.session.completed', paid);
   expect(hook.status).toBe(200);
 
-  await page.goto(`/checkout/success?session_id=${session.id}`);
+  // The buyer comes back the way Stripe sends them: through /api/checkout/complete (success_url).
+  // The server compares the session's cart digest with the cookie cart, clears the cookie, and 303s on.
+  const cartCookie = async () => (await page.context().cookies()).find((c) => c.name === 'crater_cart' && c.value !== '');
+  expect(await cartCookie()).toBeDefined();
+  const landing = await page.goto(`/api/checkout/complete?session_id=${session.id}`);
+  expect(landing!.request().redirectedFrom()?.url()).toContain('/api/checkout/complete');
+  await expect(page).toHaveURL(`/checkout/success?session_id=${session.id}`);
+  expect(await cartCookie()).toBeUndefined();
   await expect(page.getByRole('heading', { name: /your order is confirmed/i })).toBeVisible();
   await expect(page.getByText('#1001')).toBeVisible();
-  await expect(page.getByRole('listitem').filter({ hasText: 'Mineral Serum' })).toContainText('30 mL');
-  await expect(page.getByRole('listitem').filter({ hasText: 'Mineral Serum' })).toContainText('× 1');
-  await expect(page.getByRole('listitem').filter({ hasText: 'Mineral Serum' })).toContainText('$68.00');
+  await expect(page.getByRole('listitem').filter({ hasText: HERO_NAME })).toContainText('30 mL');
+  await expect(page.getByRole('listitem').filter({ hasText: HERO_NAME })).toContainText('× 1');
+  await expect(page.getByRole('listitem').filter({ hasText: HERO_NAME })).toContainText('$24.00');
   await expect(page.getByText(/this was a test payment/i)).toBeVisible();
 
   const orders = await getOrders();
@@ -118,26 +127,49 @@ test('buys the serum: redirect to hosted checkout, signed webhook, confirmed ord
   expect(orders[0]).toMatchObject({
     order_number: 1001,
     financial_status: 'PAID',
-    subtotal_minor: 6800,
-    total_minor: 6800,
+    subtotal_minor: 2400,
+    total_minor: 2400,
     review_flags: [],
-    lines: [{ sku: SERUM_30, quantity: 1, unit_minor: 6800 }],
+    lines: [{ sku: HERO_30, quantity: 1, unit_minor: 2400 }],
   });
-  expect(await getInventory(SERUM_30)).toBe(39);
+  expect(await getInventory(HERO_30)).toBe(39);
 
-  // The completed cart is closed: the bag is empty and the old cookie cart is not reusable.
+  // The completed cart is closed and the cookie is gone: the bag is the normal empty bag, never "expired".
   await page.goto('/cart');
-  // (The /cart page currently words a closed cart as "expired"; see the handoff. Either way nothing is left to buy.)
-  await expect(page.locator('#bag-lines').getByRole('link', { name: 'Mineral Serum' })).toHaveCount(0);
+  await expect(page.locator('#bag-lines').getByText('Your bag is empty')).toBeVisible();
+  await expect(page.getByText(/your bag has expired/i)).toHaveCount(0);
+  await expect(page.locator('#bag-lines').getByRole('link', { name: HERO_NAME })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^checkout/i })).toHaveCount(0);
   await expect(page.getByRole('link', { name: /^bag/i }).first()).toHaveAccessibleName(/empty/i);
   const cart = await (await page.request.get('/api/storefront/cart')).json();
   expect(cart.cart).toBeNull();
 });
 
+test('returning to /api/checkout/complete before the session is paid keeps the bag, and a malformed id is ignored', async ({ page }) => {
+  const intercepted = await interceptStripeCheckout(page);
+  await addHeroToBag(page);
+  const session = await startCheckoutFromCart(page, intercepted);
+  const cartCookie = async () => (await page.context().cookies()).find((c) => c.name === 'crater_cart' && c.value !== '');
+
+  // Unfinished session (the buyer abandoned or went back): still redirected, bag untouched.
+  await page.goto(`/api/checkout/complete?session_id=${session.id}`);
+  await expect(page).toHaveURL(`/checkout/success?session_id=${session.id}`);
+  expect(await cartCookie()).toBeDefined();
+
+  // A malformed id never reaches Stripe, is not echoed into the redirect, and keeps the bag.
+  const bad = await page.request.get('/api/checkout/complete?session_id=not-a-session', { maxRedirects: 0 });
+  expect(bad.status()).toBe(303);
+  expect(bad.headers()['location']).toBe('/checkout/success');
+  expect(bad.headers()['cache-control']).toBe('no-store');
+  expect(await cartCookie()).toBeDefined();
+
+  await page.goto('/cart');
+  await expect(page.locator('#bag-lines').getByRole('link', { name: HERO_NAME })).toBeVisible();
+});
+
 test('an unsigned, wrongly signed or tampered webhook is rejected with 400 and creates no order', async ({ page }) => {
   const intercepted = await interceptStripeCheckout(page);
-  await addSerumToBag(page);
+  await addHeroToBag(page);
   const session = await startCheckoutFromCart(page, intercepted);
   const paid = await payFakeSession(session.id);
 
@@ -145,7 +177,7 @@ test('an unsigned, wrongly signed or tampered webhook is rejected with 400 and c
   expect((await sendSignedWebhook('checkout.session.completed', paid, { secret: 'whsec_not_the_real_secret' })).status).toBe(400);
 
   expect(await getOrders()).toEqual([]);
-  expect(await getInventory(SERUM_30)).toBe(40);
+  expect(await getInventory(HERO_30)).toBe(40);
   await page.goto(`/checkout/success?session_id=${session.id}`);
   await expect(page.getByText('#1001')).toHaveCount(0);
 
@@ -156,7 +188,7 @@ test('an unsigned, wrongly signed or tampered webhook is rejected with 400 and c
 
 test('a duplicate webhook delivery, or a new event for the same session, still yields one order and one stock decrement', async ({ page }) => {
   const intercepted = await interceptStripeCheckout(page);
-  await addSerumToBag(page);
+  await addHeroToBag(page);
   const session = await startCheckoutFromCart(page, intercepted);
   const paid = await payFakeSession(session.id);
 
@@ -168,19 +200,19 @@ test('a duplicate webhook delivery, or a new event for the same session, still y
   const orders = await getOrders();
   expect(orders).toHaveLength(1);
   expect(orders[0].order_number).toBe(1001);
-  expect(await getInventory(SERUM_30)).toBe(39);
+  expect(await getInventory(HERO_30)).toBe(39);
 
   await page.goto(`/checkout/success?session_id=${session.id}`);
   await expect(page.getByText('#1001')).toBeVisible();
 });
 
 test('the bag is a Postgres-backed cookie cart that survives reload and a fresh page in the same browser', async ({ page, context }) => {
-  await addSerumToBag(page);
+  await addHeroToBag(page);
   await page.goto('/cart');
-  await expect(page.locator('#bag-lines').getByRole('link', { name: 'Mineral Serum' })).toBeVisible();
+  await expect(page.locator('#bag-lines').getByRole('link', { name: HERO_NAME })).toBeVisible();
 
   await page.reload();
-  await expect(page.locator('#bag-lines').getByRole('link', { name: 'Mineral Serum' })).toBeVisible();
+  await expect(page.locator('#bag-lines').getByRole('link', { name: HERO_NAME })).toBeVisible();
   await expect(page.locator('#bag-lines').getByText('Your bag is empty')).toHaveCount(0);
 
   const cookies = await context.cookies();
@@ -190,7 +222,7 @@ test('the bag is a Postgres-backed cookie cart that survives reload and a fresh 
   // A second tab shares the cookie and sees the same cart; a different shopper does not.
   const tab = await context.newPage();
   await tab.goto('/cart');
-  await expect(tab.locator('#bag-lines').getByRole('link', { name: 'Mineral Serum' })).toBeVisible();
+  await expect(tab.locator('#bag-lines').getByRole('link', { name: HERO_NAME })).toBeVisible();
   const other = await page.context().browser()!.newContext();
   const stranger = await other.newPage();
   await stranger.goto(new URL('/cart', page.url()).toString());
@@ -199,5 +231,5 @@ test('the bag is a Postgres-backed cookie cart that survives reload and a fresh 
 
   // And the data really is in Postgres, in server-priced integer minor units.
   const rows = (await db().query('select quantity, price_at_add_minor from commerce.cart_lines')).rows;
-  expect(rows).toEqual([{ quantity: 1, price_at_add_minor: 6800 }]);
+  expect(rows).toEqual([{ quantity: 1, price_at_add_minor: 2400 }]);
 });

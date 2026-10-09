@@ -141,8 +141,9 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
 
     async listProducts() {
       const [products, variants] = await Promise.all([
-        q('select * from commerce.products order by id'),
-        q('select * from commerce.variants order by product_id, position'),
+        q('select * from commerce.products where archived_at is null order by id'),
+        q(`select v.* from commerce.variants v join commerce.products p on p.id = v.product_id
+           where p.archived_at is null order by v.product_id, v.position`),
       ]);
       return products.map((p): ProductRecord => ({
         id: gidOf('Product', p.id),
@@ -178,7 +179,8 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
       const [cols, members] = await Promise.all([
         q('select * from commerce.collections order by id'),
         q(`select cp.collection_id, p.handle from commerce.collection_products cp
-           join commerce.products p on p.id = cp.product_id order by cp.collection_id, cp.position`),
+           join commerce.products p on p.id = cp.product_id where p.archived_at is null
+           order by cp.collection_id, cp.position`),
       ]);
       return cols.map((c): CollectionRecord => ({
         id: gidOf('Collection', c.id),

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { loadCart } from '@/app/_lib/cart';
 import { CartLines, CartSummary } from '@/components/commerce/cart-lines';
+import { PriceChangeNotice } from '@/components/commerce/price-change-notice';
 import { PageShell } from '@/components/page-shell';
 import {
   bag,
@@ -24,7 +25,9 @@ export default async function CartPage({ searchParams }: Props) {
   const cancelled = first(sp.checkout) === 'cancelled';
   const { cart, expired } = await loadCart();
   const hasLines = Boolean(cart && cart.lines.length > 0);
-  const errorText = checkoutErrorMessage(errorCode);
+  // Once the new prices are accepted, the PRICE_CHANGED message is resolved and no longer shown.
+  const priceResolved = errorCode === 'PRICE_CHANGED' && !(cart && cart.hasPriceChanges);
+  const errorText = priceResolved ? null : checkoutErrorMessage(errorCode);
   const fixtureRefusal = errorCode === 'FIXTURE_MODE';
 
   return (
@@ -49,6 +52,10 @@ export default async function CartPage({ searchParams }: Props) {
             </a>
           </div>
         ) : null}
+
+        <div className="mt-6 empty:hidden">
+          <PriceChangeNotice cart={cart} />
+        </div>
 
         {cancelled && !errorText ? (
           <div role="status" className="mt-8 rounded-xs border border-walnut bg-parchment px-5 py-4">

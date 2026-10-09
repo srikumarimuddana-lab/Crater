@@ -249,6 +249,13 @@ export const footer = {
   note: 'Preview store. All products are samples.',
 } as const;
 
+/** Shared "Content pending" template for /about, /ingredients-sourcing, /journal, /shipping-returns, /contact. */
+export const pendingPage = {
+  status: 'Content pending',
+  body: 'This page is a placeholder. Its content will be added before launch.',
+  action: 'Shop all',
+} as const;
+
 /**
  * PROPOSED display threshold, pending an owner decision (see shop-requirements.md).
  * Low-stock text appears only when quantityAvailable is a number from 1 to this value.
@@ -267,7 +274,7 @@ export function lowStockText(quantityAvailable: number | null, threshold: number
 
 /** Details sections. Every section is preview copy until the brand supplies verified content. */
 export const detailsSections = {
-  benefits: { heading: 'Benefits', disclaimer: 'Preview copy. Not an approved claim.' },
+  benefits: { heading: 'What it is', disclaimer: '' },
   ingredients: { heading: 'Ingredients', disclaimer: 'Preview copy. The brand has not yet supplied the ingredient list.' },
   howToUse: { heading: 'How to use', disclaimer: 'Preview copy. Directions are pending approval.' },
   precautions: { heading: 'Precautions', disclaimer: 'Preview copy. Precautions are pending approval; do not rely on this text.' },
@@ -321,6 +328,10 @@ export const bag = {
   checkoutPending: 'Preparing checkout…',
   lineTotal: 'Line total',
   unitPrice: 'Each',
+  /** Visually hidden prefixes for a changed unit price: struck-through old price, then the current one. */
+  priceWas: 'Was',
+  priceNow: 'Now',
+  currentSubtotal: 'Current subtotal',
   loading: 'Updating your bag…',
   sampleNote: 'Sample items. This is a preview store.',
   /** Page-level regions. */

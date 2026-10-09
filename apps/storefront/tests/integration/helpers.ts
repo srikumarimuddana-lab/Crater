@@ -48,7 +48,7 @@ export async function resetCommerceData(): Promise<void> {
 
 const tail = (gid: string) => Number(gid.split('/').pop());
 
-/** Variant ids are `gid://crater/ProductVariant/<n>`; SKUs look like SAMPLE-MSR-30. */
+/** Variant ids are `gid://crater/ProductVariant/<n>`; SKUs look like SAMPLE-LBO-30. */
 async function variantNumericId(skuOrGid: string): Promise<number> {
   if (skuOrGid.startsWith('gid://')) return tail(skuOrGid);
   const { rows } = await db().query('select id from commerce.variants where sku = $1', [skuOrGid]);
@@ -56,7 +56,7 @@ async function variantNumericId(skuOrGid: string): Promise<number> {
   return rows[0].id as number;
 }
 
-/** Changes the catalog price (integer minor units, e.g. 7200 = $72.00), as an owner edit would. */
+/** Changes the catalog price (integer minor units, e.g. 2800 = $28.00), as an owner edit would. */
 export async function setVariantPrice(skuOrGid: string, priceMinor: number): Promise<void> {
   if (!Number.isInteger(priceMinor) || priceMinor < 0) throw new Error('priceMinor must be a non-negative integer');
   const res = await db().query('update commerce.variants set price_minor = $2 where id = $1', [await variantNumericId(skuOrGid), priceMinor]);

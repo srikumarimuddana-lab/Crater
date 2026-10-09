@@ -51,6 +51,14 @@ export async function getCheckoutResult(
   return (await getServices()).checkout.getCheckoutResult(sessionId);
 }
 
+/**
+ * For GET /api/checkout/complete: does this finished Stripe session belong to the cart with this id
+ * (compared by one-way digest)? False on any mismatch, malformed id, unfinished session or error.
+ */
+export async function checkoutSessionBelongsToCart(sessionId: string, cartId: ID): Promise<boolean> {
+  return (await getServices()).checkout.sessionBelongsToCart(sessionId, cartId);
+}
+
 /** Housekeeping for a scheduled job: deletes carts idle for more than 14 days. */
 export async function purgeExpiredCarts(): Promise<number> {
   return (await getServices()).repo.deleteExpiredCarts(new Date(Date.now() - 14 * 24 * 60 * 60 * 1000));

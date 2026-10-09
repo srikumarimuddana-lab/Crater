@@ -123,7 +123,7 @@ describe('postgres connection settings (Supabase-ready)', () => {
     resetRepositoryForTests();
     const b = await getRepository({});
     expect(a.kind).toBe('memory');
-    expect(await b.listProducts()).toHaveLength(6);
+    expect(await b.listProducts()).toHaveLength(9);
   });
 });
 

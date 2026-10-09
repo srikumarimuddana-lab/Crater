@@ -16,7 +16,7 @@ const body = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'Crater — Skincare preview',
+  title: 'Crater — Herbal extracts preview',
   description: 'Preview storefront with sample products. Not a live shop; nothing can be purchased.',
   // Fixture preview: keep it out of search indexes until verified content replaces it.
   robots: { index: false, follow: false },

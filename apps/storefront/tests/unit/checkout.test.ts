@@ -22,7 +22,7 @@ describe.each(REPO_KINDS)('createCheckoutSession [%s repository]', (kind) => {
       { COMMERCE_PROVIDER: 'stripe', STRIPE_SECRET_KEY: 'pk_test_notasecretkey' },
     ]) {
       const h = await setup(env);
-      const cart = await cartWith(h, [{ merchandiseId: V.serum30 }]);
+      const cart = await cartWith(h, [{ merchandiseId: V.hero30 }]);
       const r = await h.checkout.createCheckoutSession(cart.id);
       expect(r).toMatchObject({ ok: false, code: 'FIXTURE_MODE' });
       expect(h.stripe.create).not.toHaveBeenCalled();
@@ -32,20 +32,20 @@ describe.each(REPO_KINDS)('createCheckoutSession [%s repository]', (kind) => {
   run('refuses sk_live_ keys unless STRIPE_ALLOW_LIVE=true', async () => {
     const live = { STRIPE_SECRET_KEY: 'sk_live_abcDEF123456' };
     const h = await setup(live);
-    const cart = await cartWith(h, [{ merchandiseId: V.serum30 }]);
+    const cart = await cartWith(h, [{ merchandiseId: V.hero30 }]);
     expect(await h.checkout.createCheckoutSession(cart.id)).toMatchObject({ ok: false, code: 'PAYMENT_PROVIDER_UNAVAILABLE' });
     expect(h.stripe.create).not.toHaveBeenCalled();
 
     const typo = await setup({ ...live, STRIPE_ALLOW_LIVE: 'TRUE' }); // only the exact string "true" opts in
-    const c2 = await cartWith(typo, [{ merchandiseId: V.serum30 }]);
+    const c2 = await cartWith(typo, [{ merchandiseId: V.hero30 }]);
     expect(await typo.checkout.createCheckoutSession(c2.id)).toMatchObject({ ok: false });
 
     const allowed = await setup({ ...live, STRIPE_ALLOW_LIVE: 'true' });
-    const c3 = await cartWith(allowed, [{ merchandiseId: V.serum30 }]);
+    const c3 = await cartWith(allowed, [{ merchandiseId: V.hero30 }]);
     expect(await allowed.checkout.createCheckoutSession(c3.id)).toMatchObject({ ok: true });
 
     const noHook = await setup({ ...live, STRIPE_ALLOW_LIVE: 'true', STRIPE_WEBHOOK_SECRET: '' });
-    const c4 = await cartWith(noHook, [{ merchandiseId: V.serum30 }]);
+    const c4 = await cartWith(noHook, [{ merchandiseId: V.hero30 }]);
     expect(await noHook.checkout.createCheckoutSession(c4.id)).toMatchObject({ ok: false, code: 'PAYMENT_PROVIDER_UNAVAILABLE' });
   });
 
@@ -55,7 +55,7 @@ describe.each(REPO_KINDS)('createCheckoutSession [%s repository]', (kind) => {
     expect(await h.checkout.createCheckoutSession(empty.id)).toMatchObject({ ok: false, code: 'EMPTY_CART' });
     expect(await h.checkout.createCheckoutSession('gid://crater/Cart/' + 'A'.repeat(32))).toMatchObject({ code: 'EMPTY_CART' });
     expect(await h.checkout.createCheckoutSession('garbage')).toMatchObject({ code: 'EMPTY_CART' });
-    const stale = await cartWith(h, [{ merchandiseId: V.serum30 }]);
+    const stale = await cartWith(h, [{ merchandiseId: V.hero30 }]);
     h.clock.now = new Date(h.clock.now.getTime() + 15 * 24 * 3600 * 1000);
     expect(await h.checkout.createCheckoutSession(stale.id)).toMatchObject({ code: 'EMPTY_CART' });
     expect(h.stripe.create).not.toHaveBeenCalled();
@@ -63,10 +63,10 @@ describe.each(REPO_KINDS)('createCheckoutSession [%s repository]', (kind) => {
 
   run('any invalid line -> CART_INVALID, with nothing sent to Stripe or persisted', async () => {
     const h = await setup();
-    const cart = await cartWith(h, [{ merchandiseId: V.serum30 }, { merchandiseId: V.creamRefill, quantity: 2 }]);
-    await h.repo.updateVariant(V.creamRefill, { quantity: 1 }); // stock fell under the carted quantity
+    const cart = await cartWith(h, [{ merchandiseId: V.hero30 }, { merchandiseId: V.hawthorn30, quantity: 2 }]);
+    await h.repo.updateVariant(V.hawthorn30, { quantity: 1 }); // stock fell under the carted quantity
     expect(await h.checkout.createCheckoutSession(cart.id)).toMatchObject({ ok: false, code: 'CART_INVALID' });
-    await h.repo.updateVariant(V.creamRefill, { quantity: 0 }); // now sold out
+    await h.repo.updateVariant(V.hawthorn30, { quantity: 0 }); // now sold out
     expect(await h.checkout.createCheckoutSession(cart.id)).toMatchObject({ ok: false, code: 'CART_INVALID' });
     expect(h.stripe.create).not.toHaveBeenCalled();
     expect(await h.repo.findReusableCheckout(cart.id, 'x', new Date(0))).toBeNull();
@@ -74,8 +74,8 @@ describe.each(REPO_KINDS)('createCheckoutSession [%s repository]', (kind) => {
 
   run('sends our prices, metadata, and URLs; snapshot exists before the Stripe call', async () => {
     const h = await setup();
-    const cart = await cartWith(h, [{ merchandiseId: V.serum30, quantity: 2 }, { merchandiseId: V.cleanser }]);
-    await h.repo.updateVariant(V.serum30, { priceMinor: 7000 }); // catalog changed after the cart was filled
+    const cart = await cartWith(h, [{ merchandiseId: V.hero30, quantity: 2 }, { merchandiseId: V.oil100 }]);
+    await h.repo.updateVariant(V.hero30, { priceMinor: 2800 }); // catalog changed after the cart was filled
     await h.storefront.cartPriceChangesAcknowledge({ cartId: cart.id }); // the shopper reviewed the new price
     let snapshotSeenBeforeCall: unknown = null;
     h.stripe.create.mockImplementationOnce((async (params: { client_reference_id: string }) => {
@@ -89,12 +89,12 @@ describe.each(REPO_KINDS)('createCheckoutSession [%s repository]', (kind) => {
     expect(params).toMatchObject({
       mode: 'payment',
       line_items: [
-        { quantity: 2, price_data: { currency: 'cad', unit_amount: 7000, product_data: { name: 'Mineral Serum — 30 mL' } } },
-        { quantity: 1, price_data: { currency: 'cad', unit_amount: 3400, product_data: { name: 'Gel Cleanser — 150 mL' } } },
+        { quantity: 2, price_data: { currency: 'cad', unit_amount: 2800, product_data: { name: 'Lemon Balm & Oat Extract — 30 mL' } } },
+        { quantity: 1, price_data: { currency: 'cad', unit_amount: 3000, product_data: { name: 'Calendula & Almond Body Oil — 100 mL' } } },
       ],
       shipping_address_collection: { allowed_countries: ['CA'] },
       phone_number_collection: { enabled: false },
-      success_url: 'https://shop.example/checkout/success?session_id={CHECKOUT_SESSION_ID}',
+      success_url: 'https://shop.example/api/checkout/complete?session_id={CHECKOUT_SESSION_ID}',
       cancel_url: 'https://shop.example/cart?checkout=cancelled',
     });
     expect(params).not.toHaveProperty('automatic_tax'); // Stripe Tax is an owner decision
@@ -107,21 +107,21 @@ describe.each(REPO_KINDS)('createCheckoutSession [%s repository]', (kind) => {
     expect(JSON.stringify(params)).not.toContain(cart.id);
     expect(options.idempotencyKey).toBe(`crater-${meta.checkout_id}`);
 
-    expect(snapshotSeenBeforeCall).toMatchObject({ cartId: cart.id, subtotalMinor: 17400, status: 'created', stripeSessionId: null });
+    expect(snapshotSeenBeforeCall).toMatchObject({ cartId: cart.id, subtotalMinor: 8600, status: 'created', stripeSessionId: null });
     const saved = await h.repo.getCheckout(meta.checkout_id);
     expect(saved).toMatchObject({ status: 'session_created', stripeSessionId: SESSION_ID });
-    expect(saved!.lines.map((l) => l.unitMinor)).toEqual([7000, 3400]);
+    expect(saved!.lines.map((l) => l.unitMinor)).toEqual([2800, 3000]);
   });
 
   run('idempotency: repeat clicks on an unchanged cart reuse the key; a changed cart gets a new one', async () => {
     const h = await setup();
-    const cart = await cartWith(h, [{ merchandiseId: V.serum30 }]);
+    const cart = await cartWith(h, [{ merchandiseId: V.hero30 }]);
     await h.checkout.createCheckoutSession(cart.id);
     await h.checkout.createCheckoutSession(cart.id);
     const [, first] = (h.stripe.create.mock.calls as unknown as CreateCall[])[0];
     const [, second] = (h.stripe.create.mock.calls as unknown as CreateCall[])[1];
     expect(second.idempotencyKey).toBe(first.idempotencyKey);
-    await h.storefront.cartLinesAdd({ cartId: cart.id, lines: [{ merchandiseId: V.serum30 }] });
+    await h.storefront.cartLinesAdd({ cartId: cart.id, lines: [{ merchandiseId: V.hero30 }] });
     h.stripe.create.mockResolvedValueOnce({ id: 'cs_test_secondsession01', url: 'https://checkout.stripe.com/c/pay/cs_test_secondsession01' } as never);
     await h.checkout.createCheckoutSession(cart.id);
     expect(lastCall(h)[1].idempotencyKey).not.toBe(first.idempotencyKey);
@@ -144,7 +144,7 @@ describe.each(REPO_KINDS)('createCheckoutSession [%s repository]', (kind) => {
     ]) {
       const h = await setup();
       h.stripe.create.mockResolvedValueOnce({ id: SESSION_ID, url } as never);
-      const cart = await cartWith(h, [{ merchandiseId: V.serum30 }]);
+      const cart = await cartWith(h, [{ merchandiseId: V.hero30 }]);
       const r = await h.checkout.createCheckoutSession(cart.id);
       expect(r, String(url)).toMatchObject({ ok: false, code: 'PAYMENT_PROVIDER_UNAVAILABLE' });
       expect(isStripeCheckoutUrl(url)).toBe(false);
@@ -156,7 +156,7 @@ describe.each(REPO_KINDS)('createCheckoutSession [%s repository]', (kind) => {
     const h = await setup();
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     h.stripe.create.mockRejectedValueOnce(Object.assign(new Error('connect ETIMEDOUT with key sk_test_abc123DEF456'), { type: 'StripeConnectionError' }));
-    const cart = await cartWith(h, [{ merchandiseId: V.serum30 }]);
+    const cart = await cartWith(h, [{ merchandiseId: V.hero30 }]);
     const r = await h.checkout.createCheckoutSession(cart.id);
     expect(r).toMatchObject({ ok: false, code: 'PAYMENT_PROVIDER_UNAVAILABLE' });
     expect(JSON.stringify(r)).not.toMatch(/sk_test|ETIMEDOUT/);
@@ -172,13 +172,13 @@ describe.each(REPO_KINDS)('createCheckoutSession [%s repository]', (kind) => {
     for (const NEXT_PUBLIC_SITE_URL of [undefined, 'not a url', 'http://shop.example', 'javascript:alert(1)', 'https://u:p@shop.example']) {
       const h = await setup({ NEXT_PUBLIC_SITE_URL });
       vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-      const cart = await cartWith(h, [{ merchandiseId: V.serum30 }]);
+      const cart = await cartWith(h, [{ merchandiseId: V.hero30 }]);
       expect(await h.checkout.createCheckoutSession(cart.id), String(NEXT_PUBLIC_SITE_URL)).toMatchObject({ ok: false });
       expect(h.stripe.create).not.toHaveBeenCalled();
     }
     const local = await setup({ NEXT_PUBLIC_SITE_URL: 'http://localhost:3000/' });
-    const cart = await cartWith(local, [{ merchandiseId: V.serum30 }]);
+    const cart = await cartWith(local, [{ merchandiseId: V.hero30 }]);
     expect(await local.checkout.createCheckoutSession(cart.id)).toMatchObject({ ok: true });
-    expect(lastCall(local)[0].success_url).toBe('http://localhost:3000/checkout/success?session_id={CHECKOUT_SESSION_ID}');
+    expect(lastCall(local)[0].success_url).toBe('http://localhost:3000/api/checkout/complete?session_id={CHECKOUT_SESSION_ID}');
   });
 });

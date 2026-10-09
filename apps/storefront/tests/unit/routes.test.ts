@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetRepositoryForTests } from '@/lib/commerce/repository-factory';
 import { overrideStripeFactoryForTests, resetServicesForTests } from '@/lib/commerce/services';
 import { CART_COOKIE } from '@/lib/commerce/cart-cookie';
+import { cartRefOf } from '@/lib/commerce/checkout';
 import { mockStripe, SESSION_ID, sessionEvent, sign, STRIPE_URL, TEST_ENV, V, realStripe } from './helpers/harness';
 
 const jar = vi.hoisted(() => ({
@@ -21,6 +22,7 @@ vi.mock('next/headers', () => ({
 }));
 
 import { POST as checkoutPOST, GET as checkoutGET } from '@/app/api/checkout/route';
+import { GET as completeGET } from '@/app/api/checkout/complete/route';
 import { POST as webhookPOST, GET as webhookGET } from '@/app/api/webhooks/stripe/route';
 import { GET as productsGET } from '@/app/api/storefront/products/route';
 import { GET as productGET } from '@/app/api/storefront/products/[handle]/route';
@@ -49,7 +51,7 @@ afterEach(() => {
   resetAll();
 });
 
-const useStripe = () => {
+const stubStripe = () => {
   for (const [k, v] of Object.entries(TEST_ENV)) vi.stubEnv(k, v);
   const stripe = mockStripe();
   overrideStripeFactoryForTests(() => stripe.client);
@@ -72,13 +74,13 @@ describe('catalog routes', () => {
     expect(res.headers.get('cache-control')).toMatch(/^public, .*s-maxage=60/);
     expect(res.headers.get('set-cookie')).toBeNull();
     const page = await res.json();
-    expect(page.nodes.map((p: { handle: string }) => p.handle)).toEqual(['mineral-serum', 'lip-cheek-balm']);
+    expect(page.nodes.map((p: { handle: string }) => p.handle)).toEqual(['peppermint-ginger-extract', 'nettle-leaf-extract']);
     const next = await productsGET(new Request(`http://localhost:3000/api/storefront/products?first=2&sortKey=TITLE&reverse=true&after=${page.pageInfo.endCursor}`));
-    expect((await next.json()).nodes[0].handle).toBe('gel-cleanser');
-    const q = await productsGET(new Request('http://localhost:3000/api/storefront/products?query=product_type%3AMist'));
-    expect((await q.json()).nodes.map((p: { handle: string }) => p.handle)).toEqual(['facial-mist']);
-    const c = await productsGET(new Request('http://localhost:3000/api/storefront/products?collection=balms'));
-    expect((await c.json()).nodes).toHaveLength(1);
+    expect((await next.json()).nodes[0].handle).toBe('lemon-balm-oat-extract');
+    const q = await productsGET(new Request('http://localhost:3000/api/storefront/products?query=product_type%3AKit'));
+    expect((await q.json()).nodes.map((p: { handle: string }) => p.handle)).toEqual(['evening-ritual-kit']);
+    const c = await productsGET(new Request('http://localhost:3000/api/storefront/products?collection=body-oils'));
+    expect((await c.json()).nodes).toHaveLength(2);
   });
 
   it('rejects invalid query parameters with 400', async () => {
@@ -91,16 +93,16 @@ describe('catalog routes', () => {
 
   it('GET /api/storefront/products/[handle] returns the product or 404', async () => {
     const ctx = (handle: string) => ({ params: Promise.resolve({ handle }) });
-    const ok = await productGET(new Request('http://x'), ctx('mineral-serum'));
+    const ok = await productGET(new Request('http://x'), ctx('lemon-balm-oat-extract'));
     expect(ok.status).toBe(200);
     expect((await ok.json()).variants[0].title).toBe('30 mL');
-    for (const h of ['nope', 'Mineral-Serum', '../etc', 'a'.repeat(200)]) expect((await productGET(new Request('http://x'), ctx(h))).status, h).toBe(404);
+    for (const h of ['nope', 'Lemon-Balm-Oat-Extract', '../etc', 'a'.repeat(200)]) expect((await productGET(new Request('http://x'), ctx(h))).status, h).toBe(404);
   });
 });
 
 describe('cart routes', () => {
   it('POST /cart creates a cart, sets a hardened cookie, and responds private/no-store', async () => {
-    const res = await cartPOST(json('POST', '/api/storefront/cart', { lines: [{ merchandiseId: V.serum30, quantity: 2 }] }));
+    const res = await cartPOST(json('POST', '/api/storefront/cart', { lines: [{ merchandiseId: V.hero30, quantity: 2 }] }));
     expect(res.status).toBe(200);
     expect(res.headers.get('cache-control')).toBe(PRIVATE);
     const { cart } = await res.json();
@@ -124,10 +126,10 @@ describe('cart routes', () => {
   });
 
   it('POST /cart/lines creates a cart when none exists, then merges', async () => {
-    const first = await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.cleanser }] }));
+    const first = await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.oil100 }] }));
     const created = (await first.json()).cart;
     expect(created.lines.nodes).toHaveLength(1);
-    const second = await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.cleanser, quantity: 2 }] }));
+    const second = await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.oil100, quantity: 2 }] }));
     const merged = (await second.json()).cart;
     expect(merged.id).toBe(created.id);
     expect(merged.lines.nodes[0].quantity).toBe(3);
@@ -136,7 +138,7 @@ describe('cart routes', () => {
 
   it('recreates the cart when the cookie points at an expired or unknown cart', async () => {
     jar.values.set(CART_COOKIE, 'gid://crater/Cart/' + 'z'.repeat(32));
-    const res = await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.serum30 }] }));
+    const res = await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.hero30 }] }));
     const body = await res.json();
     expect(body.userErrors).toEqual([]);
     expect(body.cart.id).not.toContain('zzzz');
@@ -146,7 +148,7 @@ describe('cart routes', () => {
   it('a malformed cookie value is ignored', async () => {
     jar.values.set(CART_COOKIE, "'; drop table carts; --");
     expect((await (await cartGET()).json()).cart).toBeNull();
-    const res = await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.serum30 }] }));
+    const res = await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.hero30 }] }));
     expect((await res.json()).cart.lines.nodes).toHaveLength(1);
   });
 
@@ -159,7 +161,7 @@ describe('cart routes', () => {
       expect(body.cart).toBeNull();
       expect(body.userErrors[0].code).toBe('MISSING_CART');
     }
-    const created = (await (await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.serum30 }, { merchandiseId: V.cleanser }] }))).json()).cart;
+    const created = (await (await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.hero30 }, { merchandiseId: V.oil100 }] }))).json()).cart;
     const [a, b] = created.lines.nodes;
     const patched = (await (await linesPATCH(json('PATCH', '/api/storefront/cart/lines', { lines: [{ id: a.id, quantity: 4 }] }))).json()).cart;
     expect(patched.lines.nodes[0].quantity).toBe(4);
@@ -179,16 +181,16 @@ describe('cart routes', () => {
 
   it('rejects unknown shapes, wrong types, and bad bodies with 400', async () => {
     const bodies: [string, unknown, Record<string, string>?][] = [
-      ['unknown top-level field', { lines: [{ merchandiseId: V.serum30 }], extra: 1 }],
-      ['unknown line field', { lines: [{ merchandiseId: V.serum30, price: '0.01' }] }],
-      ['string quantity', { lines: [{ merchandiseId: V.serum30, quantity: '2' }] }],
+      ['unknown top-level field', { lines: [{ merchandiseId: V.hero30 }], extra: 1 }],
+      ['unknown line field', { lines: [{ merchandiseId: V.hero30, price: '0.01' }] }],
+      ['string quantity', { lines: [{ merchandiseId: V.hero30, quantity: '2' }] }],
       ['no lines', { lines: [] }],
       ['lines not a list', { lines: 'x' }],
-      ['too many lines', { lines: Array.from({ length: 51 }, () => ({ merchandiseId: V.serum30 })) }],
+      ['too many lines', { lines: Array.from({ length: 51 }, () => ({ merchandiseId: V.hero30 })) }],
       ['array body', []],
       ['bad JSON', '{not json'],
-      ['wrong content type', { lines: [{ merchandiseId: V.serum30 }] }, { 'content-type': 'text/plain' }],
-      ['oversized', { lines: [{ merchandiseId: V.serum30, attributes: [{ key: 'k', value: 'v'.repeat(20000) }] }] }],
+      ['wrong content type', { lines: [{ merchandiseId: V.hero30 }] }, { 'content-type': 'text/plain' }],
+      ['oversized', { lines: [{ merchandiseId: V.hero30, attributes: [{ key: 'k', value: 'v'.repeat(20000) }] }] }],
     ];
     for (const [name, body, headers] of bodies) {
       const res = await linesPOST(json('POST', '/api/storefront/cart/lines', body, headers));
@@ -203,7 +205,7 @@ describe('cart routes', () => {
   });
 
   it('semantic errors from the service are returned as userErrors, not 400', async () => {
-    const res = await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.serum30, quantity: 99 }] }));
+    const res = await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.hero30, quantity: 99 }] }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.userErrors[0]).toMatchObject({ code: 'GREATER_THAN' });
@@ -214,7 +216,7 @@ describe('cart routes', () => {
   it('blocks cross-site state changes', async () => {
     const headers = { 'sec-fetch-site': 'cross-site' };
     expect((await cartPOST(json('POST', '/api/storefront/cart', {}, headers))).status).toBe(403);
-    expect((await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.serum30 }] }, headers))).status).toBe(403);
+    expect((await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.hero30 }] }, headers))).status).toBe(403);
     expect((await linesDELETE(json('DELETE', '/api/storefront/cart/lines', { lineIds: ['x'] }, headers))).status).toBe(403);
     const same = await cartPOST(json('POST', '/api/storefront/cart', {}, { 'sec-fetch-site': 'same-origin' }));
     expect(same.status).toBe(200);
@@ -223,7 +225,7 @@ describe('cart routes', () => {
 
 describe('POST /api/checkout', () => {
   const post = (headers: Record<string, string> = {}) => checkoutPOST(new Request('http://localhost:3000/api/checkout', { method: 'POST', headers }));
-  const fillCart = () => linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.serum30 }] }));
+  const fillCart = () => linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.hero30 }] }));
 
   it('303s to the cart with EMPTY_CART when there is no cart cookie', async () => {
     const res = await post();
@@ -243,7 +245,7 @@ describe('POST /api/checkout', () => {
   });
 
   it('stripe-test mode redirects (303) to the Stripe-hosted URL', async () => {
-    const stripe = useStripe();
+    const stripe = stubStripe();
     await fillCart();
     const res = await post({ 'sec-fetch-site': 'same-origin' });
     expect(res.status).toBe(303);
@@ -253,7 +255,7 @@ describe('POST /api/checkout', () => {
   });
 
   it('never redirects to a non-Stripe host', async () => {
-    const stripe = useStripe();
+    const stripe = stubStripe();
     stripe.create.mockResolvedValueOnce({ id: SESSION_ID, url: 'https://evil.example/pay' } as never);
     await fillCart();
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -262,7 +264,7 @@ describe('POST /api/checkout', () => {
   });
 
   it('rejects cross-site posts and non-POST methods', async () => {
-    useStripe();
+    stubStripe();
     await fillCart();
     expect((await post({ 'sec-fetch-site': 'cross-site' })).headers.get('location')).toBe('/cart?checkout_error=FORBIDDEN');
     const get = await checkoutGET();
@@ -271,7 +273,7 @@ describe('POST /api/checkout', () => {
   });
 
   it('ignores any price or cart data in the request body', async () => {
-    const stripe = useStripe();
+    const stripe = stubStripe();
     await fillCart();
     await checkoutPOST(new Request('http://localhost:3000/api/checkout', {
       method: 'POST',
@@ -279,7 +281,95 @@ describe('POST /api/checkout', () => {
       body: JSON.stringify({ unit_amount: 1, cartId: 'gid://crater/Cart/' + 'x'.repeat(32) }),
     }));
     const params = (stripe.create.mock.calls as unknown as [{ line_items: { price_data: { unit_amount: number } }[] }][])[0][0];
-    expect(params.line_items[0].price_data.unit_amount).toBe(6800);
+    expect(params.line_items[0].price_data.unit_amount).toBe(2400);
+  });
+});
+
+describe('GET /api/checkout/complete (Stripe success_url)', () => {
+  const fillCart = () => linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.hero30 }] }));
+  const complete = (query = `session_id=${SESSION_ID}`) => completeGET(new Request(`http://localhost:3000/api/checkout/complete?${query}`));
+  const cookieCart = () => jar.values.get(CART_COOKIE);
+
+  /** A shopper with a cart who has paid: the session Stripe would report back, optionally for another cart. */
+  async function paidShopper(overrides: Record<string, unknown> = {}) {
+    const stripe = stubStripe();
+    await fillCart();
+    expect((await checkoutPOST(new Request('http://localhost:3000/api/checkout', { method: 'POST' }))).status).toBe(303);
+    const params = (stripe.create.mock.calls as unknown as [{ metadata: Record<string, string> }][])[0][0];
+    const session = { id: SESSION_ID, status: 'complete', payment_status: 'paid', metadata: params.metadata, ...overrides };
+    stripe.retrieve.mockResolvedValue(session as never);
+    return stripe;
+  }
+
+  it('clears the cart cookie when the session metadata digest matches the cookie cart, then 303s to the confirmation', async () => {
+    const stripe = await paidShopper();
+    const cartId = cookieCart()!;
+    expect(cartId).toBeTruthy();
+    const res = await complete();
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe(`/checkout/success?session_id=${SESSION_ID}`);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(stripe.retrieve).toHaveBeenCalledWith(SESSION_ID);
+    expect(cookieCart()).toBeUndefined();
+    const cleared = jar.sets.at(-1)!;
+    expect(cleared).toMatchObject({ name: CART_COOKIE, value: '', options: { maxAge: 0, httpOnly: true, sameSite: 'lax', path: '/' } });
+    expect((await (await cartGET()).json()).cart).toBeNull(); // a normal empty bag, no dead cookie left behind
+  });
+
+  it('keeps the cookie when the digest belongs to another cart (a newer bag is never cleared)', async () => {
+    await paidShopper({ metadata: { cart_id: cartRefOf('gid://crater/Cart/' + 'Z'.repeat(32)), checkout_id: 'chk_' + 'a'.repeat(32) } });
+    const before = cookieCart();
+    const res = await complete();
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe(`/checkout/success?session_id=${SESSION_ID}`);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(cookieCart()).toBe(before);
+    expect(jar.sets.filter((s) => s.options.maxAge === 0)).toEqual([]);
+  });
+
+  it('keeps the cookie, without calling Stripe, for a malformed or missing session id', async () => {
+    const stripe = await paidShopper();
+    const before = cookieCart();
+    for (const query of ['', 'session_id=', 'session_id=nope', 'session_id=cs_test_short', `session_id=${SESSION_ID}/../x`, `session_id=${SESSION_ID}%0d%0aSet-Cookie:x=1`, 'session_id=cs_live_' + 'x'.repeat(300)]) {
+      const res = await complete(query);
+      expect(res.status, query).toBe(303);
+      expect(res.headers.get('location'), query).toBe('/checkout/success'); // the bad value is never echoed
+      expect(res.headers.get('cache-control')).toBe('no-store');
+      expect(cookieCart(), query).toBe(before);
+    }
+    expect(stripe.retrieve).not.toHaveBeenCalled();
+  });
+
+  it('keeps the cookie when the session is unfinished, when Stripe fails, and with no cookie', async () => {
+    const stripe = await paidShopper({ status: 'open', payment_status: 'unpaid' });
+    const before = cookieCart();
+    expect((await complete()).status).toBe(303);
+    expect(cookieCart()).toBe(before);
+
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    stripe.retrieve.mockRejectedValue(Object.assign(new Error(`boom ${SESSION_ID} ${before}`), { type: 'StripeConnectionError' }));
+    const failed = await complete();
+    expect(failed.status).toBe(303);
+    expect(failed.headers.get('location')).toBe(`/checkout/success?session_id=${SESSION_ID}`);
+    expect(cookieCart()).toBe(before);
+    expect(JSON.stringify(error.mock.calls)).not.toContain(before!); // the cart id never reaches the log
+    expect(JSON.stringify(error.mock.calls)).not.toContain(SESSION_ID);
+
+    jar.values.delete(CART_COOKIE);
+    stripe.retrieve.mockClear();
+    expect((await complete()).status).toBe(303);
+    expect(stripe.retrieve).not.toHaveBeenCalled();
+  });
+
+  it('keeps the cookie and never calls Stripe in fixture mode', async () => {
+    const fixture = mockStripe();
+    overrideStripeFactoryForTests(() => fixture.client);
+    await fillCart();
+    const kept = cookieCart();
+    expect(kept).toBeTruthy();
+    expect((await complete()).status).toBe(303);
+    expect(fixture.retrieve).not.toHaveBeenCalled();
+    expect(cookieCart()).toBe(kept);
   });
 });
 
@@ -292,7 +382,7 @@ describe('POST /api/webhooks/stripe', () => {
     }));
 
   it('rejects missing and bad signatures with 400 and no detail', async () => {
-    useStripe();
+    stubStripe();
     for (const sig of [null, 'bad', sign('{}', 'whsec_other')]) {
       const res = await post('{}', sig);
       expect(res.status).toBe(400);
@@ -301,12 +391,12 @@ describe('POST /api/webhooks/stripe', () => {
   });
 
   it('verifies against the RAW body (odd whitespace survives) and fulfils the order end to end', async () => {
-    const stripe = useStripe();
-    const cart = (await (await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.serum30 }] }))).json()).cart;
+    const stripe = stubStripe();
+    const cart = (await (await linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.hero30 }] }))).json()).cart;
     const redirect = await checkoutPOST(new Request('http://localhost:3000/api/checkout', { method: 'POST' }));
     expect(redirect.status).toBe(303);
     const params = (stripe.create.mock.calls as unknown as [{ metadata: unknown; line_items: { quantity: number; price_data: { unit_amount: number } }[] }][])[0][0];
-    const session = { id: SESSION_ID, payment_status: 'paid', currency: 'cad', amount_subtotal: 6800, amount_total: 6800, metadata: params.metadata, total_details: { amount_shipping: 0, amount_tax: 0, amount_discount: 0 }, customer_details: { email: 'x@example.com' } };
+    const session = { id: SESSION_ID, payment_status: 'paid', currency: 'cad', amount_subtotal: 2400, amount_total: 2400, metadata: params.metadata, total_details: { amount_shipping: 0, amount_tax: 0, amount_discount: 0 }, customer_details: { email: 'x@example.com' } };
     const body = `  ${sessionEvent('checkout.session.completed', session, 'evt_route_1').replace(/,"/g, ',  "')}\n`;
     const res = await post(body, realStripe.webhooks.generateTestHeaderString({ payload: body, secret: TEST_ENV.STRIPE_WEBHOOK_SECRET }));
     expect(res.status).toBe(200);
@@ -325,7 +415,7 @@ describe('POST /api/webhooks/stripe', () => {
 });
 
 describe('price changes: acknowledge route and checkout redirect', () => {
-  const fill = () => linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.serum30 }] }));
+  const fill = () => linesPOST(json('POST', '/api/storefront/cart/lines', { lines: [{ merchandiseId: V.hero30 }] }));
   const ack = (headers: Record<string, string> = {}, body: unknown = undefined) =>
     ackPOST(json('POST', '/api/storefront/cart/price-changes/acknowledge', body, headers));
   const checkout = () => checkoutPOST(new Request('http://localhost:3000/api/checkout', { method: 'POST' }));
@@ -333,10 +423,10 @@ describe('price changes: acknowledge route and checkout redirect', () => {
   it('POST acknowledge: private/no-store, cookie cart, clears hasPriceChanges', async () => {
     const created = (await (await fill()).json()).cart;
     const { getRepository } = await import('@/lib/commerce/repository-factory');
-    await (await getRepository()).updateVariant(V.serum30, { priceMinor: 7200 });
+    await (await getRepository()).updateVariant(V.hero30, { priceMinor: 2800 });
     const before = await (await cartGET()).json();
     expect(before.cart.hasPriceChanges).toBe(true);
-    expect(before.cart.lines.nodes[0].priceAtAdd.amount).toBe('68.00');
+    expect(before.cart.lines.nodes[0].priceAtAdd.amount).toBe('24.00');
 
     const res = await ack({ 'sec-fetch-site': 'same-origin' });
     expect(res.status).toBe(200);
@@ -345,7 +435,7 @@ describe('price changes: acknowledge route and checkout redirect', () => {
     expect(payload.userErrors).toEqual([]);
     expect(payload.cart.id).toBe(created.id);
     expect(payload.cart.hasPriceChanges).toBe(false);
-    expect(payload.cart.lines.nodes[0].priceAtAdd.amount).toBe('72.00');
+    expect(payload.cart.lines.nodes[0].priceAtAdd.amount).toBe('28.00');
     // Retrying is harmless.
     expect((await (await ack()).json()).cart.hasPriceChanges).toBe(false);
   });
@@ -370,10 +460,10 @@ describe('price changes: acknowledge route and checkout redirect', () => {
   });
 
   it('POST /api/checkout redirects to PRICE_CHANGED without calling Stripe, then proceeds once acknowledged', async () => {
-    const stripe = useStripe();
+    const stripe = stubStripe();
     await fill();
     const { getRepository } = await import('@/lib/commerce/repository-factory');
-    await (await getRepository()).updateVariant(V.serum30, { priceMinor: 7200 });
+    await (await getRepository()).updateVariant(V.hero30, { priceMinor: 2800 });
     const blocked = await checkout();
     expect(blocked.status).toBe(303);
     expect(blocked.headers.get('location')).toBe('/cart?checkout_error=PRICE_CHANGED');

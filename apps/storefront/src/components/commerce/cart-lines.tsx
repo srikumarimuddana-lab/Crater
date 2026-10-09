@@ -172,7 +172,19 @@ function LineItem({
         </p>
         <p className="text-small text-walnut">{line.optionLabel || line.variantTitle}</p>
         <p className="text-small text-walnut">
-          <Price money={line.unitPrice} /> {bag.unitPrice.toLowerCase()}
+          {line.previousUnitPrice ? (
+            <>
+              <s className="mr-1">
+                <span className="sr-only">{bag.priceWas} </span>
+                <Price money={line.previousUnitPrice} />
+              </s>
+              <span className="sr-only">{bag.priceNow} </span>
+              <Price money={line.unitPrice} className="font-semibold text-espresso" />
+            </>
+          ) : (
+            <Price money={line.unitPrice} />
+          )}{' '}
+          {bag.unitPrice.toLowerCase()}
         </p>
         {!line.available ? <p className="text-small mt-1 font-semibold text-espresso">{productPage.soldOut}</p> : null}
       </div>

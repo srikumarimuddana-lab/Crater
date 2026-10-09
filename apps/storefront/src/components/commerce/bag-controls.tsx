@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import type { CommerceMode } from '@/lib/commerce/config';
 import { bag, stripeTestModeBanner } from '@/lib/content/shop-copy';
 import { CartLines, CartSummary } from './cart-lines';
+import { PriceChangeNotice } from './price-change-notice';
 import { OPEN_BAG_EVENT, type CartView, type OpenBagDetail } from './cart-types';
 
 const subscribe = () => () => {};
@@ -149,6 +150,9 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
                 ))}
               </div>
             ) : null}
+            <div className="mb-4 empty:hidden">
+              <PriceChangeNotice cart={cart} compact />
+            </div>
             <CartLines cart={cart} focusId="bag-drawer-title" onContinue={close} />
             {cart && cart.lines.length > 0 ? <p className="text-small mt-4 text-walnut">{bag.sampleNote}</p> : null}
           </div>

@@ -19,7 +19,7 @@ const json = { headers: { 'content-type': 'application/json' } };
 // received over plain http, so the cookie is carried by hand here. The browser specs use the real jar.
 let cookie = '';
 const withCookie = () => ({ headers: { ...json.headers, cookie } });
-const VARIANT = 'gid://crater/ProductVariant/1'; // Mineral Serum 30 mL, $68.00
+const VARIANT = 'gid://crater/ProductVariant/11'; // Lemon Balm & Oat Extract 30 mL, $24.00
 
 test('a price change blocks checkout with PRICE_CHANGED until acknowledged, then charges the new price', async ({ request }) => {
   cookie = '';
@@ -30,10 +30,10 @@ test('a price change blocks checkout with PRICE_CHANGED until acknowledged, then
   cookie = setCookie.split(';')[0];
   expect((await added.json()).cart.hasPriceChanges).toBe(false);
 
-  await setVariantPrice('SAMPLE-MSR-30', 7200);
+  await setVariantPrice('SAMPLE-LBO-30', 2800);
   const read = (await (await request.get('/api/storefront/cart', withCookie())).json()).cart;
   expect(read.hasPriceChanges).toBe(true);
-  expect(read.lines.nodes[0]).toMatchObject({ priceAtAdd: { amount: '68.00' }, cost: { amountPerQuantity: { amount: '72.00' } } });
+  expect(read.lines.nodes[0]).toMatchObject({ priceAtAdd: { amount: '24.00' }, cost: { amountPerQuantity: { amount: '28.00' } } });
 
   const blocked = await request.post('/api/checkout', { ...withCookie(), maxRedirects: 0 });
   expect(blocked.status()).toBe(303);
@@ -49,14 +49,14 @@ test('a price change blocks checkout with PRICE_CHANGED until acknowledged, then
   expect(ack.headers()['cache-control']).toBe('private, no-store');
   const acked = (await ack.json()).cart;
   expect(acked.hasPriceChanges).toBe(false);
-  expect(acked.lines.nodes[0].priceAtAdd.amount).toBe('72.00');
+  expect(acked.lines.nodes[0].priceAtAdd.amount).toBe('28.00');
 
   const ok = await request.post('/api/checkout', { ...withCookie(), maxRedirects: 0 });
   expect(ok.status()).toBe(303);
   expect(ok.headers()['location']).toMatch(/^https:\/\/checkout\.stripe\.com\/c\/pay\/cs_test_/);
   const [session] = await fakeSessions();
-  expect(session.amount_subtotal).toBe(14400); // 2 x $72.00, from the server's catalog
-  expect(session.line_items_requested).toEqual([{ quantity: 2, unit_amount: 7200, name: 'Mineral Serum — 30 mL' }]);
+  expect(session.amount_subtotal).toBe(5600); // 2 x $28.00, from the server's catalog
+  expect(session.line_items_requested).toEqual([{ quantity: 2, unit_amount: 2800, name: 'Lemon Balm & Oat Extract — 30 mL' }]);
 });
 
 test('acknowledge without a cart reports MISSING_CART and rejects cross-site requests', async ({ request }) => {
