@@ -13,15 +13,15 @@ const fieldId = (formId: string, name: string) => `${formId}${name.replace(/[^A-
  * Server Action form: posts before hydration, shows pending state, an error summary (role=alert, focused)
  * and inline field errors (aria-invalid + aria-describedby). `children` may use Field/Submit.
  */
-export function ActionForm({ action, children, className, label, successRole = 'status' }: { action: FormAction; children: ReactNode; className?: string; label?: string; successRole?: 'status' }) {
+export function ActionForm({ action, children, className, label, errorTitle = 'We could not save this' }: { action: FormAction; children: ReactNode; className?: string; label?: string; errorTitle?: string }) {
   const [state, formAction] = useActionState(action, IDLE);
   const formId = useId();
   return (
     <FormCtx.Provider value={{ state, formId }}>
       <form action={formAction} className={className} aria-label={label} noValidate>
-        <Summary />
+        <Summary title={errorTitle} />
         {state.status === 'success' && state.message ? (
-          <div className="a-notice is-success" role={successRole} style={{ marginBottom: 16 }}>
+          <div className="a-notice is-success" role="status" style={{ marginBottom: 16 }}>
             <Icon shape="check-circle" size={16} />
             <div>{state.message}</div>
           </div>
@@ -32,7 +32,7 @@ export function ActionForm({ action, children, className, label, successRole = '
   );
 }
 
-function Summary() {
+function Summary({ title }: { title: string }) {
   const { state, formId } = useContext(FormCtx);
   const ref = useRef<HTMLDivElement>(null);
   const hasError = state.status === 'error';
@@ -45,7 +45,7 @@ function Summary() {
   if (state.message) general.unshift(state.message);
   return (
     <div ref={ref} className="a-errsummary" role="alert" tabIndex={-1}>
-      <strong>{state.conflict ? 'Someone else changed this' : 'We could not save this'}</strong>
+      <strong>{state.conflict ? 'Someone else changed this' : title}</strong>
       {general.length ? <p>{general.join(' ')}</p> : null}
       {state.conflict ? (
         <p>

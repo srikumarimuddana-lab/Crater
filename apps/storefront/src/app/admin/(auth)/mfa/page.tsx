@@ -14,7 +14,7 @@ export default function MfaPage() {
       <p className="a-muted" style={{ marginBottom: 16 }}>
         Enter the 6-digit code from your authenticator app.
       </p>
-      <ActionForm action={verifyMfaAction} label="Authenticator code">
+      <ActionForm action={verifyMfaAction} label="Authenticator code" errorTitle="We could not sign you in">
         <Field name="code" label="6-digit code" inputMode="numeric" autoComplete="one-time-code" maxLength={8} required autoFocus />
         <div className="a-row">
           <Submit pendingText="Checking…">Sign in</Submit>

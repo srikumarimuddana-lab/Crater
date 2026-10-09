@@ -19,7 +19,7 @@ test('a wrong password shows one generic message that does not reveal accounts',
     await page.getByLabel('Email').fill(email);
     await page.getByLabel('Password').fill(`${PASSWORD}-wrong`);
     await page.getByRole('button', { name: 'Continue' }).click();
-    const alert = page.getByRole('alert');
+    const alert = page.locator('.a-errsummary');
     await expect(alert).toContainText('The email or password is not right, or this account cannot sign in');
     await expect(alert).not.toContainText(/no account|not found|does not exist/i);
     await expect(page).toHaveURL(/\/admin\/login/);
@@ -49,7 +49,7 @@ test('an owner signs in with a TOTP code, lands on the overview, and signs out',
   const menu = page.getByRole('button', { name: 'Menu' });
   if (await menu.isVisible()) await menu.click();
 
-  await page.getByText(uiOwner(info.project.name).name).click();
+  await page.locator('.a-usermenu > summary').click();
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL(/\/admin\/login/);
   await page.goto('/admin');

@@ -46,7 +46,7 @@ test('a price change is saved, shows the open-bags count, and a stale edit gets 
 
   await price(page).fill('43.00');
   await page.getByRole('button', { name: 'Save changes' }).click();
-  const alert = page.getByRole('alert');
+  const alert = page.locator('.a-errsummary');
   await expect(alert).toContainText('Someone else changed this');
   await expect(alert).toContainText('Reload the latest version');
   await expect(price(page)).toHaveValue('43.00'); // the draft is kept

@@ -20,7 +20,8 @@ export function AdjustDialog({ title, closeHref, triggerKey, children }: { title
       router.replace(closeHref, { scroll: false });
       setTimeout(() => document.querySelector<HTMLElement>(`[data-adjust-trigger="${CSS.escape(triggerKey)}"]`)?.focus(), 80);
     };
-    if (d.open) d.close(); // drop the server-rendered non-modal state, then show as a modal
+    // Drop the server-rendered non-modal state without firing `close`, then show it as a modal.
+    d.removeAttribute('open');
     d.showModal();
     d.addEventListener('close', onClose);
     return () => {

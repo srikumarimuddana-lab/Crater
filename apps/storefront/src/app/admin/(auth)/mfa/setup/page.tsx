@@ -35,7 +35,7 @@ export default async function MfaSetupPage() {
       <p className="a-hint" style={{ marginBottom: 12 }}>
         Keep the key private. It is shown only during setup.
       </p>
-      <ActionForm action={confirmEnrolmentAction} label="Confirm authenticator">
+      <ActionForm action={confirmEnrolmentAction} label="Confirm authenticator" errorTitle="We could not sign you in">
         <Field name="code" label="6-digit code" inputMode="numeric" autoComplete="one-time-code" maxLength={8} required />
         <div className="a-row">
           <Submit pendingText="Checking…">Confirm and sign in</Submit>

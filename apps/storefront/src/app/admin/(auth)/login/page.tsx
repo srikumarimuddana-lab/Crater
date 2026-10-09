@@ -31,7 +31,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           </Notice>
         </div>
       ) : null}
-      <ActionForm action={signInAction} label="Sign in">
+      <ActionForm action={signInAction} label="Sign in" errorTitle="We could not sign you in">
         <Field name="email" label="Email" type="email" autoComplete="username" inputMode="email" required />
         <Field name="password" label="Password" type="password" autoComplete="current-password" required />
         <Submit pendingText="Signing in…">Continue</Submit>

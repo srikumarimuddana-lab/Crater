@@ -31,7 +31,7 @@ test('an invalid adjustment shows inline errors; a valid one changes the level a
   await dialog.getByLabel('Change by').fill('-99999');
   await dialog.getByRole('button', { name: 'Save adjustment' }).click();
   await expect(dialog.locator('.a-error')).toContainText(/cannot go below 0/);
-  await expect(dialog.getByRole('alert')).toBeVisible();
+  await expect(dialog.locator('.a-errsummary')).toBeVisible();
 
   // Reason rules: Other needs a note.
   await dialog.getByLabel('Change by').fill('2');
