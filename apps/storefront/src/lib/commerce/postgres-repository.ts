@@ -42,6 +42,67 @@ export function poolConfigFromEnv(env: Record<string, string | undefined> = proc
   return config;
 }
 
+/** Maps a products row and its variants rows to the storage record (shared with the admin repository). */
+export function toProductRecord(p: Row, variants: Row[]): ProductRecord {
+  return {
+    id: gidOf('Product', p.id),
+    handle: String(p.handle),
+    title: String(p.title),
+    description: String(p.description),
+    vendor: String(p.vendor),
+    productType: String(p.product_type),
+    tags: (p.tags as string[]) ?? [],
+    options: p.options as ProductRecord['options'],
+    featuredImage: (p.featured_image as ProductRecord['featuredImage']) ?? null,
+    images: p.images as ProductRecord['images'],
+    details: p.details as ProductRecord['details'],
+    sample: Boolean(p.sample),
+    status: p.status as ProductRecord['status'],
+    createdAt: iso(p.created_at),
+    updatedAt: iso(p.updated_at),
+    variants: variants.map((v): VariantRecord => ({
+      id: gidOf('ProductVariant', v.id),
+      sku: String(v.sku),
+      title: String(v.title),
+      priceMinor: num(v.price_minor),
+      compareAtMinor: v.compare_at_minor === null ? null : num(v.compare_at_minor),
+      costMinor: v.cost_minor === null ? null : num(v.cost_minor),
+      lowStockThreshold: num(v.low_stock_threshold),
+      selectedOptions: v.selected_options as VariantRecord['selectedOptions'],
+      image: (v.image as VariantRecord['image']) ?? null,
+      quantity: v.inventory_quantity === null ? null : num(v.inventory_quantity),
+    })),
+  };
+}
+
+/** Maps an orders row and its order_lines rows to the storage record (shared with the admin repository). */
+export const toOrderRecord = (o: Row, lines: Row[]): OrderRecord => ({
+  id: num(o.id),
+  number: num(o.order_number),
+  checkoutId: String(o.checkout_id),
+  stripeSessionId: String(o.stripe_session_id),
+  email: (o.email as string | null) ?? null,
+  financialStatus: o.financial_status as OrderRecord['financialStatus'],
+  subtotalMinor: num(o.subtotal_minor),
+  shippingMinor: num(o.shipping_minor),
+  taxMinor: num(o.tax_minor),
+  totalMinor: num(o.total_minor),
+  reviewFlags: (o.review_flags as string[]) ?? [],
+  processedAt: iso(o.processed_at),
+  fulfilmentStatus: o.fulfilment_status as OrderRecord['fulfilmentStatus'],
+  shippingAddress: (o.shipping_address as PostalAddressRecord | null) ?? null,
+  packingInstructions: (o.packing_instructions as string | null) ?? null,
+  internalNotes: (o.internal_notes as string | null) ?? null,
+  lines: lines.map((l) => ({
+    variantId: String(l.variant_id),
+    title: String(l.title),
+    variantTitle: String(l.variant_title),
+    sku: String(l.sku),
+    quantity: num(l.quantity),
+    unitMinor: num(l.unit_minor),
+  })),
+});
+
 const POOL_OF = new WeakMap<object, Pool>();
 
 /** The pool behind a Postgres commerce repository (admin Postgres repository only). */
@@ -106,38 +167,11 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
     updatedAt: iso(r.updated_at),
   });
 
-  const toOrder = (o: Row, lines: Row[]): OrderRecord => ({
-    id: num(o.id),
-    number: num(o.order_number),
-    checkoutId: String(o.checkout_id),
-    stripeSessionId: String(o.stripe_session_id),
-    email: (o.email as string | null) ?? null,
-    financialStatus: o.financial_status as OrderRecord['financialStatus'],
-    subtotalMinor: num(o.subtotal_minor),
-    shippingMinor: num(o.shipping_minor),
-    taxMinor: num(o.tax_minor),
-    totalMinor: num(o.total_minor),
-    reviewFlags: (o.review_flags as string[]) ?? [],
-    processedAt: iso(o.processed_at),
-    fulfilmentStatus: o.fulfilment_status as OrderRecord['fulfilmentStatus'],
-    shippingAddress: (o.shipping_address as PostalAddressRecord | null) ?? null,
-    packingInstructions: (o.packing_instructions as string | null) ?? null,
-    internalNotes: (o.internal_notes as string | null) ?? null,
-    lines: lines.map((l) => ({
-      variantId: String(l.variant_id),
-      title: String(l.title),
-      variantTitle: String(l.variant_title),
-      sku: String(l.sku),
-      quantity: num(l.quantity),
-      unitMinor: num(l.unit_minor),
-    })),
-  });
-
   async function loadOrder(client: Pick<Pool, 'query'>, where: string, param: unknown): Promise<OrderRecord | null> {
     const orders = (await client.query(`select * from commerce.orders where ${where}`, [param])).rows as Row[];
     if (!orders[0]) return null;
     const lines = (await client.query('select * from commerce.order_lines where order_id = $1 order by position', [orders[0].id])).rows as Row[];
-    return toOrder(orders[0], lines);
+    return toOrderRecord(orders[0], lines);
   }
 
   async function writeLines(client: PoolClient, cart: CartRecord) {
@@ -155,43 +189,13 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
 
     async listProducts(options) {
       // products.status is the single source of truth for visibility (migration 0004).
-      const only = options?.includeInactive ? '' : "where status = 'ACTIVE'";
+      const all = Boolean(options?.includeInactive);
       const [products, variants] = await Promise.all([
-        q(`select * from commerce.products ${only} order by id`),
+        q("select * from commerce.products where ($1::boolean or status = 'ACTIVE') order by id", [all]),
         q(`select v.* from commerce.variants v join commerce.products p on p.id = v.product_id
-           ${options?.includeInactive ? '' : "where p.status = 'ACTIVE'"} order by v.product_id, v.position`),
+           where ($1::boolean or p.status = 'ACTIVE') order by v.product_id, v.position`, [all]),
       ]);
-      return products.map((p): ProductRecord => ({
-        id: gidOf('Product', p.id),
-        handle: String(p.handle),
-        title: String(p.title),
-        description: String(p.description),
-        vendor: String(p.vendor),
-        productType: String(p.product_type),
-        tags: (p.tags as string[]) ?? [],
-        options: p.options as ProductRecord['options'],
-        featuredImage: (p.featured_image as ProductRecord['featuredImage']) ?? null,
-        images: p.images as ProductRecord['images'],
-        details: p.details as ProductRecord['details'],
-        sample: Boolean(p.sample),
-        status: p.status as ProductRecord['status'],
-        createdAt: iso(p.created_at),
-        updatedAt: iso(p.updated_at),
-        variants: variants
-          .filter((v) => v.product_id === p.id)
-          .map((v): VariantRecord => ({
-            id: gidOf('ProductVariant', v.id),
-            sku: String(v.sku),
-            title: String(v.title),
-            priceMinor: num(v.price_minor),
-            compareAtMinor: v.compare_at_minor === null ? null : num(v.compare_at_minor),
-            costMinor: v.cost_minor === null ? null : num(v.cost_minor),
-            lowStockThreshold: num(v.low_stock_threshold),
-            selectedOptions: v.selected_options as VariantRecord['selectedOptions'],
-            image: (v.image as VariantRecord['image']) ?? null,
-            quantity: v.inventory_quantity === null ? null : num(v.inventory_quantity),
-          })),
-      }));
+      return products.map((p) => toProductRecord(p, variants.filter((v) => v.product_id === p.id)));
     },
 
     async listCollections() {

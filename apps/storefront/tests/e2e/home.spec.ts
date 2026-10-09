@@ -208,16 +208,17 @@ test('featured carousel: a list of six products with working, accessible previou
 
   // Scroll to the end: Next becomes aria-disabled and does nothing.
   for (let i = 0; i < 8 && (await next.getAttribute('aria-disabled')) !== 'true'; i++) {
-    await next.click({ force: true });
+    await page.keyboard.press('Enter');
     await page.waitForTimeout(450);
   }
   await expect(next).toHaveAttribute('aria-disabled', 'true');
   const end = await list.evaluate((el) => el.scrollLeft);
-  await next.click({ force: true });
+  await page.keyboard.press('Enter');
   await page.waitForTimeout(300);
   expect(await list.evaluate((el) => el.scrollLeft)).toBe(end);
 
-  await prev.click();
+  await prev.focus();
+  await page.keyboard.press('Enter');
   await expect.poll(() => list.evaluate((el) => el.scrollLeft)).toBeLessThan(end);
   expect(testInfo.project.name).toBeTruthy();
 

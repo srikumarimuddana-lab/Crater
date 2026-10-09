@@ -25,7 +25,8 @@ describe.skipIf(!TEST_DATABASE_URL)('postgres schema and locking', () => {
       const names = tables.map((t) => t.name).sort();
       expect(names).toEqual([
         'cart_lines', 'carts', 'checkouts', 'collection_products', 'collections', 'counters',
-        'order_lines', 'orders', 'processed_webhook_events', 'products', 'schema_migrations', 'variants',
+        'inventory_movements', 'order_fulfilments', 'order_lines', 'orders', 'processed_webhook_events', 'products',
+        'schema_migrations', 'variants', 'webhook_events',
       ]);
       expect(tables.every((t) => t.rls === true)).toBe(true);
       expect((await pool.query("select count(*)::int as n from pg_policies where schemaname = 'commerce'")).rows[0].n).toBe(0);
@@ -80,10 +81,12 @@ describe.skipIf(!TEST_DATABASE_URL)('postgres schema and locking', () => {
       await resetDatabase(pool);
       expect(await migrate(pool)).toEqual([]); // second run applies nothing
       const rows = (await pool.query('select name from commerce.schema_migrations')).rows;
-      expect(rows).toEqual([{ name: '0001_init.sql' }, { name: '0002_price_at_add.sql' }, { name: '0003_product_archive.sql' }]);
+      expect(rows).toEqual([
+        { name: '0001_init.sql' }, { name: '0002_price_at_add.sql' }, { name: '0003_product_archive.sql' }, { name: '0004_admin.sql' },
+      ]);
       // Concurrent runners serialize on the transaction-scoped lock and do not conflict.
       await Promise.all([migrate(pool), migrate(pool), migrate(pool)]);
-      expect((await pool.query('select count(*)::int as n from commerce.schema_migrations')).rows[0].n).toBe(3);
+      expect((await pool.query('select count(*)::int as n from commerce.schema_migrations')).rows[0].n).toBe(4);
     } finally {
       await pool.end();
     }
@@ -147,8 +150,8 @@ describe.skipIf(!TEST_DATABASE_URL)('postgres schema and locking', () => {
     const now = '2026-01-01T00:00:00.000Z';
     const legacyProduct = (pool: pg.Pool, id: number, handle: string, sample: boolean) =>
       pool.query(
-        `insert into commerce.products (id, handle, title, description, vendor, product_type, details, sample, created_at, updated_at)
-         values ($1,$2,$2,'old','Crater','Serum','{"benefits":[],"ingredients":[],"howToUse":"","precautions":""}'::jsonb,$3,$4,$4)`,
+        `insert into commerce.products (id, handle, title, description, vendor, product_type, details, sample, created_at, updated_at, status)
+         values ($1,$2,$2,'old','Crater','Serum','{"benefits":[],"ingredients":[],"howToUse":"","precautions":""}'::jsonb,$3,$4,$4,'ACTIVE')`,
         [id, handle, sample, now],
       );
     const legacyVariant = (pool: pg.Pool, id: number, productId: number, position: number, sku: string, qty = 5) =>
@@ -211,11 +214,11 @@ describe.skipIf(!TEST_DATABASE_URL)('postgres schema and locking', () => {
         const first = await seedCatalog(pool);
         expect(first).toEqual({ productsDeleted: 1, productsArchived: 2, variantsDeleted: 1, variantsParked: 1, collectionsDeleted: 1 });
 
-        const products = (await pool.query('select id, handle, archived_at is not null as archived from commerce.products order by id')).rows;
+        const products = (await pool.query("select id, handle, archived_at is not null as archived, status = 'ARCHIVED' as by_status from commerce.products order by id")).rows;
         expect(products.filter((p) => p.id < 11 || p.id === 50)).toEqual([
-          { id: 1, handle: 'mineral-serum', archived: true },
-          { id: 2, handle: 'cloud-cream', archived: true },
-          { id: 50, handle: 'owner-added-product', archived: false },
+          { id: 1, handle: 'mineral-serum', archived: true, by_status: true },
+          { id: 2, handle: 'cloud-cream', archived: true, by_status: true },
+          { id: 50, handle: 'owner-added-product', archived: false, by_status: false },
         ]);
         expect(products.filter((p) => p.id >= 11 && p.id !== 50).every((p) => !p.archived)).toBe(true);
         expect((await pool.query('select handle from commerce.collections order by id')).rows.map((c) => c.handle)).toEqual([

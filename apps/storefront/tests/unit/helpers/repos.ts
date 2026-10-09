@@ -19,6 +19,7 @@ export async function resetDatabase(pool: pg.Pool): Promise<void> {
   const { rows } = await pool.query('select current_database() as name');
   // Guard: this DROPS the commerce schema. Only ever run it against an obviously-test database.
   if (!/test/i.test(String(rows[0].name))) throw new Error('Refusing to reset a database whose name does not contain "test"');
+  await pool.query('drop schema if exists admin cascade');
   await pool.query('drop schema if exists commerce cascade');
   await migrate(pool);
   await seedCatalog(pool);
