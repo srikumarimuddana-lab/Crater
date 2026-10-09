@@ -4,7 +4,8 @@
 and complete a working purchase journey.
 
 **Architecture:** Server-rendered Next.js content with a typed commerce adapter;
-small client islands for UI and a lazy 3D/GSAP story; Shopify-hosted checkout.
+small client islands for UI and a lazy 3D/GSAP story; Crater's own
+Storefront-API-shaped commerce service with Stripe hosted Checkout.
 
 **Specifications:** `design-brief.md`, `architecture.md`, and `asset-brief.md`.
 
@@ -18,7 +19,8 @@ application work; this toolkit does not mark them as implemented.
 - Keep essential content outside canvas and retain a useful packshot fallback.
 - Native scrolling, keyboard access, reduced motion, and mobile normal flow are
   required from the first visual milestone.
-- Keep Shopify authoritative for variants, availability, totals, and checkout.
+- Keep the server authoritative for variants, availability, and totals; Stripe
+  Checkout takes payment.
 - Fixture mode must be clearly visible in the preview and cannot create orders.
 - Use scoped verification. Never report an unrun app/browser check as passed.
 - Never install Git hooks or change `core.hooksPath` as part of these phases.
@@ -76,30 +78,35 @@ Gilt palette (green, brown, gold); see `visual-contract.md`. Correction: the
 earlier "lint passes" was masked by a pipe; the packshot generator's `require()`
 calls failed lint. It is now an ES module and lint exits 0.
 
-## Phase 2: product page and cart interface in fixture mode
+## Phase 2: product page, cart, and commerce backend (fixture/test mode)
 
-**Owner:** Frontend engineer; product strategist prepares content records.
+**Owner:** Commerce engineer (backend), then frontend engineer (UI); coordinator
+owns `types.ts`, manifests, and integration. Merged with the former Phase 5 at the
+user's request (2026-10-09): own backend + Stripe instead of Shopify.
 
-**Files:** Create `src/app/products/[handle]/page.tsx`,
-`src/components/commerce/variant-selector.tsx`, `cart-drawer.tsx`,
-`src/lib/commerce/types.ts`, `fixture-provider.ts`,
-`src/lib/content/product-content.ts`, and `tests/e2e/product-cart.spec.ts`.
+**Files:** `src/lib/commerce/**` (contract, catalog seed, cart service,
+repositories, Stripe checkout, cookie helpers), `src/app/api/{storefront,checkout,
+webhooks/stripe}/**`, `db/migrations`, `tests/unit/**`; then
+`src/app/products/[handle]/page.tsx`, `src/app/cart/page.tsx`,
+`src/app/checkout/success/page.tsx`, `src/app/actions/cart.ts`, commerce components,
+and `tests/e2e/product-cart.spec.ts`.
 
-**Contract:** Define `CommerceProvider` with `getProducts`, `getProduct`,
-`getCart`, `createCart`, `addLines`, `updateLines`, `removeLines`, and
-`getCheckoutUrl`. Use normalized `Product`, `Variant`, `Cart`, `CartLine`, and
-structured commerce error types. The fixture provider returns no live checkout
-URL; the preview presents a clear demo message instead.
+**Contract:** `Storefront` in `types.ts` mirrors Storefront API operations
+(`products`, `product`, `variantBySelectedOptions`, `cart`, `cartCreate`,
+`cartLinesAdd/Update/Remove`) with `userErrors`/`warnings`. Fixture mode shows a
+clear demo message at checkout; Stripe test mode redirects to Stripe Checkout.
 
-- [ ] Write tests for valid/invalid variant combinations, unavailable variants,
-  quantity updates, drawer focus/escape/return-focus, and prevented demo checkout.
-- [ ] Implement product benefits, ingredients, use/precautions, variants, product
-  price, cart state, accessible drawer controls, and understandable errors.
-- [ ] Test at mobile and desktop sizes. Confirm no fabricated clinical claims or
-  reviews appear. Commit the phase.
+- [ ] Backend: unit tests for every cart userError/warning, repricing, expiry,
+  checkout refusals (fixture, live key, empty/invalid cart, foreign redirect host),
+  webhook signature, duplicate delivery, subtotal mismatch, and inventory; Postgres
+  parity tests against a local cluster.
+- [ ] UI: e2e for variant selection, unavailable variants, add/update/remove,
+  drawer focus/Escape/return-focus, no-JS cart page, fixture checkout message.
+- [ ] Inspect product, cart, and checkout-result screens at 390/768/1440. Confirm
+  no fabricated claims, reviews, or stock. Commit the phase.
 
-**Exit:** A shopper can complete the local sample shopping journey without
-mistaking it for a live purchase.
+**Exit:** A shopper can browse, choose a variant, manage a cart, and reach Stripe
+test Checkout; a paid test session creates an order through the webhook.
 
 ## Phase 3: one progressive 3D hero
 
@@ -149,33 +156,21 @@ content rendered and accessible in every policy mode.
 
 **Exit:** Motion reinforces product understanding without obstructing shopping.
 
-## Phase 5: real Shopify commerce integration
+## Phase 5: payments go-live readiness
 
-**Owner:** Commerce engineer; coordinator handles environment/integration.
+**Owner:** Commerce engineer; coordinator handles environment and integration.
+(Backend build moved into Phase 2.)
 
-**Files:** Create `src/lib/commerce/shopify-provider.ts`, `shopify-client.ts`,
-`validation.ts`, `src/app/api/cart/route.ts`, the scoped cart mutation route,
-`src/app/api/checkout/route.ts`, `src/app/api/webhooks/shopify/route.ts`, and
-`tests/unit/commerce.test.ts` plus `tests/e2e/commerce-recovery.spec.ts`.
+- [ ] With the owner: Stripe account and test keys in ignored `.env.local`, webhook
+  endpoint via the Stripe CLI, a free hosted Postgres if wanted, tax approach,
+  shipping rates, returns policy, and order notification emails.
+- [ ] Run a full test-card purchase (success, decline, 3DS, async) and confirm the
+  order, inventory decrement, and success page. Record evidence.
+- [ ] Live keys, a live domain, and paid hosting only on the owner's explicit
+  request. Commit the phase.
 
-**Contract:** Implement the provider contract from Phase 2. Use a reviewed stable
-Storefront API version, server-only private token handling, uncached cart data,
-secure opaque cart cookies, and validated checkout redirect hosts.
-
-- [ ] Obtain the user's chosen Shopify store and approved connection scope.
-  Configure ignored local/preview environment values using the example file.
-- [ ] Write tests for unknown variants, invalid quantities, mutation `userErrors`,
-  network failures, stale stock, expired carts, queued quantity updates, private
-  cart caching, bad webhook signatures, duplicate webhooks, and checkout host
-  rejection. Use a development store for end-to-end commerce validation.
-- [ ] Implement normalized product/catalog queries, validated mutations, a fresh
-  checkout URL, explicit retries that cannot duplicate add-lines operations,
-  verified webhook invalidation, and redacted diagnostics.
-- [ ] Verify taxes/shipping/returns settings with the owner and use authorized
-  test checkout only. Confirm fixture mode is disabled solely in the configured
-  commerce environment. Commit the phase.
-
-**Exit:** The store has an evidence-backed, recoverable purchase journey.
+**Exit:** The store has an evidence-backed, recoverable purchase journey in Stripe
+test mode, and a written checklist for going live.
 
 ## Phase 6: content, performance, and preview review
 

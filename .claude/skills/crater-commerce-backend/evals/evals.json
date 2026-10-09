@@ -1,0 +1,23 @@
+{
+  "skill_name": "crater-commerce-backend",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "add a discount code feature to the cart, like shopify's cartDiscountCodesUpdate. 10% off code WELCOME10 for testing only",
+      "expected_output": "Storefront-style mutation with userErrors for invalid codes, server-side discount math in minor units, discount reflected in cart cost and Stripe line items or coupons, unit tests incl. invalid/expired code, no live keys",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "customers say the order confirmation page sometimes says processing forever. can you look at the stripe webhook and fix it?",
+      "expected_output": "Investigates webhook signature/raw body, dedupe, event types (async_payment_succeeded), success page polling of recorded order; adds failing test first; no blind retries",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "we need inventory to go down when someone buys and show 'only 2 left' on the cart",
+      "expected_output": "Decrement in the webhook transaction with row locks, MERCHANDISE_NOT_ENOUGH_STOCK warnings, quantityAvailable exposed, postgres parity test",
+      "files": []
+    }
+  ]
+}

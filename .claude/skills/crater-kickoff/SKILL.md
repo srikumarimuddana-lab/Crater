@@ -30,7 +30,7 @@ return a handoff rather than spawning an unbounded tree of extra agents.
 2. Variant/cart interfaces in marked fixture mode.
 3. One 3D hero with image and failure fallbacks.
 4. Bounded scroll story and cleanup.
-5. Verified Shopify purchase journey.
+5. Verified Stripe test purchase journey on the Crater commerce backend.
 6. Content, scoped quality checks, and preview review.
 
 Use project-specific skills only for the relevant work. Do not require optional

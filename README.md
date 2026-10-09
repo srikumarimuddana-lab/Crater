@@ -10,7 +10,7 @@ journey.
 ## Included
 
 - **9 skills:** coordination, visual direction, Next.js, 3D, scroll motion,
-  Shopify commerce, content/SEO, quality review, and product assets.
+  own commerce backend with Stripe Checkout, content/SEO, quality review, and product assets.
 - **8 agents:** architect/coordinator, product analyst, art director, frontend,
   experience, commerce, QA, and a read-only release reviewer.
 - **3 advisory hooks:** project context, relevant edit advice, and agent handoffs.
@@ -37,7 +37,7 @@ claude --agent crater-orchestrator
 Then enter:
 
 ```text
-/crater-kickoff Build Phase 1 in fixture mode using the design brief. Create the static homepage before adding 3D or connecting Shopify.
+/crater-kickoff Build Phase 1 in fixture mode using the design brief. Create the static homepage before adding 3D or commerce.
 ```
 
 Start with one implementer, or two independent workers when coordination is
@@ -49,7 +49,7 @@ useful. The coordinator owns shared dependencies, interfaces, and integration.
 | --- | --- |
 | [Claude Code setup](docs/claude-code-setup.md) | Exact skills/agents, hooks, optional tools, and disable instructions |
 | [Design brief](docs/design-brief.md) | Mineral Atelier direction, page sequence, and motion behavior |
-| [Architecture](docs/architecture.md) | Next.js/R3F/GSAP/Shopify boundaries and initial budgets |
+| [Architecture](docs/architecture.md) | Next.js/R3F/GSAP/commerce boundaries and initial budgets |
 | [Implementation plan](docs/implementation-plan.md) | Static foundation through commerce and preview review |
 | [Asset brief](docs/asset-brief.md) | Packaging, packshots, GLBs, posters, and provenance |
 | [Primary sources](docs/sources.md) | Verified vendor documentation and optional integrations |
@@ -65,5 +65,5 @@ npm run doctor:setup
 ```
 
 These checks verify the development setup, not storefront performance or a live
-purchase path. Product, brand, packaging, market/policy inputs, and Shopify
+purchase path. Product, brand, packaging, market/policy inputs, and Stripe
 configuration are collected during the relevant application phases.

@@ -10,10 +10,10 @@ They load from the checkout; no global skill installer is required.
 | --- | --- |
 | `/crater-kickoff` | Scope a phase, assign ownership, coordinate, and hand off |
 | `/crater-art-direction` | Visual identity, type, composition, and screenshot critique |
-| `/crater-nextjs-storefront` | Routes, server/client boundaries, and shopping UI |
+| `/crater-nextjs-storefront` | Routes, Server Actions, product/cart/checkout UI |
 | `/crater-3d-product` | Scene, loading/failure policy, and GPU budgets |
 | `/crater-scroll-motion` | Bounded GSAP story, media policy, and cleanup |
-| `/crater-shopify-commerce` | Provider, variants, cart recovery, and checkout |
+| `/crater-commerce-backend` | Storefront-API-shaped catalog/cart, Stripe Checkout, orders, webhooks |
 | `/crater-content-seo` | Approved product facts, claims, metadata, and events |
 | `/crater-quality-review` | Critical purchase/fallback checks and a scoped verdict |
 | `/crater-product-assets` | Packshots, GLBs, posters, provenance, and size validation |
@@ -25,7 +25,7 @@ They load from the checkout; no global skill installer is required.
 | `crater-art-director` | art-direction, product-assets | Visual/asset contract |
 | `crater-frontend-engineer` | nextjs-storefront | Routes and shopping UI |
 | `crater-experience-engineer` | 3d-product, scroll-motion, product-assets | 3D and cinematic story |
-| `crater-commerce-engineer` | shopify-commerce | Secure server commerce/recovery |
+| `crater-commerce-engineer` | commerce-backend | Secure server commerce, payments, orders |
 | `crater-quality-engineer` | quality-review | Run scoped checks, report evidence |
 | `crater-release-reviewer` | quality-review | Read-only final diff/evidence review |
 
@@ -61,8 +61,8 @@ crater-frontend-engineer`. Use `/help` and the slash-command menu to confirm the
 project skills appear. Refer to the current agent documentation for listing and
 invocation behavior; commands can change between Claude Code releases.
 
-The toolkit commands need no `npm install` and no Shopify credentials. The future
-storefront will have its own dependencies and lockfile at the scaffold phase.
+The toolkit commands need no `npm install` and no payment credentials. The
+storefront in `apps/storefront` has its own dependencies and lockfile.
 
 ## Hooks and ordinary Git work
 
@@ -151,5 +151,5 @@ and those platform executions still need the local check described above. Hook
 and agent formats follow the current primary documentation.
 
 This verifies the development kit. App builds, browser shopping tests, device
-profiles, real assets, Shopify configuration, and live publishing occur in their
+profiles, real assets, Stripe configuration, and live publishing occur in their
 respective implementation phases.

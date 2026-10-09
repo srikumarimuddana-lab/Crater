@@ -9,8 +9,10 @@
 | 3D | Three.js + React Three Fiber + Drei | One lazy client-side experience island |
 | Cinematic timeline | GSAP + ScrollTrigger + `@gsap/react` | Own the story's progress and scene poses |
 | Ordinary motion | CSS transitions first | Drawers, hover/focus, and state changes |
-| Commerce | Shopify Storefront Cart API | Catalog, variants, prices, cart, hosted checkout |
-| Preview data | Typed fixture commerce adapter | Develop without credentials or live orders |
+| Commerce | Crater commerce service shaped like the Shopify Storefront API | Catalog, variants, prices, cart, orders, inventory |
+| Payments | Stripe hosted Checkout (test mode until the owner asks) | Card payment, receipts; no monthly fee |
+| Database | Postgres (`pg`); in-memory store for development | Carts, checkouts, orders, inventory |
+| Preview data | Sample catalog seed, `COMMERCE_PROVIDER=fixture` | Develop without keys or live orders |
 | Verification | Vitest + Playwright + axe integration | Add at the app milestone, not to every edit |
 | Deployment | Vercel preview as the initial option | Decide accounts and live domains separately |
 
@@ -28,10 +30,12 @@ storefront. Add the app under `apps/storefront` without replacing the toolkit.
 | `apps/storefront/src/components/ui/` | Buttons, selectors, drawers, tokens | Frontend |
 | `apps/storefront/src/components/commerce/` | Product cards, variant controls, cart UI | Frontend |
 | `apps/storefront/src/components/experience/` | Scene, poster, scroll story, motion policy | Experience |
-| `apps/storefront/src/lib/commerce/` | Typed provider contract, fixtures, Shopify transport | Commerce |
+| `apps/storefront/src/lib/commerce/` | Storefront contract, catalog/cart service, Stripe, repositories | Commerce |
 | `apps/storefront/src/lib/content/` | Approved claims, ingredient and SEO records | Product/frontend |
-| `apps/storefront/src/app/api/cart/` | Validated private cart requests | Commerce |
-| `apps/storefront/src/app/api/webhooks/shopify/` | Verified invalidation notifications | Commerce |
+| `apps/storefront/src/app/api/storefront/` | Storefront-shaped JSON API (products, cart) | Commerce |
+| `apps/storefront/src/app/api/checkout/` | Creates the Stripe Checkout Session from the cart | Commerce |
+| `apps/storefront/src/app/api/webhooks/stripe/` | Verified payment events → orders, inventory | Commerce |
+| `apps/storefront/db/` | SQL migrations and seed | Commerce |
 | `apps/storefront/public/products/` | Approved optimized images and lightweight models | Art/experience |
 
 The coordinator owns app manifests, dependency changes, shared types, and cross-
@@ -60,34 +64,43 @@ Unmount observers, listeners, timelines, and owned GPU resources correctly.
 
 ## Commerce contracts
 
-Use a provider interface shared by fixture and Shopify implementations. Normalize
-Shopify data once; do not couple canvas or UI components directly to GraphQL.
-Represent money as a decimal string and currency code, never a JavaScript float
-used as the checkout authority. Product options resolve to Shopify variant IDs.
+**Decision (user, 2026-10-09):** no Shopify subscription. Crater runs its own
+commerce layer, and Stripe hosted Checkout takes payment (no monthly fee; Stripe
+charges per successful card payment). The layer's objects, operation names, and
+error semantics mirror the Shopify Storefront API so the UI codes against
+documented behaviour; the mapping lives in
+`.claude/skills/crater-commerce-backend/references/storefront-api-mapping.md`.
 
-Keep private Storefront tokens server-side with the appropriate private-token
-header. Validate every incoming variant and quantity, restrict the store domain
-to the configured Shopify domain, and surface GraphQL transport errors and
-mutation `userErrors` separately. Public Storefront tokens, if selected later,
-have different scopes and must not be confused with private or Admin tokens.
+The contract is `apps/storefront/src/lib/commerce/types.ts` (`Storefront`,
+`Product`, `ProductVariant`, `MoneyV2`, `Cart`, `CartMutationPayload`). UI code calls
+`getStorefront()` from Server Components and Server Actions; the JSON routes under
+`/api/storefront` expose the same operations to other clients.
 
-Create an anonymous cart and store its full opaque identifier in a secure,
-HTTP-only, SameSite cookie where the application design allows it. Treat any
-checkout-capable cart identifier as sensitive; do not log it. Serialize dependent
-cart mutations, reconcile with Shopify's returned lines and totals, and handle
-expired carts, unavailable variants, quantity changes, and network failures.
-Request a fresh `checkoutUrl` when the customer starts checkout and validate its
-destination against configured store checkout hosts before redirecting.
-
-Catalog reads may be cached using public product tags. Cart, buyer identity, and
-checkout responses must be private and uncached. Verify webhook HMAC signatures
-over the raw request body, handle duplicate notifications, and invalidate only
-the relevant product/collection tags. Define version-specific Next.js cache APIs
-when scaffolding instead of guessing their signatures from an older release.
-
-Use Shopify-hosted checkout for payment, shipping, and tax configuration. This
-does not by itself configure those business settings or make the store ready for
-sales. Do not implement a competing payment backend for the first release.
+- **Money:** integer minor units internally; `MoneyV2` decimal strings outward.
+  The server reprices every cart read and checkout; clients send only variant IDs
+  and quantities.
+- **Cart:** unguessable ID in a secure, HTTP-only, SameSite=Lax cookie; never
+  logged in full; responses `private, no-store`. Mutations return
+  `{cart, userErrors, warnings}`: invalid input is a `userError`, stock
+  adjustments are `warnings`. Carts expire after 14 days; completed carts close.
+- **Checkout:** `POST /api/checkout` snapshots the cart, creates a Stripe Checkout
+  Session with `price_data` from our prices and an idempotency key, validates that
+  the redirect host is `checkout.stripe.com`, then redirects. Fixture mode refuses
+  without calling Stripe; live keys are refused unless `STRIPE_ALLOW_LIVE=true`.
+- **Orders and inventory:** created only by the verified Stripe webhook
+  (signature over the raw body, deduplicated by event and session, subtotal
+  compared with the snapshot), with inventory decremented in the same
+  transaction. The success page shows the recorded order or "processing".
+- **Persistence:** repository interface with `memory` (development, tests) and
+  `postgres` implementations (`COMMERCE_DB`, `DATABASE_URL`); migrations in
+  `apps/storefront/db/migrations`. A free hosted Postgres (e.g. Supabase or Neon)
+  is connected only when the owner asks.
+- **Business settings are owner decisions:** sales tax (Stripe Tax is a paid
+  add-on), shipping rates, returns policy, markets, and live keys. Do not invent
+  them. Order management starts in the Stripe dashboard; an admin UI is a later
+  scoped decision.
+- **Hosting:** Vercel Hobby is free but limited to non-commercial use; a live store
+  needs a paid tier or another host, decided by the owner.
 
 ## Initial project budgets
 

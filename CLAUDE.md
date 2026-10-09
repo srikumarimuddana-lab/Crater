@@ -19,7 +19,8 @@ contains the development toolkit, the specifications, and the storefront in
 ## Project contracts
 
 - Planned app location: `apps/storefront`. Stack: Next.js App Router, TypeScript,
-  Tailwind, Three.js/React Three Fiber/Drei, GSAP, Shopify Storefront Cart API.
+  Tailwind, Three.js/React Three Fiber/Drei, GSAP, and Crater's own commerce
+  backend (Shopify-Storefront-API-shaped, Postgres) with Stripe hosted Checkout.
 - Render text, price, accessible controls, and a responsive product image before
   loading WebGL. Keep the purchase journey functional with motion disabled and
   while the 3D asset fails or loads.
@@ -27,8 +28,9 @@ contains the development toolkit, the specifications, and the storefront in
   own ordinary interface state. Avoid competing animation owners.
 - Preserve keyboard access, reduced motion, mobile document flow, and readable
   product content. Keep essential content outside the canvas.
-- Use Shopify variant IDs and authoritative totals. Keep cart state uncached and
-  private. Never invent reviews, clinical evidence, stock, or certifications.
+- Use server-side variant IDs and authoritative totals; Stripe takes payment from
+  server prices only. Keep cart state uncached and private. Stripe stays in test
+  mode unless the user explicitly asks for live keys. Never invent reviews, clinical evidence, stock, or certifications.
 - Start with clearly marked fixture data. Connecting paid services, publishing a
   live site, and modifying production commerce data require a user request.
 - Keep real credentials in ignored local environment files. Never publish

@@ -60,14 +60,14 @@ function handle(input, mode) {
     return;
   }
   if (/(^|\/)\.env(?:\.|$)/.test(file.relative)) {
-    context(event, 'Crater: keep real credentials in ignored local environment files. Keep private Shopify and webhook tokens server-side; do not place them in NEXT_PUBLIC variables.');
+    context(event, 'Crater: keep real credentials in ignored local environment files. Keep Stripe secret keys, webhook secrets, and DATABASE_URL server-side; do not place them in NEXT_PUBLIC variables.');
     return;
   }
   if (file.relative.startsWith('apps/storefront/src/components/experience/')) {
     context(event, 'Crater experience check: preserve the poster, reduced motion, mobile document flow, and no-WebGL fallback. Clean up timelines, observers, and GPU resources on unmount. Verify the changed interaction at the affected viewport.');
   } else if (file.relative.startsWith('apps/storefront/src/lib/commerce/') ||
              file.relative.startsWith('apps/storefront/src/app/api/cart/')) {
-    context(event, 'Crater commerce check: use server-side variant validation and Shopify totals, handle userErrors explicitly, and keep purchase state private and uncached. Report the relevant error-path check.');
+    context(event, 'Crater commerce check: use server-side variant validation and server-calculated totals, return Storefront-style userErrors/warnings, and keep purchase state private and uncached. Report the relevant error-path check.');
   }
 }
 
