@@ -46,9 +46,11 @@ test('home renders shopping content without WebGL', async ({ page }) => {
   // Primary shopping action leads to the product in the collection.
   const shop = hero.getByRole('link', { name: /shop the serum/i });
   await expect(shop).toBeVisible();
+  await expect(shop).toHaveAttribute('href', '/products/mineral-serum');
   await shop.click();
-  await expect(page).toHaveURL(/#product-mineral-serum$/);
-  await expect(page.locator('#product-mineral-serum')).toBeInViewport();
+  await expect(page).toHaveURL(/\/products\/mineral-serum$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Mineral Serum' })).toBeVisible();
+  await page.goto('/');
 
   // Collection: six sample cards with price and size, and working filter links.
   const collection = page.getByRole('region', { name: /shop the collection/i });
@@ -60,6 +62,9 @@ test('home renders shopping content without WebGL', async ({ page }) => {
     await img.scrollIntoViewIfNeeded();
     await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
   }
+
+  // The whole card is one stretched link whose text is the product title.
+  await expect(collection.getByRole('link', { name: 'Gel Cleanser' })).toHaveAttribute('href', '/products/gel-cleanser');
 
   await collection.getByRole('link', { name: 'Cleansers' }).click();
   await expect(page).toHaveURL(/\?category=cleansers#collection$/);

@@ -274,4 +274,5 @@ export const recovery = {
   addUncertain: 'We could not confirm that this item was added. Please check your bag before adding it again.',
   errorPageHeading: 'Something went wrong',
   errorPageBody: 'Please try again, or return to the collection.',
+  errorPageHome: 'Return home',
 } as const;

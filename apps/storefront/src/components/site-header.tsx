@@ -1,6 +1,12 @@
 import Link from 'next/link';
+import { loadCart } from '@/app/_lib/cart';
+import { commerceMode } from '@/lib/commerce';
+import { BagControls } from './commerce/bag-controls';
 
-export function SiteHeader() {
+/** Server-rendered from the private cart cookie, so any page using it is dynamic and uncached. */
+export async function SiteHeader() {
+  const { cart } = await loadCart();
+  const mode = commerceMode();
   return (
     <header className="on-dark border-b border-gold/30 bg-forest-deep text-ivory">
       <div className="page-gutter grid min-h-20 grid-cols-[1fr_auto_1fr] items-center gap-4">
@@ -14,7 +20,7 @@ export function SiteHeader() {
           Crater
         </Link>
         <nav aria-label="Primary" className="col-start-3 justify-self-end">
-          <ul className="flex items-center gap-2">
+          <ul className="flex items-center gap-1 sm:gap-2">
             <li>
               <Link
                 href="/#collection"
@@ -22,6 +28,9 @@ export function SiteHeader() {
               >
                 Shop
               </Link>
+            </li>
+            <li>
+              <BagControls cart={cart} mode={mode} />
             </li>
           </ul>
         </nav>

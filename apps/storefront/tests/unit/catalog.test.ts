@@ -3,22 +3,20 @@ import { catalogSeed } from '@/lib/commerce/catalog-seed';
 import { InvalidCursorError } from '@/lib/commerce/catalog';
 import { createMemoryRepository } from '@/lib/commerce/memory-repository';
 import { createStorefront } from '@/lib/commerce/storefront';
-import { categories, fixtureProducts } from '@/lib/content/fixtures';
 
 const store = () => createStorefront({ repo: createMemoryRepository() });
 
 describe('catalog seed', () => {
-  it('stays in sync with the Phase 1 fixtures (handles, titles, images, preview copy, categories)', () => {
-    expect(catalogSeed.products.map((p) => p.handle)).toEqual(fixtureProducts.map((p) => p.handle));
-    for (const fx of fixtureProducts) {
-      const p = catalogSeed.products.find((x) => x.handle === fx.handle)!;
-      expect(p.title).toBe(fx.title);
-      expect(p.description).toBe(fx.previewCopy);
-      expect(p.featuredImage).toMatchObject({ url: fx.image.src, altText: fx.image.alt, width: fx.image.width, height: fx.image.height, placeholder: true });
-      const col = catalogSeed.collections.find((c) => c.productHandles.includes(fx.handle))!;
-      expect(col.handle).toBe(fx.category);
+  it('keeps the six Phase 1 handles, preview copy, placeholder packshots and collections', () => {
+    // Phase 1 fixtures (src/lib/content/fixtures.ts) were retired once the homepage read from this catalog.
+    const handles = ['mineral-serum', 'cloud-cream', 'gel-cleanser', 'balancing-toner', 'facial-mist', 'lip-cheek-balm'];
+    expect(catalogSeed.products.map((p) => p.handle)).toEqual(handles);
+    for (const p of catalogSeed.products) {
+      expect(p.description).toMatch(/placeholder|pending/i);
+      expect(p.featuredImage).toMatchObject({ url: `/products/${p.handle}/packshot.svg`, width: 800, height: 1000, placeholder: true });
+      expect(catalogSeed.collections.some((c) => c.productHandles.includes(p.handle))).toBe(true);
     }
-    expect(catalogSeed.collections.map((c) => c.handle)).toEqual(categories.map((c) => c.slug));
+    expect(catalogSeed.collections.map((c) => c.handle)).toEqual(['serums', 'moisturizers', 'cleansers', 'toners-mists', 'balms']);
   });
 
   it('marks everything as sample and keeps the hero variant first', async () => {
