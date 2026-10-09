@@ -1,6 +1,9 @@
 import { catalogSeed } from './catalog-seed';
 import type {
   CartRecord,
+  FulfilmentRecord,
+  MovementRecord,
+  WebhookEventRecord,
   CatalogSeed,
   CheckoutRecord,
   CollectionRecord,
@@ -13,7 +16,7 @@ import type {
 } from './records';
 import type { ID } from './types';
 
-type MemoryState = {
+export type MemoryState = {
   products: ProductRecord[];
   collections: CollectionRecord[];
   carts: Map<ID, CartRecord>;
@@ -21,7 +24,15 @@ type MemoryState = {
   orders: OrderRecord[];
   events: Set<string>;
   orderCounter: number;
+  /** Admin additions (migration 0004 equivalents). Mutated by the admin memory repository. */
+  movements: MovementRecord[];
+  fulfilments: Map<number, FulfilmentRecord>;
+  webhookEvents: WebhookEventRecord[];
+  /** Extension slots owned by other modules (e.g. the admin repository keeps its staff and audit state here). */
+  ext: Map<string, unknown>;
 };
+
+const WEBHOOK_LOG_CAP = 500;
 
 function freshState(seed: CatalogSeed): MemoryState {
   return {
@@ -32,6 +43,10 @@ function freshState(seed: CatalogSeed): MemoryState {
     orders: [],
     events: new Set(),
     orderCounter: 1000,
+    movements: [],
+    fulfilments: new Map(),
+    webhookEvents: [],
+    ext: new Map(),
   };
 }
 
@@ -52,6 +67,15 @@ function globalState(): MemoryState {
  * synchronous, so each is atomic on the single JS thread (the equivalent of the
  * Postgres transactions). Reads and writes copy records so callers cannot mutate state.
  */
+const STATE_OF = new WeakMap<object, MemoryState>();
+
+/** The backing state of a memory repository (admin memory repository only). Throws for any other repository. */
+export function memoryStateOf(repo: CommerceRepository): MemoryState {
+  const state = STATE_OF.get(repo);
+  if (!state) throw new Error('not a memory commerce repository');
+  return state;
+}
+
 export function createMemoryRepository(options: { seed?: CatalogSeed; shared?: boolean } = {}): CommerceRepository {
   const state = options.shared ? globalState() : freshState(options.seed ?? catalogSeed);
   const clone = <T>(v: T): T => structuredClone(v);
@@ -64,14 +88,15 @@ export function createMemoryRepository(options: { seed?: CatalogSeed; shared?: b
     return undefined;
   };
 
-  return {
+  const repo: CommerceRepository = {
     kind: 'memory',
 
-    async listProducts() {
-      return clone(state.products);
+    async listProducts(options) {
+      return clone(options?.includeInactive ? state.products : state.products.filter((p) => p.status === 'ACTIVE'));
     },
     async listCollections() {
-      return clone(state.collections);
+      const active = new Set(state.products.filter((p) => p.status === 'ACTIVE').map((p) => p.handle));
+      return clone(state.collections).map((c) => ({ ...c, productHandles: c.productHandles.filter((h) => active.has(h)) }));
     },
     async updateVariant(variantId, patch) {
       const v = findVariant(variantId);
@@ -153,9 +178,11 @@ export function createMemoryRepository(options: { seed?: CatalogSeed; shared?: b
 
       // All validation passed: from here on nothing can fail, so the mutation is atomic.
       const flags = [...input.flags];
+      const before = new Map<ID, { sku: string; quantity: number }>();
       for (const line of checkout.lines) {
         const v = findVariant(line.variantId);
         if (!v || v.quantity === null) continue;
+        if (!before.has(v.id)) before.set(v.id, { sku: v.sku, quantity: v.quantity });
         if (v.quantity < line.quantity) flags.push('INVENTORY_SHORT');
         v.quantity = Math.max(v.quantity - line.quantity, 0);
       }
@@ -174,8 +201,29 @@ export function createMemoryRepository(options: { seed?: CatalogSeed; shared?: b
         reviewFlags: [...new Set(flags)],
         processedAt: input.now,
         lines: clone(checkout.lines),
+        fulfilmentStatus: 'UNFULFILLED',
+        shippingAddress: input.shippingAddress ? clone(input.shippingAddress) : null,
+        packingInstructions: null,
+        internalNotes: null,
       };
       state.orders.push(order);
+      // One ORDER_PAID movement per tracked variant (same step as the stock change, so they cannot drift apart).
+      for (const [variantId, was] of before) {
+        const after = findVariant(variantId)?.quantity ?? 0;
+        if (after === was.quantity) continue;
+        state.movements.push({
+          id: state.movements.length + 1,
+          at: input.now,
+          variantId,
+          sku: was.sku,
+          delta: after - was.quantity,
+          reason: 'ORDER_PAID',
+          note: null,
+          staffId: null,
+          orderId: order.id,
+          availableAfter: after,
+        });
+      }
       state.events.add(input.eventId);
       checkout.stripeSessionId = input.sessionId;
       checkout.status = 'completed';
@@ -202,7 +250,22 @@ export function createMemoryRepository(options: { seed?: CatalogSeed; shared?: b
     async countOrders() {
       return state.orders.length;
     },
+
+    async openCartCounts(notBefore) {
+      const counts = new Map<ID, number>();
+      for (const cart of state.carts.values()) {
+        if (cart.completedAt || new Date(cart.updatedAt) < notBefore) continue;
+        for (const variantId of new Set(cart.lines.map((l) => l.variantId))) counts.set(variantId, (counts.get(variantId) ?? 0) + 1);
+      }
+      return counts;
+    },
+    async recordWebhookEvent({ eventId, eventType, outcome, at }) {
+      state.webhookEvents.push({ id: state.webhookEvents.length ? state.webhookEvents[state.webhookEvents.length - 1].id + 1 : 1, eventId, eventType, outcome, receivedAt: at });
+      if (state.webhookEvents.length > WEBHOOK_LOG_CAP) state.webhookEvents.splice(0, state.webhookEvents.length - WEBHOOK_LOG_CAP);
+    },
     async close() {},
   };
+  STATE_OF.set(repo, state);
+  return repo;
 }
 

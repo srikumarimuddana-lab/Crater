@@ -3,6 +3,7 @@ import { numericId } from './ids';
 import type {
   CartRecord,
   CheckoutRecord,
+  PostalAddressRecord,
   CollectionRecord,
   CommerceRepository,
   CompleteCheckoutInput,
@@ -39,6 +40,15 @@ export function poolConfigFromEnv(env: Record<string, string | undefined> = proc
   // An explicit sslmode in DATABASE_URL takes precedence (pg applies the URL last).
   if (env.DATABASE_SSL === 'require') config.ssl = { rejectUnauthorized: true };
   return config;
+}
+
+const POOL_OF = new WeakMap<object, Pool>();
+
+/** The pool behind a Postgres commerce repository (admin Postgres repository only). */
+export function pgPoolOf(repo: CommerceRepository): Pool {
+  const pool = POOL_OF.get(repo);
+  if (!pool) throw new Error('not a postgres commerce repository');
+  return pool;
 }
 
 export function createPostgresRepository(pool: Pool): CommerceRepository {
@@ -109,6 +119,10 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
     totalMinor: num(o.total_minor),
     reviewFlags: (o.review_flags as string[]) ?? [],
     processedAt: iso(o.processed_at),
+    fulfilmentStatus: o.fulfilment_status as OrderRecord['fulfilmentStatus'],
+    shippingAddress: (o.shipping_address as PostalAddressRecord | null) ?? null,
+    packingInstructions: (o.packing_instructions as string | null) ?? null,
+    internalNotes: (o.internal_notes as string | null) ?? null,
     lines: lines.map((l) => ({
       variantId: String(l.variant_id),
       title: String(l.title),
@@ -136,14 +150,16 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
     }
   }
 
-  return {
+  const repo: CommerceRepository = {
     kind: 'postgres',
 
-    async listProducts() {
+    async listProducts(options) {
+      // products.status is the single source of truth for visibility (migration 0004).
+      const only = options?.includeInactive ? '' : "where status = 'ACTIVE'";
       const [products, variants] = await Promise.all([
-        q('select * from commerce.products where archived_at is null order by id'),
+        q(`select * from commerce.products ${only} order by id`),
         q(`select v.* from commerce.variants v join commerce.products p on p.id = v.product_id
-           where p.archived_at is null order by v.product_id, v.position`),
+           ${options?.includeInactive ? '' : "where p.status = 'ACTIVE'"} order by v.product_id, v.position`),
       ]);
       return products.map((p): ProductRecord => ({
         id: gidOf('Product', p.id),
@@ -158,6 +174,7 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
         images: p.images as ProductRecord['images'],
         details: p.details as ProductRecord['details'],
         sample: Boolean(p.sample),
+        status: p.status as ProductRecord['status'],
         createdAt: iso(p.created_at),
         updatedAt: iso(p.updated_at),
         variants: variants
@@ -168,6 +185,8 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
             title: String(v.title),
             priceMinor: num(v.price_minor),
             compareAtMinor: v.compare_at_minor === null ? null : num(v.compare_at_minor),
+            costMinor: v.cost_minor === null ? null : num(v.cost_minor),
+            lowStockThreshold: num(v.low_stock_threshold),
             selectedOptions: v.selected_options as VariantRecord['selectedOptions'],
             image: (v.image as VariantRecord['image']) ?? null,
             quantity: v.inventory_quantity === null ? null : num(v.inventory_quantity),
@@ -179,7 +198,7 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
       const [cols, members] = await Promise.all([
         q('select * from commerce.collections order by id'),
         q(`select cp.collection_id, p.handle from commerce.collection_products cp
-           join commerce.products p on p.id = cp.product_id where p.archived_at is null
+           join commerce.products p on p.id = cp.product_id where p.status = 'ACTIVE'
            order by cp.collection_id, cp.position`),
       ]);
       return cols.map((c): CollectionRecord => ({
@@ -303,12 +322,14 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
         const flags = [...input.flags];
         const ids = [...new Set(checkout.lines.map((l) => numericId(l.variantId, 'ProductVariant')).filter((n): n is number => n !== null))].sort((a, b) => a - b);
         const stock = new Map<number, number | null>();
+        const movements = new Map<number, { sku: string; before: number }>();
         const locked = (await c.query('select id, inventory_quantity from commerce.variants where id = any($1::int[]) order by id for update', [ids])).rows as Row[];
         for (const r of locked) stock.set(num(r.id), r.inventory_quantity === null ? null : num(r.inventory_quantity));
         for (const line of checkout.lines) {
           const n = numericId(line.variantId, 'ProductVariant');
           const have = n === null ? undefined : stock.get(n);
           if (have === undefined || have === null) continue;
+          if (!movements.has(n as number)) movements.set(n as number, { sku: line.sku, before: have });
           if (have < line.quantity) flags.push('INVENTORY_SHORT');
           const left = Math.max(have - line.quantity, 0);
           stock.set(n as number, left);
@@ -321,10 +342,11 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
         const created = (
           await c.query(
             `insert into commerce.orders
-               (order_number, checkout_id, stripe_session_id, email, financial_status, subtotal_minor, shipping_minor, tax_minor, total_minor, review_flags, processed_at)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
+               (order_number, checkout_id, stripe_session_id, email, financial_status, subtotal_minor, shipping_minor, tax_minor, total_minor, review_flags, processed_at, shipping_address)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb) returning id`,
             [orderNumber, checkout.id, input.sessionId, input.email, input.financialStatus, checkout.subtotalMinor,
-              input.shippingMinor, input.taxMinor, input.totalMinor, [...new Set(flags)], input.now],
+              input.shippingMinor, input.taxMinor, input.totalMinor, [...new Set(flags)], input.now,
+              input.shippingAddress ? json(input.shippingAddress) : null],
           )
         ).rows as Row[];
         for (const [position, l] of checkout.lines.entries()) {
@@ -332,6 +354,17 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
             `insert into commerce.order_lines (order_id, position, variant_id, title, variant_title, sku, quantity, unit_minor)
              values ($1,$2,$3,$4,$5,$6,$7,$8)`,
             [created[0].id, position, l.variantId, l.title, l.variantTitle, l.sku, l.quantity, l.unitMinor],
+          );
+        }
+
+        // 5b. One ORDER_PAID movement per tracked variant, in the same transaction as the stock change.
+        for (const [variantNumeric, was] of [...movements].sort((a, b) => a[0] - b[0])) {
+          const after = stock.get(variantNumeric) as number;
+          if (after === was.before) continue;
+          await c.query(
+            `insert into commerce.inventory_movements (at, variant_id, sku, delta, reason, order_id, available_after)
+             values ($1,$2,$3,$4,'ORDER_PAID',$5,$6)`,
+            [input.now, variantNumeric, was.sku, after - was.before, created[0].id, after],
           );
         }
 
@@ -368,10 +401,26 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
     async countOrders() {
       return num((await q('select count(*)::int as n from commerce.orders'))[0].n);
     },
+
+    async openCartCounts(notBefore) {
+      const rows = await q(
+        `select cl.variant_id, count(distinct cl.cart_id)::int as n
+           from commerce.cart_lines cl join commerce.carts c on c.id = cl.cart_id
+          where c.completed_at is null and c.updated_at >= $1
+          group by cl.variant_id`,
+        [notBefore.toISOString()],
+      );
+      return new Map(rows.map((r) => [gidOf('ProductVariant', r.variant_id), num(r.n)]));
+    },
+    async recordWebhookEvent({ eventId, eventType, outcome, at }) {
+      await pool.query('insert into commerce.webhook_events (event_id, event_type, outcome, received_at) values ($1,$2,$3,$4)', [eventId, eventType, outcome, at]);
+    },
     async close() {
       await pool.end();
     },
   };
+  POOL_OF.set(repo, pool);
+  return repo;
 }
 
 /** Thrown inside a transaction to roll it back (undoing the event-dedupe insert) and return an outcome. */

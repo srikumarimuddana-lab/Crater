@@ -5,7 +5,7 @@ import { readConfig, stripeUsable, type CommerceConfig } from './config';
 import { isCartId, isCheckoutId, isStripeSessionId, newCheckoutId } from './ids';
 import { logger, redactSession, ref } from './log';
 import { minorToAmount, multiplyMinor, sumMinor, toMoney } from './money';
-import type { CheckoutLineSnapshot, CheckoutRecord, CommerceRepository, OrderRecord } from './records';
+import type { CheckoutLineSnapshot, CheckoutRecord, CommerceRepository, OrderRecord, PostalAddressRecord, WebhookOutcome } from './records';
 import { loadIndex } from './storefront';
 import { isStripeCheckoutUrl, type StripeClient, type StripeFactory } from './stripe-client';
 import type { CheckoutSessionResult, ID, Order } from './types';
@@ -24,6 +24,33 @@ const REUSE_WINDOW_MS = 20 * 60 * 60 * 1000;
 const CHECKOUT_FAIL = (code: Extract<CheckoutSessionResult, { ok: false }>['code'], message: string): CheckoutSessionResult => ({ ok: false, code, message });
 
 export const cartRefOf = (cartId: ID): string => createHash('sha256').update(`crater-cart-ref:${cartId}`).digest('hex').slice(0, 32);
+
+const clean = (v: unknown, max: number): string =>
+  typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max) : '';
+
+/**
+ * The shipping address Stripe collected. In the installed SDK's API version (2026-08-26.dahlia) it lives
+ * at `collected_information.shipping_details` (older versions had `shipping_details` on the session).
+ * Null when Stripe returned no usable address; the order is still created and staff look in Stripe.
+ */
+export function shippingAddressFromSession(session: Stripe.Checkout.Session): PostalAddressRecord | null {
+  const details = session.collected_information?.shipping_details;
+  const a = details?.address;
+  if (!details || !a) return null;
+  const line1 = clean(a.line1, 200);
+  const city = clean(a.city, 100);
+  const country = clean(a.country, 2).toUpperCase();
+  if (!line1 || !city || !country) return null;
+  return {
+    name: clean(details.name, 200),
+    line1,
+    line2: clean(a.line2, 200) || null,
+    city,
+    province: clean(a.state, 100),
+    postalCode: clean(a.postal_code, 20),
+    country,
+  };
+}
 
 export function orderFromRecord(o: OrderRecord): Order {
   return {
@@ -234,8 +261,16 @@ export function createCheckoutService(deps: CheckoutDeps) {
       return { status: 400, body: { error: 'invalid_request' } };
     }
 
+    const at = now().toISOString();
+    // Outcome log for the admin event log. Best effort: it must never change the HTTP answer.
+    const track = async (outcome: WebhookOutcome) => {
+      try {
+        await repo.recordWebhookEvent({ eventId: event.id, eventType: event.type, outcome, at });
+      } catch (error) {
+        logger.error('webhook outcome log failed', error, { event: ref(event.id) });
+      }
+    };
     try {
-      const at = now().toISOString();
       switch (event.type) {
         case 'checkout.session.completed':
         case 'checkout.session.async_payment_succeeded': {
@@ -243,26 +278,34 @@ export function createCheckoutService(deps: CheckoutDeps) {
           if (session.payment_status !== 'paid') {
             // Delayed payment method: the money has not arrived yet. async_payment_succeeded follows.
             const checkoutId = session.metadata?.checkout_id;
+            let outcome: WebhookOutcome = 'REJECTED';
             if (isCheckoutId(checkoutId) && session.payment_status === 'unpaid') {
-              await repo.recordCheckoutStatus({ eventId: event.id, eventType: event.type, checkoutId, status: 'awaiting_payment', now: at });
+              const r = await repo.recordCheckoutStatus({ eventId: event.id, eventType: event.type, checkoutId, status: 'awaiting_payment', now: at });
+              outcome = r === 'duplicate_event' ? 'DUPLICATE' : 'PROCESSED';
             }
+            await track(outcome);
             return { status: 200, body: { received: true } };
           }
-          return { status: 200, body: { received: true, ...(await fulfil(event, session, at)) } };
+          const done = await fulfil(event, session, at);
+          await track(done.outcome);
+          return { status: 200, body: { received: true, ...done.body } };
         }
         case 'checkout.session.async_payment_failed':
         case 'checkout.session.expired': {
           const session = event.data.object as Stripe.Checkout.Session;
           const checkoutId = session.metadata?.checkout_id;
+          let outcome: WebhookOutcome = 'REJECTED';
           if (isCheckoutId(checkoutId)) {
-            await repo.recordCheckoutStatus({
+            const r = await repo.recordCheckoutStatus({
               eventId: event.id,
               eventType: event.type,
               checkoutId,
               status: event.type === 'checkout.session.expired' ? 'expired' : 'payment_failed',
               now: at,
             });
+            outcome = r === 'duplicate_event' ? 'DUPLICATE' : 'PROCESSED';
           }
+          await track(outcome);
           return { status: 200, body: { received: true } };
         }
         default:
@@ -271,16 +314,21 @@ export function createCheckoutService(deps: CheckoutDeps) {
     } catch (error) {
       // 5xx makes Stripe retry later; the event id dedupe makes that safe.
       logger.error('webhook processing failed', error, { event: ref(event.id) });
+      await track('FAILED');
       return { status: 500, body: { error: 'processing_failed' } };
     }
   }
 
-  async function fulfil(event: Stripe.Event, session: Stripe.Checkout.Session, at: string): Promise<Record<string, unknown>> {
+  async function fulfil(
+    event: Stripe.Event,
+    session: Stripe.Checkout.Session,
+    at: string,
+  ): Promise<{ body: Record<string, unknown>; outcome: WebhookOutcome }> {
     const checkoutId = session.metadata?.checkout_id;
     const checkout = isCheckoutId(checkoutId) ? await repo.getCheckout(checkoutId) : await repo.getCheckoutBySessionId(session.id);
     if (!checkout) {
       logger.warn('paid session has no matching checkout', { event: ref(event.id), session: redactSession(session.id) });
-      return { handled: false };
+      return { body: { handled: false }, outcome: 'REJECTED' };
     }
     // Compare Stripe's numbers with our frozen snapshot; trust neither on disagreement.
     const flags: string[] = [];
@@ -304,6 +352,7 @@ export function createCheckoutService(deps: CheckoutDeps) {
       shippingMinor,
       taxMinor,
       totalMinor,
+      shippingAddress: shippingAddressFromSession(session),
       now: at,
     });
     if (outcome.kind === 'created') {
@@ -317,12 +366,13 @@ export function createCheckoutService(deps: CheckoutDeps) {
           session: redactSession(session.id),
         });
       }
-      return { handled: true, order: outcome.order.number };
+      return { body: { handled: true, order: outcome.order.number }, outcome: 'PROCESSED' };
     }
     if (outcome.kind === 'session_mismatch' || outcome.kind === 'unknown_checkout') {
       logger.warn('paid session rejected', { reason: outcome.kind, session: redactSession(session.id) });
+      return { body: { handled: false, reason: outcome.kind }, outcome: 'REJECTED' };
     }
-    return { handled: false, reason: outcome.kind };
+    return { body: { handled: false, reason: outcome.kind }, outcome: 'DUPLICATE' };
   }
 
   return { createCheckoutSession, getCheckoutResult, sessionBelongsToCart, handleStripeWebhook };

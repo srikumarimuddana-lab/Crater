@@ -6,12 +6,19 @@ import type { Attribute, ID, Image, ProductDetails, ProductOption, SelectedOptio
  * and Postgres repositories and by the catalog seed.
  */
 
+/** Authoritative visibility (migration 0004). The storefront lists and sells ACTIVE products only. */
+export type ProductStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+
 export type VariantRecord = {
   id: ID;
   sku: string;
   title: string;
   priceMinor: number;
   compareAtMinor: number | null;
+  /** Unit cost for staff reports; never shown to shoppers. */
+  costMinor: number | null;
+  /** Low-stock alert level for the admin; never shown to shoppers. */
+  lowStockThreshold: number;
   selectedOptions: SelectedOption[];
   image: Image | null;
   /** Null = inventory not tracked. */
@@ -31,6 +38,7 @@ export type ProductRecord = {
   images: Image[];
   details: ProductDetails;
   sample: boolean;
+  status: ProductStatus;
   createdAt: string;
   updatedAt: string;
   /** Position 0 is the default variant. */
@@ -99,6 +107,19 @@ export type CheckoutRecord = {
 
 export type OrderStatus = 'PENDING' | 'PAID' | 'REFUNDED' | 'PARTIALLY_REFUNDED' | 'VOIDED';
 
+/** Shipping address Stripe collected, snapshotted on the order. Free text from the buyer: treat as PII. */
+export type PostalAddressRecord = {
+  name: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  province: string;
+  postalCode: string;
+  country: string;
+};
+
+export type FulfilmentStatusRecord = 'UNFULFILLED' | 'FULFILLED';
+
 export type OrderRecord = {
   id: number;
   number: number;
@@ -114,6 +135,10 @@ export type OrderRecord = {
   reviewFlags: string[];
   processedAt: string;
   lines: CheckoutLineSnapshot[];
+  fulfilmentStatus: FulfilmentStatusRecord;
+  shippingAddress: PostalAddressRecord | null;
+  packingInstructions: string | null;
+  internalNotes: string | null;
 };
 
 export type CompleteCheckoutInput = {
@@ -127,6 +152,8 @@ export type CompleteCheckoutInput = {
   shippingMinor: number;
   taxMinor: number;
   totalMinor: number;
+  /** Address Stripe collected (API 2026-08-26.dahlia: collected_information.shipping_details); null if none. */
+  shippingAddress: PostalAddressRecord | null;
   now: string;
 };
 
@@ -145,11 +172,40 @@ export type RecordStatusInput = {
   now: string;
 };
 
+export type WebhookOutcome = 'PROCESSED' | 'DUPLICATE' | 'REJECTED' | 'FAILED';
+
+export type MovementReason = 'RECEIVED' | 'COUNT_CORRECTION' | 'DAMAGED' | 'RETURN_RESTOCK' | 'OTHER' | 'ORDER_PAID';
+
+/** Append-only stock ledger row. `availableAfter` is the variant's sellable quantity after the change. */
+export type MovementRecord = {
+  id: number;
+  at: string;
+  variantId: ID;
+  sku: string;
+  delta: number;
+  reason: MovementReason;
+  note: string | null;
+  staffId: number | null;
+  orderId: number | null;
+  availableAfter: number;
+};
+
+export type FulfilmentRecord = {
+  orderId: number;
+  carrier: string;
+  trackingNumber: string;
+  fulfilledAt: string;
+  staffId: number | null;
+};
+
+export type WebhookEventRecord = { id: number; eventId: string; eventType: string; outcome: WebhookOutcome; receivedAt: string };
+
 export interface CommerceRepository {
   readonly kind: 'memory' | 'postgres';
 
   // Catalog (read model + administrative price/stock change used by tests and future admin).
-  listProducts(): Promise<ProductRecord[]>;
+  /** ACTIVE products only (what the storefront may list and sell) unless `includeInactive` is set (admin). */
+  listProducts(options?: { includeInactive?: boolean }): Promise<ProductRecord[]>;
   listCollections(): Promise<CollectionRecord[]>;
   updateVariant(variantId: ID, patch: { priceMinor?: number; quantity?: number | null }): Promise<boolean>;
 
@@ -170,6 +226,11 @@ export interface CommerceRepository {
   recordCheckoutStatus(input: RecordStatusInput): Promise<'updated' | 'duplicate_event' | 'ignored'>;
   getOrderBySessionId(sessionId: string): Promise<OrderRecord | null>;
   countOrders(): Promise<number>;
+
+  /** Open carts per variant id: not completed and updated at or after `notBefore` (the cart TTL cutoff). */
+  openCartCounts(notBefore: Date): Promise<Map<ID, number>>;
+  /** Best-effort outcome log for verified Stripe events (admin event log). Never throws into the webhook. */
+  recordWebhookEvent(input: { eventId: string; eventType: string; outcome: WebhookOutcome; at: string }): Promise<void>;
 
   close(): Promise<void>;
 }

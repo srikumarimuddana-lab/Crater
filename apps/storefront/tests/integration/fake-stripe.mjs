@@ -58,6 +58,8 @@ function createSession(params, headers) {
     client_reference_id: params.client_reference_id ?? null,
     customer_email: params.customer_email ?? null,
     customer_details: null,
+    // Real sessions (API 2026-08-26.dahlia) carry the address Checkout collected here once the buyer has paid.
+    collected_information: null,
     metadata: params.metadata ?? {},
     success_url: params.success_url ?? null,
     cancel_url: params.cancel_url ?? null,
@@ -115,6 +117,12 @@ const server = http.createServer(async (req, res) => {
         s.status = 'complete';
         s.payment_status = 'paid';
         s.customer_details = { email: s.customer_email ?? 'buyer@example.test', name: 'Test Buyer' };
+        s.collected_information = {
+          shipping_details: {
+            name: 'Test Buyer',
+            address: { line1: '100 Sample Street', line2: null, city: 'Toronto', state: 'ON', postal_code: 'M5V 2T6', country: 'CA' },
+          },
+        };
         return send(res, 200, s);
       }
     }

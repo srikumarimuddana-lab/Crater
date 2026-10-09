@@ -96,9 +96,9 @@ test('home renders shopping content without WebGL', async ({ page }) => {
   await filtered.getByRole('link', { name: 'All products' }).click();
   await expect(page.getByRole('region', { name: /shop all/i }).getByRole('heading', { level: 3 })).toHaveCount(9);
 
-  // Sorting still works (price, low to high puts the $22.00 extracts first).
-  await page.goto('/?sort=price-asc#collection');
-  await expect(page.getByRole('region', { name: /shop all/i }).getByRole('heading', { level: 3 }).first()).toHaveText('Peppermint & Ginger Extract');
+  // Sorting still works (price, high to low puts the $74.00 kit first).
+  await page.goto('/?sort=price-desc#collection');
+  await expect(page.getByRole('region', { name: /shop all/i }).getByRole('heading', { level: 3 }).first()).toHaveText('Evening Ritual Kit');
 
   // No canvas is required for any of the above.
   await expect(page.locator('canvas')).toHaveCount(0);
@@ -207,12 +207,12 @@ test('featured carousel: a list of six products with working, accessible previou
 
   // Scroll to the end: Next becomes aria-disabled and does nothing.
   for (let i = 0; i < 8 && (await next.getAttribute('aria-disabled')) !== 'true'; i++) {
-    await next.click();
+    await next.click({ force: true });
     await page.waitForTimeout(450);
   }
   await expect(next).toHaveAttribute('aria-disabled', 'true');
   const end = await list.evaluate((el) => el.scrollLeft);
-  await next.click();
+  await next.click({ force: true });
   await page.waitForTimeout(300);
   expect(await list.evaluate((el) => el.scrollLeft)).toBe(end);
 

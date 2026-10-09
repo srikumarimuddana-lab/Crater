@@ -6,9 +6,13 @@
 // Retiring old sample data. Anything the seed no longer lists is removed from the live catalog so a
 // reseeded database matches the seed, and re-running changes nothing:
 //   * Sample products (sample = true) missing from the seed are DELETED, with their variants and
-//     collection memberships, unless an order line or a checkout snapshot still points at one of their
-//     variants. Those are ARCHIVED instead (archived_at set, collection memberships removed): the row
+//     collection memberships, unless an order line, a checkout snapshot or an inventory movement still
+//     points at one of their variants. Those are ARCHIVED instead (status = 'ARCHIVED' and archived_at
+//     set, which migration 0004 keeps in lockstep; collection memberships removed): the row
 //     stays for the financial record, but the storefront lists and sells nothing from it.
+//   * Every seeded sample product is set ACTIVE (status = 'ACTIVE'), which also re-activates a sample
+//     product staff drafted or archived in the admin. Variant cost and low-stock threshold are staff
+//     data: the seed never overwrites them.
 //   * Variants missing from the seed but belonging to a seeded product are deleted when unreferenced,
 //     otherwise made unavailable (inventory 0, parked after the live positions).
 //   * Sample collections (description starting "Sample collection") missing from the seed are deleted.
@@ -32,6 +36,7 @@ const VARIANT_GID = "'gid://crater/ProductVariant/' || v.id::text";
 const VARIANT_REFERENCED = `(
   exists (select 1 from commerce.order_lines ol where ol.variant_id = ${VARIANT_GID})
   or exists (select 1 from commerce.checkouts ch, jsonb_array_elements(ch.lines) l where l ->> 'variantId' = ${VARIANT_GID})
+  or exists (select 1 from commerce.inventory_movements im where im.variant_id = v.id)
 )`;
 
 /**
@@ -62,7 +67,7 @@ async function retireStaleRows(client, catalog) {
     }
     await client.query('delete from commerce.collection_products where product_id = $1', [row.id]);
     if (row.archived_at === null) {
-      await client.query('update commerce.products set archived_at = now() where id = $1', [row.id]);
+      await client.query("update commerce.products set status = 'ARCHIVED', archived_at = now() where id = $1", [row.id]);
       report.productsArchived += 1;
     }
   }
@@ -105,14 +110,14 @@ export async function seedCatalog(pool, catalog = catalogSeed) {
     for (const p of catalog.products) {
       await client.query(
         `insert into commerce.products
-           (id, handle, title, description, vendor, product_type, tags, options, featured_image, images, details, sample, created_at, updated_at)
-         values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10::jsonb,$11::jsonb,$12,$13,$14)
+           (id, handle, title, description, vendor, product_type, tags, options, featured_image, images, details, sample, created_at, updated_at, status)
+         values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10::jsonb,$11::jsonb,$12,$13,$14,'ACTIVE')
          on conflict (id) do update set
            handle = excluded.handle, title = excluded.title, description = excluded.description,
            vendor = excluded.vendor, product_type = excluded.product_type, tags = excluded.tags,
            options = excluded.options, featured_image = excluded.featured_image, images = excluded.images,
            details = excluded.details, sample = excluded.sample, updated_at = excluded.updated_at,
-           archived_at = null`,
+           status = 'ACTIVE', archived_at = null`,
         [tail(p.id), p.handle, p.title, p.description, p.vendor, p.productType, p.tags, json(p.options),
           json(p.featuredImage), json(p.images), json(p.details), p.sample, p.createdAt, p.updatedAt],
       );

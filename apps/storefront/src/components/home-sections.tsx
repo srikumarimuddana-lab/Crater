@@ -14,9 +14,9 @@ export function Hero({ product }: { product: Product }) {
   const image = product.featuredImage;
   return (
     <section aria-labelledby="hero-title" className="bg-parchment">
-      <div className="page-gutter grid grid-cols-1 items-center gap-x-12 gap-y-8 py-10 md:grid-cols-12 md:py-14 lg:py-20">
+      <div className="page-gutter grid grid-cols-1 gap-x-12 md:items-start lg:items-center gap-y-8 py-10 md:grid-cols-12 md:py-14 lg:py-20">
         <div className="md:col-span-6 lg:col-span-5">
-          <h1 id="hero-title" className="!text-[clamp(2.25rem,1.4rem+3vw,4rem)]">
+          <h1 id="hero-title" className="!text-[clamp(2.25rem,1.4rem+3vw,4rem)] max-md:min-h-[3.15em]">
             {home.hero.headline}
           </h1>
           <p className="mt-4 max-w-[36ch] text-lg text-walnut">{home.hero.subline}</p>
