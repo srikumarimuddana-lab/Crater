@@ -30,10 +30,25 @@ export async function closeDb(): Promise<void> {
  */
 export async function resetCommerceData(): Promise<void> {
   const pool = db();
-  await pool.query(
-    `truncate commerce.order_lines, commerce.orders, commerce.checkouts, commerce.cart_lines,
-              commerce.carts, commerce.processed_webhook_events restart identity cascade`,
-  );
+  // The stock ledger and audit log are append-only (triggers from migration 0004 block UPDATE, DELETE and
+  // TRUNCATE for every role, the owner included). Test setup alone bypasses them, on one transaction, with
+  // session_replication_role = replica (superuser: the throwaway cluster's postgres user). Never used by the app.
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await client.query('set local session_replication_role = replica');
+    await client.query(
+      `truncate commerce.order_fulfilments, commerce.inventory_movements, commerce.webhook_events,
+                commerce.order_lines, commerce.orders, commerce.checkouts, commerce.cart_lines,
+                commerce.carts, commerce.processed_webhook_events restart identity cascade`,
+    );
+    await client.query('commit');
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  } finally {
+    client.release();
+  }
   await pool.query("update commerce.counters set value = 1000 where name = 'order_number'");
   // db/seed.mjs uses top-level await, so it must be loaded with import() from this CommonJS-compiled file.
   const { seedCatalog } = await import('../../db/seed.mjs');

@@ -145,7 +145,7 @@ export const nav = {
 
 export const home = {
   /** OWNER: final wording. States only true, neutral facts. */
-  announcement: 'Preview store. Sample products only. Shipping within Canada.',
+  announcement: 'Preview store: sample products, not for sale. Shipping within Canada.',
   hero: {
     headline: 'Liquid herbal extracts and body oils',
     subline: 'Tinctures, single herbs, body oils and kits, shown here as sample products.',

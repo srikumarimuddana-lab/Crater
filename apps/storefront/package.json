@@ -16,6 +16,7 @@
     "test:unit": "vitest run",
     "db:migrate": "node db/migrate.mjs",
     "db:seed": "node db/seed.mjs",
+    "admin:create-owner": "node db/admin-create-owner.mjs",
     "test:integration": "node scripts/test-integration.mjs",
     "test:integration:pg": "bash scripts/with-test-postgres.sh"
   },
