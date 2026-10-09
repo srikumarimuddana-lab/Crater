@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "project": "Crater",
+  "verifiedOn": "2026-10-09",
+  "maxInitialWorkers": 2,
+  "skills": [
+    "crater-kickoff",
+    "crater-art-direction",
+    "crater-nextjs-storefront",
+    "crater-3d-product",
+    "crater-scroll-motion",
+    "crater-shopify-commerce",
+    "crater-content-seo",
+    "crater-quality-review",
+    "crater-product-assets"
+  ],
+  "agents": [
+    "crater-orchestrator",
+    "crater-product-strategist",
+    "crater-art-director",
+    "crater-frontend-engineer",
+    "crater-experience-engineer",
+    "crater-commerce-engineer",
+    "crater-quality-engineer",
+    "crater-release-reviewer"
+  ],
+  "rules": ["storefront", "experience", "commerce", "content"],
+  "hookEvents": ["SessionStart", "PostToolUse", "SubagentStart"],
+  "documents": [
+    "docs/design-brief.md",
+    "docs/architecture.md",
+    "docs/asset-brief.md",
+    "docs/implementation-plan.md",
+    "docs/claude-code-setup.md",
+    "docs/sources.md"
+  ]
+}

@@ -1,0 +1,181 @@
+# Crater storefront implementation plan
+
+**Goal:** Build a premium skincare preview, then connect verified commerce data
+and complete a working purchase journey.
+
+**Architecture:** Server-rendered Next.js content with a typed commerce adapter;
+small client islands for UI and a lazy 3D/GSAP story; Shopify-hosted checkout.
+
+**Specifications:** `design-brief.md`, `architecture.md`, and `asset-brief.md`.
+
+**Execution:** Use `/crater-kickoff` for the requested phase. The main coordinator
+owns integration. Use one worker for small work or at most two independent
+workers initially, with explicit file ownership. The following phases are future
+application work; this toolkit does not mark them as implemented.
+
+## Global constraints
+
+- Keep essential content outside canvas and retain a useful packshot fallback.
+- Native scrolling, keyboard access, reduced motion, and mobile normal flow are
+  required from the first visual milestone.
+- Keep Shopify authoritative for variants, availability, totals, and checkout.
+- Fixture mode must be clearly visible in the preview and cannot create orders.
+- Use scoped verification. Never report an unrun app/browser check as passed.
+- Never install Git hooks or change `core.hooksPath` as part of these phases.
+
+## Review focus
+
+Verify the following conditions in their owning phases: missing/failed model
+loads (Phase 3); late fonts/images and mobile layout (Phases 1/2); navigation
+back into a pinned story (Phase 4); stale stock, concurrent mutations, and an
+expired cart (Phase 5); fixture content or unsupported claims reaching a live
+preview (Phases 2/6). The tests named below cover those concrete conditions.
+
+## Phase 1: accessible static foundation
+
+**Owner:** Frontend engineer; art director supplies the composition and tokens.
+
+**Files:** Create `apps/storefront/package.json`, the chosen package-manager
+lockfile, `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/globals.css`,
+`src/components/ui/button.tsx`, `src/lib/content/fixtures.ts`, and
+`tests/e2e/home.spec.ts` under `apps/storefront`.
+
+**Contract:** Define typed fixture products with a handle, title, approved-preview
+copy, image, variants, size, and `{amount: string, currencyCode: string}` money.
+Create a rendered hero and collection without WebGL or live credentials.
+
+- [ ] Select compatible stable versions and record the selected versions in the
+  lockfile. Keep root toolkit commands available.
+- [ ] Add `home renders shopping content without WebGL` and `home preserves layout
+  during delayed image and font loading` in the Playwright home spec. Assert the
+  hero heading, product image, shopping action, and collection links are usable.
+- [ ] Implement the static design at 390px, 768px, and 1440px with marked fixtures,
+  semantic headings, focus states, and responsive images.
+- [ ] Run app typecheck/lint/build and the scoped home spec. Inspect screenshots
+  at each width; record the result and commit the phase.
+
+**Exit:** The site is useful and visually coherent before animation is added.
+
+## Phase 2: product page and cart interface in fixture mode
+
+**Owner:** Frontend engineer; product strategist prepares content records.
+
+**Files:** Create `src/app/products/[handle]/page.tsx`,
+`src/components/commerce/variant-selector.tsx`, `cart-drawer.tsx`,
+`src/lib/commerce/types.ts`, `fixture-provider.ts`,
+`src/lib/content/product-content.ts`, and `tests/e2e/product-cart.spec.ts`.
+
+**Contract:** Define `CommerceProvider` with `getProducts`, `getProduct`,
+`getCart`, `createCart`, `addLines`, `updateLines`, `removeLines`, and
+`getCheckoutUrl`. Use normalized `Product`, `Variant`, `Cart`, `CartLine`, and
+structured commerce error types. The fixture provider returns no live checkout
+URL; the preview presents a clear demo message instead.
+
+- [ ] Write tests for valid/invalid variant combinations, unavailable variants,
+  quantity updates, drawer focus/escape/return-focus, and prevented demo checkout.
+- [ ] Implement product benefits, ingredients, use/precautions, variants, product
+  price, cart state, accessible drawer controls, and understandable errors.
+- [ ] Test at mobile and desktop sizes. Confirm no fabricated clinical claims or
+  reviews appear. Commit the phase.
+
+**Exit:** A shopper can complete the local sample shopping journey without
+mistaking it for a live purchase.
+
+## Phase 3: one progressive 3D hero
+
+**Owner:** Experience engineer; art director/product strategist supply assets.
+
+**Files:** Create `src/components/experience/product-experience.tsx`,
+`bottle-scene.tsx`, `scene-poster.tsx`, `motion-policy.ts`,
+`src/lib/content/product-assets.ts`, approved files in `public/products/`, and
+`tests/e2e/experience-fallbacks.spec.ts`.
+
+**Contract:** `ProductExperience` receives a product asset record and a stable
+progress ref. It exposes `poster/loading/ready/failed` states without changing
+the purchase component tree. `motion-policy` derives safe static/enhanced modes
+from browser capability, reduced motion, and measured constraints.
+
+- [ ] Add tests for disabled WebGL, model 404/slow loading, context loss, reduced
+  motion, and route unmount/remount. Assert the poster and shopping action remain.
+- [ ] Implement the lazy client wrapper, correctly placed `ssr: false`, scene
+  error boundary, matching poster, fixed dimensions, DPR cap, and render policy.
+- [ ] Inspect the bottle label and materials; record model/map sizes, triangles,
+  draw calls, and performance on the chosen representative devices.
+- [ ] Check listener/resource cleanup and that a failed scene cannot fail the
+  product page. Commit the phase.
+
+**Exit:** One convincing scene upgrades an already complete shopping page.
+
+## Phase 4: cinematic story and interface polish
+
+**Owner:** Experience engineer; frontend owns shopping UI interactions.
+
+**Files:** Create `src/components/experience/formula-story.tsx`,
+`story-timeline.ts`, and `tests/e2e/story-navigation.spec.ts`; update the homepage
+and experience progress contract through coordinator review.
+
+**Contract:** One GSAP timeline maps normalized progress to three authored poses.
+Invalidate R3F demand frames when that timeline mutates the scene. Keep chapter
+content rendered and accessible in every policy mode.
+
+- [ ] Add tests for mobile normal flow, reduced-motion changes at runtime,
+  resize, browser back/forward, and remount without duplicate ScrollTriggers.
+- [ ] Implement one desktop pin of at most 2.5 viewport heights with `useGSAP`
+  cleanup and `gsap.matchMedia`. Keep native scrolling and a static path.
+- [ ] Add restrained cart/card transitions using CSS. Do not let multiple
+  animation systems own the same property or camera transform.
+- [ ] Verify the changed flow in a browser and profile active motion. Reduce
+  quality or use poster mode if the targets are missed. Commit the phase.
+
+**Exit:** Motion reinforces product understanding without obstructing shopping.
+
+## Phase 5: real Shopify commerce integration
+
+**Owner:** Commerce engineer; coordinator handles environment/integration.
+
+**Files:** Create `src/lib/commerce/shopify-provider.ts`, `shopify-client.ts`,
+`validation.ts`, `src/app/api/cart/route.ts`, the scoped cart mutation route,
+`src/app/api/checkout/route.ts`, `src/app/api/webhooks/shopify/route.ts`, and
+`tests/unit/commerce.test.ts` plus `tests/e2e/commerce-recovery.spec.ts`.
+
+**Contract:** Implement the provider contract from Phase 2. Use a reviewed stable
+Storefront API version, server-only private token handling, uncached cart data,
+secure opaque cart cookies, and validated checkout redirect hosts.
+
+- [ ] Obtain the user's chosen Shopify store and approved connection scope.
+  Configure ignored local/preview environment values using the example file.
+- [ ] Write tests for unknown variants, invalid quantities, mutation `userErrors`,
+  network failures, stale stock, expired carts, queued quantity updates, private
+  cart caching, bad webhook signatures, duplicate webhooks, and checkout host
+  rejection. Use a development store for end-to-end commerce validation.
+- [ ] Implement normalized product/catalog queries, validated mutations, a fresh
+  checkout URL, explicit retries that cannot duplicate add-lines operations,
+  verified webhook invalidation, and redacted diagnostics.
+- [ ] Verify taxes/shipping/returns settings with the owner and use authorized
+  test checkout only. Confirm fixture mode is disabled solely in the configured
+  commerce environment. Commit the phase.
+
+**Exit:** The store has an evidence-backed, recoverable purchase journey.
+
+## Phase 6: content, performance, and preview review
+
+**Owner:** Product strategist and quality engineer; release reviewer reads the
+completed diff. The coordinator owns the preview deployment.
+
+**Files:** Create/update product metadata, JSON-LD, sitemap/robots, consent UI,
+policy pages, and `tests/e2e/release-critical.spec.ts`; add only the CI checks
+appropriate to the resulting app, with version-pinned Actions where used.
+
+- [ ] Test missing products, duplicate event emission, fixture visibility,
+  invalid structured data, private-data caching, and policy links. Use verified
+  prices/availability and genuine review data only.
+- [ ] Add approved canonical metadata and structured data from the same commerce
+  record. Define analytics events for view, add-to-cart, and begin-checkout;
+  respect the selected market's approved consent policy.
+- [ ] Run the critical app checks and browser journey once after final changes;
+  inspect representative mobile/desktop screens and measure the budgets.
+- [ ] Request a scoped read-only release review. Resolve blockers, record any
+  unrun checks or missing business inputs, and present the preview and diff.
+
+**Exit:** A reviewable preview with honest validation results. Live publishing,
+paid services, and production orders remain separate owner-directed actions.

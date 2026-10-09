@@ -1,0 +1,12 @@
+{
+  "name": "crater-claude-toolkit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Claude Code project toolkit for a cinematic skincare storefront",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "check:setup": "node scripts/check-setup.cjs",
+    "doctor:setup": "node scripts/doctor.cjs",
+    "test:hooks": "node --test scripts/tests/hooks.test.cjs"
+  }
+}
