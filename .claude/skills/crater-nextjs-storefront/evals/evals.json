@@ -1,0 +1,23 @@
+{
+  "skill_name": "crater-nextjs-storefront",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "make the product page let people pick a size and add to bag, it should open the cart after",
+      "expected_output": "Server-rendered product page, option fieldset with URL search-param state, Server Action add-to-bag form working without JS, userErrors/warnings shown in a live region, accessible dialog drawer with focus return, e2e test",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "the cart drawer is annoying on mobile, can it be a full page on phones?",
+      "expected_output": "Keeps /cart page as no-JS fallback, responsive behaviour without breaking focus management or reduced motion, e2e at 390px",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "add a thank-you page after stripe payment that shows the order number",
+      "expected_output": "Dynamic /checkout/success reading session_id, getCheckoutResult only, processing state until webhook, no cart/session IDs leaked, no caching",
+      "files": []
+    }
+  ]
+}

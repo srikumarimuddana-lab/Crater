@@ -1,5 +1,6 @@
 node_modules/
 .next/
+.next-integration/
 out/
 dist/
 coverage/
@@ -17,3 +18,5 @@ artifacts/
 *.log
 .DS_Store
 Thumbs.db
+*.tsbuildinfo
+next-env.d.ts

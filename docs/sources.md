@@ -16,8 +16,20 @@ MCP servers below are optional; none are automatically installed or enabled.
 | GSAP React | https://gsap.com/resources/React/ | Scoped animation and cleanup |
 | GSAP media conditions | https://gsap.com/docs/v3/GSAP/gsap.matchMedia()/ | Media and reduced-motion timeline changes |
 | R3F performance | https://r3f.docs.pmnd.rs/advanced/scaling-performance | Demand rendering, invalidation, quality control |
-| Shopify cart integration | https://shopify.dev/docs/storefronts/headless/building-with-the-storefront-api/cart/manage | Cart operations and fresh checkout URLs |
-| Shopify cart schema | https://shopify.dev/docs/api/storefront/latest/objects/Cart | Authoritative cart fields |
+| Shopify Storefront API | https://shopify.dev/docs/api/storefront | Reference design for Crater's commerce objects and operations |
+| Shopify cart schema | https://shopify.dev/docs/api/storefront/latest/objects/Cart | Cart, line, cost, and error shapes mirrored by Crater |
+| Shopify cart guide | https://shopify.dev/docs/storefronts/headless/building-with-the-storefront-api/cart/manage | Cart operation semantics |
+| Stripe Checkout Sessions | https://docs.stripe.com/api/checkout/sessions/create | Session parameters, `price_data`, metadata |
+| Stripe fulfillment | https://docs.stripe.com/payments/checkout/fulfill-orders | Webhook-driven order fulfillment |
+| Stripe webhook signatures | https://docs.stripe.com/webhooks/signature | Raw-body signature verification |
+| Stripe idempotency | https://docs.stripe.com/api/idempotent_requests | Safe retries of session creation |
+| Stripe testing | https://docs.stripe.com/testing | Test cards and test mode |
+| Stripe pricing (Canada) | https://stripe.com/en-ca/pricing | Per-transaction fees; no monthly fee |
+| CRA GST/HST rates | https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/gst-hst-businesses/charge-collect-which-rate/calculator.html | Province rates (effective 2025-04-01) used in `docs/tax.md` |
+| Saskatchewan PST | https://www.saskatchewan.ca/business/taxes-licensing-and-reporting/provincial-taxes-policies-and-bulletins/provincial-sales-tax | SK PST 6% |
+| Stripe tax rates | https://docs.stripe.com/billing/taxes/tax-rates | Fixed Tax Rate objects on Checkout line items |
+| Stripe Tax pricing (Canada) | https://stripe.com/en-ca/tax/pricing | Paid alternative: 0.5% per transaction where registered |
+| Vercel Hobby plan | https://vercel.com/docs/plans/hobby | Free tier; non-commercial use only |
 | Playwright MCP | https://github.com/microsoft/playwright-mcp | Optional isolated browser integration |
 | Pinned MCP release | https://github.com/microsoft/playwright-mcp/releases/tag/v0.0.83 | Reviewed example version; no floating runtime version |
 

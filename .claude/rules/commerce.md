@@ -7,8 +7,8 @@ paths:
 # Commerce boundaries
 
 Keep private tokens server-side and cart/buyer/checkout state uncached and private.
-Use authoritative Shopify variant IDs, availability, decimal-string money, and
-mutation results. Validate quantity and checkout destination. Surface userErrors;
+Use server-authoritative variant IDs, availability, decimal-string money, and
+Storefront-style mutation results. Validate quantity and checkout destination. Surface userErrors;
 handle stale stock, expired carts, and overlapping intent. Do not blindly replay
-timed-out cart additions. Verify webhook HMAC over the raw body and redact secrets
+timed-out cart additions. Verify Stripe webhook signatures over the raw body and redact secrets
 and opaque cart identifiers from diagnostics.

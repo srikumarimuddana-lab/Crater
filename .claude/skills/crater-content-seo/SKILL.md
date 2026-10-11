@@ -16,7 +16,7 @@ review rather than publishing invented efficacy, clinical results, certification
 disease treatment, or testimonials. Publish ratings only from genuine review data.
 
 Generate canonical metadata, meaningful image descriptions, product/variant
-structured data, sitemap, and robots behavior from shared content and Shopify
+structured data, sitemap, and robots behavior from shared content and commerce
 records. Keep price/currency/availability synchronized. Exclude private cart and
 account states from indexing. Distinguish preview/noindex settings from live SEO.
 

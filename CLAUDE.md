@@ -2,8 +2,10 @@
 
 Build a premium cosmetics/skincare ecommerce storefront with an editorial identity,
 one cinematic 3D product story, and a clear purchase journey. This repository
-currently contains the development toolkit and specifications; the storefront is
-the next implementation milestone.
+contains the development toolkit, the specifications, and the storefront in
+`apps/storefront` (Phases 1–2 complete: herbal shop UI and own commerce backend
+with Stripe Checkout; admin Slice 1 at `/admin` with built-in staff sign-in; all on
+marked sample data). Admin plan: `docs/admin/plan.md`.
 
 ## Start here
 
@@ -19,7 +21,8 @@ the next implementation milestone.
 ## Project contracts
 
 - Planned app location: `apps/storefront`. Stack: Next.js App Router, TypeScript,
-  Tailwind, Three.js/React Three Fiber/Drei, GSAP, Shopify Storefront Cart API.
+  Tailwind, Three.js/React Three Fiber/Drei, GSAP, and Crater's own commerce
+  backend (Shopify-Storefront-API-shaped, Postgres) with Stripe hosted Checkout.
 - Render text, price, accessible controls, and a responsive product image before
   loading WebGL. Keep the purchase journey functional with motion disabled and
   while the 3D asset fails or loads.
@@ -27,8 +30,9 @@ the next implementation milestone.
   own ordinary interface state. Avoid competing animation owners.
 - Preserve keyboard access, reduced motion, mobile document flow, and readable
   product content. Keep essential content outside the canvas.
-- Use Shopify variant IDs and authoritative totals. Keep cart state uncached and
-  private. Never invent reviews, clinical evidence, stock, or certifications.
+- Use server-side variant IDs and authoritative totals; Stripe takes payment from
+  server prices only. Keep cart state uncached and private. Stripe stays in test
+  mode unless the user explicitly asks for live keys. Never invent reviews, clinical evidence, stock, or certifications.
 - Start with clearly marked fixture data. Connecting paid services, publishing a
   live site, and modifying production commerce data require a user request.
 - Keep real credentials in ignored local environment files. Never publish
@@ -44,7 +48,9 @@ the next implementation milestone.
   validation; a cart change needs failure-path coverage; a visual interaction
   needs inspection in the browser when available. Record skipped checks honestly.
 - Commands available now: `npm run check:setup`, `npm run doctor:setup`, and
-  `npm run test:hooks`. There is no storefront build command yet.
+  `npm run test:hooks`. Storefront (run in `apps/storefront`): `npm run typecheck`,
+  `npm run lint`, `npm run test:unit`, `npm run build`, `npm run test:e2e` (needs a
+  prior build), and `npm run db:migrate` / `db:seed` (needs a Postgres URL).
 - No Git hooks are installed. Claude lifecycle hooks are advisory, perform no
   network calls or edits, and do not launch builds, tests, or extra agents.
 
