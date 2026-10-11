@@ -122,6 +122,35 @@ clear demo message at checkout; Stripe test mode redirects to Stripe Checkout.
 **Exit:** A shopper can browse, choose a variant, manage a cart, and reach Stripe
 test Checkout; a paid test session creates an order through the webhook.
 
+## Design update: Bright Atelier (2026-10-11)
+
+**Owner:** design architect (coordinator) with a four-lens brainstorm (two business-analyst
+and two UI/UX readings) recorded in `docs/design/elise-nuda-redesign.md`.
+
+**Scope:** the customer chose the Elise template's structure and asked for the Nuda
+template's brightness. Tokens, fonts (Fraunces, Inter), section headings with an italic
+accent word, 01–04 numerals, arrow links, pill filters, light announcement bar, light
+footer, tinted story and ritual bands, feature card in the carousel, product page polish,
+regenerated packshots, and the homepage order (collection before the placeholder story
+and values). Contract: `docs/visual-contract.md`; decision: `docs/design-brief.md`.
+
+**Files:** `apps/storefront/src/app/globals.css`, `layout.tsx`, `page.tsx`,
+`products/[handle]/page.tsx`, `cart/page.tsx`, `src/components/**` (new
+`section-heading.tsx`; colour tokens renamed to `page/surface/warm/sage/ink/ink-soft/
+moss/bronze` everywhere), `src/lib/content/shop-copy.ts` (eyebrow and emphasis fields),
+`scripts/generate-placeholder-packshots.mjs` and `public/products/**`,
+`tests/e2e/home.spec.ts` (page background colour), `docs/design/**`.
+
+- [x] Evidence (2026-10-11): typecheck, lint and build pass (Google Fonts fetched at build);
+  Vitest 322 passed, 127 Postgres-only skips; Playwright home, product-cart and tax
+  specs 161 passed, 10 skipped (mobile-only sticky bar and desktop-only menu cases) at
+  390 / 768 / 1440 against the production build with `COMMERCE_DB=memory`, including the
+  axe checks, no-JS paths, reduced-motion carousel, delayed-font CLS and claim-word
+  scans; every product image decodes; screenshots of home, product, cart, bag drawer,
+  mega menu and mobile menu inspected at 390 and 1440 (`docs/design/screens`).
+- Not exercised: admin e2e (unchanged, scoped under `[data-admin]` with its own tokens),
+  Stripe test-mode redirect, 768px screenshots (tests ran at 768; no visual inspection).
+
 ## Phase 3: one progressive 3D hero
 
 **Owner:** Experience engineer; art director/product strategist supply assets.

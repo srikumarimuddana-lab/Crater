@@ -23,9 +23,23 @@ is a preview assumption, not a restriction on the eventual selling markets.
 - The 3D hero (Phase 3) now features an amber glass dropper bottle instead of a
   serum bottle.
 
-## Working direction: Forest & Gilt (user decision, 2026-10-09)
+## Working direction: Bright Atelier (user decision, 2026-10-11)
 
-The user asked for a premium luxury look in green, brown and gold. Deep forest
+The customer reviewed two Framer templates, Elise (https://elise.framer.media/) and Nuda
+(https://nuda.framer.website/), chose Elise, and said "elise is ok but nuda is brighter,
+I like the brightness of nuda". The storefront now carries Elise's editorial structure
+(soft serif with one italic accent word per heading, sentence-case eyebrow pills, 01–04
+numerals, arrow links, generous whitespace, a feature card in the collection) at Nuda's
+brightness (near-white page, pale sage and peach-cream tints, no dark bands, a fresh
+leaf-green reserved for actions). Fonts are Fraunces and Inter. Tokens, contrast and
+composition live in `visual-contract.md`; the brainstorm, decisions and screenshots in
+`design/elise-nuda-redesign.md`. Elise sections that need facts we do not have
+(testimonials, trust badges, ritual durations, ingredient origins, FAQ, journal) are
+omitted or marked "Content pending" rather than invented.
+
+## Superseded: Forest & Gilt (user decision, 2026-10-09)
+
+Kept for reference. The user asked for a premium luxury look in green, brown and gold. Deep forest
 bands, espresso brown and antique gold replace the original Mineral Atelier
 palette; `visual-contract.md` holds the current tokens and contrast data. The
 table below records the original Mineral Atelier direction for reference.

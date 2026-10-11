@@ -1,18 +1,21 @@
 import type { Metadata, Viewport } from 'next';
-import { Bodoni_Moda, Manrope } from 'next/font/google';
+import { Fraunces, Inter } from 'next/font/google';
 import './globals.css';
 
-const display = Bodoni_Moda({
+// Soft old-style serif with true italics for the editorial headings (docs/visual-contract.md section 2).
+const display = Fraunces({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-bodoni',
+  variable: '--font-fraunces',
   style: ['normal', 'italic'],
+  axes: ['opsz', 'SOFT'],
 });
 
-const body = Manrope({
+const body = Inter({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-manrope',
+  variable: '--font-inter',
+  axes: ['opsz'],
 });
 
 export const metadata: Metadata = {
@@ -23,7 +26,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0E2417',
+  themeColor: '#FFFDF8',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

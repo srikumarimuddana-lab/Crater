@@ -13,8 +13,8 @@ const useHydrated = () =>
   );
 
 const triggerClass =
-  'focus-ring inline-flex min-h-11 cursor-pointer list-none items-center gap-2 px-1 text-[0.9375rem] font-semibold text-espresso underline-offset-[0.45em] hover:underline hover:decoration-1 [&::-webkit-details-marker]:hidden';
-const panelClass = 'absolute inset-x-0 top-full z-30 border-b border-espresso/15 bg-ivory shadow-sm';
+  'focus-ring inline-flex min-h-11 cursor-pointer list-none items-center gap-2 px-1 text-[0.9375rem] font-semibold text-ink underline-offset-[0.45em] hover:underline hover:decoration-1 [&::-webkit-details-marker]:hidden';
+const panelClass = 'absolute inset-x-0 top-full z-30 border-b border-ink/10 bg-page shadow-lg shadow-ink/5';
 
 /**
  * Desktop "Shop" mega menu. Before hydration it is a native <details> (opens without JavaScript);

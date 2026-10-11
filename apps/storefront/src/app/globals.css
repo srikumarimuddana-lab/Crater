@@ -1,30 +1,35 @@
 @import 'tailwindcss';
 
-/* Forest & Gilt luxury preview tokens — see docs/visual-contract.md for contrast data. */
+/*
+ * Bright Atelier tokens (user decision 2026-10-11): Elise's editorial structure at Nuda's brightness.
+ * Contrast data and roles: docs/visual-contract.md. No dark bands; green is reserved for actions.
+ */
 @theme {
-  --color-ivory: #f7f2e8; /* page background */
-  --color-parchment: #ede3d1; /* light surfaces, image frames, hover fills */
-  --color-forest: #14301f; /* hero band, primary actions */
-  --color-forest-hover: #1f4430;
-  --color-forest-deep: #0e2417; /* header, deepest band */
-  --color-espresso: #2a1d15; /* body text on light, footer band */
-  --color-walnut: #5c4330; /* secondary text on light (8.2:1 on ivory) */
-  --color-gold: #c9a86a; /* text/rules on forest or espresso only; decorative on light */
-  --color-gold-light: #e2cb97; /* text and focus ring on dark bands */
-  --color-gold-deep: #8c6a2f; /* hairlines on light; text only at >=24px */
+  --color-page: #fffdf8; /* near-white, faintly warm page */
+  --color-surface: #f7f4ec; /* image tiles, cards, footer, hover fills */
+  --color-warm: #fff3e4; /* peach-cream band (story, summary panels) */
+  --color-sage: #e6f0e6; /* pale sage band (announcement, rituals, chips, selected tiles) */
+  --color-ink: #211d17; /* text (16.5:1 on page) */
+  --color-ink-soft: #5e5547; /* secondary text (7.2:1 on page, 6.3:1 on sage) */
+  --color-moss: #226a49; /* links, primary action, focus ring (6.4:1 on page; white on it 6.5:1) */
+  --color-moss-hover: #17583a;
+  --color-moss-deep: #16452e; /* text on sage, wordmark */
+  --color-bronze: #8f6437; /* italic emphasis word, numerals, small accents (5.1:1 on page) */
+  --color-bronze-soft: #b5895e; /* ornament and hairlines only; never small text */
 
+  --radius-card: 10px;
   --container-content: 80rem;
 }
 
 @theme inline {
-  --font-display: var(--font-bodoni), 'Bodoni Moda', Georgia, serif;
-  --font-sans: var(--font-manrope), 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-sans: var(--font-inter), 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
   html {
-    background: var(--color-ivory);
-    color: var(--color-espresso);
+    background: var(--color-page);
+    color: var(--color-ink);
     -webkit-text-size-adjust: 100%;
   }
 
@@ -36,7 +41,7 @@
 
   body {
     font-family: var(--font-sans);
-    font-size: clamp(1rem, 0.96rem + 0.15vw, 1.0625rem);
+    font-size: clamp(1rem, 0.97rem + 0.12vw, 1.0625rem);
     line-height: 1.6;
     min-height: 100dvh;
     display: flex;
@@ -52,25 +57,28 @@
   h2,
   h3 {
     font-family: var(--font-display);
-    font-weight: 500;
+    font-weight: 400;
+    font-optical-sizing: auto;
+    font-variation-settings: 'SOFT' 50;
     text-wrap: balance;
   }
 
   h1 {
-    font-size: clamp(2.5rem, 1.6rem + 3.6vw, 4.75rem);
-    line-height: 1.05;
-    letter-spacing: -0.01em;
+    font-size: clamp(2.5rem, 1.4rem + 4.2vw, 5.25rem);
+    line-height: 1.04;
+    letter-spacing: -0.02em;
   }
 
   h2 {
-    font-size: clamp(1.875rem, 1.3rem + 2.2vw, 3rem);
-    line-height: 1.1;
-    letter-spacing: -0.005em;
+    font-size: clamp(2rem, 1.35rem + 2.6vw, 3.5rem);
+    line-height: 1.08;
+    letter-spacing: -0.015em;
   }
 
   h3 {
-    font-size: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
+    font-size: clamp(1.25rem, 1.15rem + 0.5vw, 1.5rem);
     line-height: 1.2;
+    font-weight: 500;
   }
 
   /* Anchored sections clear the top edge when jumped to. */
@@ -79,19 +87,8 @@
   }
 
   :focus-visible {
-    outline: 3px solid var(--color-forest);
+    outline: 3px solid var(--color-moss);
     outline-offset: 3px;
-  }
-
-  /* Dark bands (forest, espresso): switch the ring to gold-light (≥9:1). */
-  .on-dark :focus-visible {
-    outline-color: var(--color-gold-light);
-  }
-
-  /* Light surfaces nested inside a dark band's DOM (the bag drawer): ring returns to forest. */
-  .on-dark .on-light :focus-visible,
-  .on-light :focus-visible {
-    outline-color: var(--color-forest);
   }
 
   @media (forced-colors: active) {
@@ -109,22 +106,48 @@
   }
 }
 
-/* Thin gilt rule with a centered lozenge; purely decorative. */
-@utility ornament {
-  position: relative;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--color-gold) 18%, var(--color-gold) 82%, transparent);
+/* The one italic word in a headline (Elise's device): display italic in bronze. Decorative, so a span, not <em>. */
+@utility accent-word {
+  font-style: italic;
+  color: var(--color-bronze);
+  font-variation-settings: 'SOFT' 80;
+}
 
-  &::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 7px;
-    height: 7px;
-    background: var(--color-gold);
-    transform: translate(-50%, -50%) rotate(45deg);
-  }
+/* Section label pill above an h2: sentence case, sage fill, moss-deep text (9.3:1). */
+@utility eyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: var(--color-sage);
+  color: var(--color-moss-deep);
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* On the sage band the pill takes the page colour so it stays visible. */
+.bg-sage .eyebrow {
+  background: var(--color-page);
+}
+
+/* Display numerals for 01–04 sequences; always aria-hidden in markup. */
+@utility numeral {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-bronze);
+}
+
+@utility text-lead {
+  font-size: clamp(1.125rem, 1.05rem + 0.3vw, 1.3125rem);
+  line-height: 1.5;
+  color: var(--color-ink-soft);
+  text-wrap: pretty;
 }
 
 @utility text-small {
@@ -136,8 +159,8 @@
 @utility text-eyebrow {
   font-size: 0.8125rem;
   line-height: 1.3;
-  font-weight: 600;
-  letter-spacing: 0.14em;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -163,6 +186,26 @@
   }
 }
 
+/* Arrow-led text link ("View all products →"). The arrow nudges on hover unless motion is reduced. */
+.link-arrow .arrow {
+  display: inline-block;
+  transition: transform 180ms ease-out;
+}
+
+.link-arrow:hover .arrow {
+  transform: translateX(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link-arrow .arrow {
+    transition: none;
+  }
+
+  .link-arrow:hover .arrow {
+    transform: none;
+  }
+}
+
 .skip-link {
   position: absolute;
   left: 1rem;
@@ -170,16 +213,16 @@
   z-index: 50;
   padding: 0.75rem 1rem;
   min-height: 44px;
-  background: var(--color-forest);
-  color: var(--color-gold-light);
+  background: var(--color-moss);
+  color: #ffffff;
   font-weight: 600;
-  border-radius: 2px;
+  border-radius: 8px;
   transform: translateY(-200%);
 }
 
 .skip-link:focus-visible {
   transform: none;
-  outline-color: var(--color-gold-light);
+  outline-color: var(--color-moss-deep);
 }
 
 /* Bag drawer: native modal dialog, slides from the right; a full-width sheet on small screens. */
@@ -187,7 +230,8 @@
   margin: 0 0 0 auto;
   padding: 0;
   border: 0;
-  border-left: 1px solid var(--color-gold-deep);
+  border-left: 1px solid rgb(33 29 23 / 0.12);
+  box-shadow: 0 24px 48px -16px rgb(33 29 23 / 0.18);
   width: min(100%, 28rem);
   max-width: 100%;
   height: 100dvh;
@@ -210,7 +254,7 @@
 }
 
 .bag-dialog::backdrop {
-  background: rgb(42 29 21 / 0.6);
+  background: rgb(33 29 23 / 0.4);
   opacity: 0;
   transition:
     opacity 220ms ease-out,
@@ -243,5 +287,5 @@ body:has(.bag-dialog[open]) {
 /* Featured carousel: a thin native scrollbar keeps the list scrollable (and visible) without JavaScript. */
 .featured-scroller {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-walnut) transparent;
+  scrollbar-color: var(--color-ink-soft) transparent;
 }

@@ -9,10 +9,10 @@ const out = process.argv[2];
 if (!out) throw new Error('Pass the output directory, e.g. public/products');
 
 const c = {
-  studio: '#EEE8DD', studioFloor: '#E6DED0',
+  studio: '#F7F4EC', studioFloor: '#EDE7DA',
   amber: '#7A4A1E', amberDeep: '#4E2E12', amberLight: '#A8692E',
-  forest: '#14301F', forestHover: '#1F4430', espresso: '#2A1D15', walnut: '#5C4330',
-  gold: '#C9A86A', goldLight: '#E2CB97', goldDeep: '#8C6A2F', ivory: '#F7F2E8',
+  forest: '#16452E', forestHover: '#226A49', espresso: '#211D17', walnut: '#5E5547',
+  gold: '#B5895E', goldLight: '#D9BE93', goldDeep: '#8F6437', ivory: '#FFFDF8',
   kraft: '#C9A57A', kraftDeep: '#A88457', leaf: '#4F6B4A',
 };
 const esc = (s) => s.replace(/&/g, '&amp;');
@@ -34,7 +34,7 @@ const defs = `
   <defs>
     <linearGradient id="glass" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c.amberDeep}"/><stop offset="0.35" stop-color="${c.amberLight}"/><stop offset="0.6" stop-color="${c.amber}"/><stop offset="1" stop-color="${c.amberDeep}"/></linearGradient>
     <linearGradient id="gilt" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c.goldDeep}"/><stop offset="0.45" stop-color="${c.goldLight}"/><stop offset="1" stop-color="${c.goldDeep}"/></linearGradient>
-    <radialGradient id="floorShadow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#2A1D15" stop-opacity="0.24"/><stop offset="1" stop-color="#2A1D15" stop-opacity="0"/></radialGradient>
+    <radialGradient id="floorShadow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#211D17" stop-opacity="0.16"/><stop offset="1" stop-color="#2A1D15" stop-opacity="0"/></radialGradient>
   </defs>`;
 
 const backdrop = `

@@ -1,18 +1,16 @@
 import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
 
-/** `gold`/`outline-light` are for dark (forest/espresso) bands; the others for light surfaces. */
-type Variant = 'primary' | 'secondary' | 'gold' | 'outline-light';
+/** All surfaces are light now: `primary` is the moss fill, `secondary` a moss outline. */
+type Variant = 'primary' | 'secondary';
 
 const base =
-  'inline-flex min-h-12 items-center justify-center gap-2 rounded-xs px-6 text-base font-semibold ' +
-  'tracking-[0.02em] transition-colors duration-180 motion-reduce:transition-none focus-ring';
+  'inline-flex min-h-12 items-center justify-center gap-2 rounded-lg px-6 text-base font-medium ' +
+  'transition-colors duration-180 motion-reduce:transition-none focus-ring';
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-forest text-ivory hover:bg-forest-hover',
-  secondary: 'border border-espresso text-espresso hover:bg-parchment',
-  gold: 'bg-gold text-forest-deep hover:bg-gold-light',
-  'outline-light': 'border border-gold-light text-ivory hover:bg-forest-hover',
+  primary: 'bg-moss text-white hover:bg-moss-hover',
+  secondary: 'border border-moss text-moss hover:bg-sage',
 };
 
 export function buttonClassName(variant: Variant = 'primary', extra = '') {
@@ -41,4 +39,21 @@ type ButtonProps = Omit<ComponentProps<'button'>, 'className'> & {
 
 export function Button({ variant = 'primary', className, type = 'button', ...props }: ButtonProps) {
   return <button type={type} className={buttonClassName(variant, className)} {...props} />;
+}
+
+export const arrowLinkClassName =
+  'link-arrow focus-ring inline-flex min-h-11 items-center gap-1.5 font-medium text-moss underline decoration-moss/40 underline-offset-4 hover:decoration-moss';
+
+type ArrowLinkProps = Omit<ComponentProps<typeof Link>, 'className'> & { className?: string; children: ReactNode };
+
+/** Text link with a trailing arrow ("View all products →"). The arrow is decorative and hidden from the accessible name. */
+export function ArrowLink({ className, children, ...props }: ArrowLinkProps) {
+  return (
+    <Link className={[arrowLinkClassName, className].filter(Boolean).join(' ')} {...props}>
+      <span>{children}</span>
+      <span aria-hidden="true" className="arrow">
+        →
+      </span>
+    </Link>
+  );
 }

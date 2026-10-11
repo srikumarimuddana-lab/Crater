@@ -58,6 +58,9 @@ export const browse = {
   sortApply: 'Apply',
   sortOptions: { featured: 'Featured', title: 'Name', 'price-asc': 'Price, low to high', 'price-desc': 'Price, high to low' },
   count: (n: number) => (n === 1 ? '1 product' : `${n} products`),
+  /** Eyebrow above the "Shop all" collection heading. */
+  collectionEyebrow: 'Every sample product',
+  collectionEmphasis: 'all',
   emptyCollection: 'There are no products in this collection yet.',
   listLoadError: 'We could not load the collection. Please refresh the page.',
 } as const;
@@ -147,7 +150,11 @@ export const home = {
   /** OWNER: final wording. States only true, neutral facts. */
   announcement: 'Preview store: sample products, not for sale. Shipping within Canada.',
   hero: {
+    /** Format names only (true facts), shown as a small line above the headline. */
+    eyebrow: 'Tinctures · Body oils · Single herbs · Kits & gifts',
     headline: 'Liquid herbal extracts and body oils',
+    /** The one italic accent word in the headline; must occur in `headline`. */
+    emphasis: 'herbal',
     subline: 'Tinctures, single herbs, body oils and kits, shown here as sample products.',
     primaryAction: { label: 'Shop tinctures', href: categoryHref('tinctures') },
     secondaryAction: { label: 'Browse all products', href: '/#collection' },
@@ -161,7 +168,9 @@ export const home = {
     { title: 'Prices in Canadian dollars', body: 'Every price on this site is shown in CAD.' },
   ],
   featured: {
+    eyebrow: 'The collection',
     title: 'Featured formulas',
+    emphasis: 'formulas',
     /** Seed order, products 1 to 6. This is not a sales ranking. */
     productHandles: [
       'lemon-balm-oat-extract',
@@ -176,7 +185,9 @@ export const home = {
     viewAll: 'View all products',
   },
   shopByRitual: {
+    eyebrow: 'Four rituals',
     title: 'Shop by ritual',
+    emphasis: 'ritual',
     tiles: [
       { label: 'Daily ritual', description: 'Extracts for a regular routine.', href: categoryHref('daily-ritual') },
       { label: 'Evening ritual', description: 'Formats for the end of the day.', href: categoryHref('evening-ritual') },
@@ -186,13 +197,17 @@ export const home = {
   },
   /** OWNER: the story (who, why, where) is pending. */
   story: {
+    eyebrow: 'About Crater',
     title: 'Our story',
+    emphasis: 'story',
     body: 'Placeholder. The owner’s story will be added before launch.',
     pendingNote: 'Content pending',
   },
   /** OWNER: every factual statement in these rows must be confirmed before launch. */
   values: {
+    eyebrow: 'Sourcing, making, packaging',
     title: 'What we care about',
+    emphasis: 'care',
     rows: [
       { title: 'Sourcing', body: 'Placeholder. Owner to confirm where the herbs are grown and sourced.' },
       { title: 'Making', body: 'Placeholder. Owner to confirm how and by whom the products are made.' },

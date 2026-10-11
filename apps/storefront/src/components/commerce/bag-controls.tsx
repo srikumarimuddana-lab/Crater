@@ -56,7 +56,7 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
   const close = () => dialogRef.current?.close();
 
   const triggerClass =
-    'focus-ring inline-flex min-h-11 items-center px-2 text-[0.9375rem] font-semibold text-espresso underline-offset-[0.45em] hover:underline hover:decoration-1';
+    'focus-ring inline-flex min-h-11 items-center px-2 text-[0.9375rem] font-semibold text-ink underline-offset-[0.45em] hover:underline hover:decoration-1';
   // Visible text stays in the accessible name (WCAG 2.5.3); only extra words are visually hidden.
   const triggerInner = (
     <>
@@ -118,10 +118,10 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
             els[0].focus();
           }
         }}
-        className="bag-dialog on-light bg-ivory text-espresso"
+        className="bag-dialog bg-page text-ink"
       >
         <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between gap-4 border-b border-espresso/15 px-5 py-3">
+          <div className="flex items-center justify-between gap-4 border-b border-ink/10 px-5 py-3">
             <h2 id="bag-drawer-title" tabIndex={-1} className="!text-2xl focus:outline-none">
               {bag.title}
               {count > 0 ? ` (${count})` : ''}
@@ -130,7 +130,7 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
               type="button"
               onClick={close}
               aria-label={bag.closeLabel}
-              className="focus-ring inline-flex size-11 items-center justify-center text-2xl leading-none hover:bg-parchment"
+              className="focus-ring inline-flex size-11 items-center justify-center rounded-full text-2xl leading-none hover:bg-sage"
             >
               <span aria-hidden="true">×</span>
             </button>
@@ -138,14 +138,14 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
 
           <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4">
             {mode === 'stripe-test' ? (
-              <p role="note" className="text-small mb-4 rounded-xs bg-espresso px-3 py-2 font-semibold text-ivory">
+              <p role="note" className="text-small mb-4 rounded-lg bg-moss-deep px-3 py-2 font-semibold text-white">
                 {stripeTestModeBanner}
               </p>
             ) : null}
             {notices.length > 0 ? (
               <div role="status" className="mb-4 space-y-2">
                 {notices.map((text) => (
-                  <p key={text} className="text-small rounded-xs border border-espresso/40 bg-parchment px-3 py-2">
+                  <p key={text} className="text-small rounded-lg border border-ink/15 bg-warm px-3 py-2">
                     {text}
                   </p>
                 ))}
@@ -156,15 +156,15 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
             </div>
             <CartLines cart={cart} focusId="bag-drawer-title" onContinue={close} />
             {cart && cart.lines.length > 0 ? (
-              <div className="mt-5 border-t border-espresso/15 pt-4">
+              <div className="mt-5 border-t border-ink/10 pt-4">
                 <ProvinceForm provinceCode={cart.provinceCode} />
               </div>
             ) : null}
-            {cart && cart.lines.length > 0 ? <p className="text-small mt-4 text-walnut">{bag.sampleNote}</p> : null}
+            {cart && cart.lines.length > 0 ? <p className="text-small mt-4 text-ink-soft">{bag.sampleNote}</p> : null}
           </div>
 
           {cart && cart.lines.length > 0 ? (
-            <div className="border-t border-espresso/15 bg-ivory px-5 py-4">
+            <div className="border-t border-ink/10 bg-page px-5 py-4">
               <CartSummary cart={cart} />
               <Link href="/cart" className="focus-ring text-small mt-1 inline-flex min-h-11 items-center font-semibold underline underline-offset-4">
                 {bag.viewFullBag}

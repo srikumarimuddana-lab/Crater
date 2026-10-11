@@ -111,7 +111,7 @@ function AddToBagForm({
         : `${addToBag.idle} — ${formatMoney(price)}`;
 
   const stepper =
-    'focus-ring inline-flex size-11 items-center justify-center text-xl leading-none hover:bg-parchment';
+    'focus-ring inline-flex size-11 items-center justify-center text-xl leading-none hover:bg-sage';
 
   return (
     <>
@@ -132,7 +132,7 @@ function AddToBagForm({
         <label htmlFor="quantity" className="text-small block font-semibold">
           {productPage.quantityLabel}
         </label>
-        <div className="mt-2 inline-flex items-center rounded-xs border border-espresso/40">
+        <div className="mt-2 inline-flex items-center overflow-hidden rounded-lg border border-ink/20">
           <button
             type="button"
             onClick={() => step(-1)}
@@ -164,11 +164,11 @@ function AddToBagForm({
             <span aria-hidden="true">+</span>
           </button>
         </div>
-        <p id="quantity-hint" className="text-small mt-1 text-walnut">
+        <p id="quantity-hint" className="text-small mt-1 text-ink-soft">
           {productPage.quantityHint(MAX_LINE_QUANTITY)}
         </p>
         {quantityMessage ? (
-          <p id="quantity-error" className="text-small mt-1 font-semibold text-espresso">
+          <p id="quantity-error" className="text-small mt-1 font-semibold text-ink">
             {quantityMessage}
           </p>
         ) : null}
@@ -183,16 +183,16 @@ function AddToBagForm({
         onClick={(e) => {
           if (pending) e.preventDefault();
         }}
-        className={buttonClassName('primary', 'w-full disabled:cursor-not-allowed disabled:bg-walnut/80 disabled:text-ivory')}
+        className={buttonClassName('primary', 'w-full disabled:cursor-not-allowed disabled:bg-ink-soft/60 disabled:text-white')}
       >
         {label}
       </button>
 
-      <p className="text-small -mt-2 text-walnut">{bag.taxShippingNote}</p>
+      <p className="text-small -mt-2 text-ink-soft">{bag.taxShippingNote}</p>
 
       <div role="status" aria-live="polite" aria-atomic="true" className="min-h-6">
         {feedback.map((text) => (
-          <p key={text} className="text-small text-espresso">
+          <p key={text} className="text-small text-ink">
             {text}
           </p>
         ))}
@@ -200,7 +200,7 @@ function AddToBagForm({
     </form>
 
     {available && mainOffscreen ? (
-      <div data-testid="sticky-add-to-bag" className="fixed inset-x-0 bottom-0 z-30 border-t border-espresso/15 bg-ivory p-3 lg:hidden">
+      <div data-testid="sticky-add-to-bag" className="fixed inset-x-0 bottom-0 z-30 border-t border-ink/10 bg-page p-3 lg:hidden">
         <button
           type="submit"
           form="add-to-bag-form"

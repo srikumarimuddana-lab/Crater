@@ -11,6 +11,7 @@ import {
   type RitualTileData,
 } from '@/components/home-sections';
 import { PageShell } from '@/components/page-shell';
+import { SectionHeading } from '@/components/section-heading';
 import { getStorefront } from '@/lib/commerce';
 import type { Collection, Product, ProductsQueryArgs } from '@/lib/commerce/types';
 import { browse, home, productPage } from '@/lib/content/shop-copy';
@@ -82,31 +83,25 @@ export default async function Home({ searchParams }: HomeProps) {
       <ValueTiles />
       <FeaturedCarousel products={featured} />
       <RitualTiles tiles={ritualTiles} />
-      <StoryBlock />
-      <ValuesRows />
-      <JournalTeaser />
 
-        <section id="collection" aria-labelledby="collection-title" className="page-gutter border-t border-espresso/15 py-12 md:py-16 lg:py-20">
-          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-            <div>
-              <h2 id="collection-title" className="!text-[clamp(1.75rem,1.3rem+1.6vw,2.5rem)]">
-                {productPage.shopAll}
-              </h2>
-              <p className="text-small mt-1 text-walnut" aria-live="polite">
-                {loadFailed ? browse.listLoadError : browse.count(shown.length)}
-              </p>
-            </div>
-
+      {/* The full collection sits before the owner's story and values, which are still placeholders. */}
+      <section id="collection" aria-labelledby="collection-title" className="page-gutter py-16 md:py-24">
+        <SectionHeading
+          id="collection-title"
+          eyebrow={browse.collectionEyebrow}
+          title={productPage.shopAll}
+          emphasis={browse.collectionEmphasis}
+          actions={
             <form method="get" action="/" className="flex items-center gap-2">
               {activeCategory ? <input type="hidden" name="category" value={activeCategory} /> : null}
-              <label htmlFor="sort" className="text-small text-walnut">
+              <label htmlFor="sort" className="text-small text-ink-soft">
                 {browse.sortLabel}
               </label>
               <select
                 id="sort"
                 name="sort"
                 defaultValue={activeSort}
-                className="focus-ring min-h-11 rounded-xs border border-espresso/40 bg-ivory px-3 text-base"
+                className="focus-ring min-h-11 rounded-lg border border-ink/20 bg-page px-3 text-base"
               >
                 {(Object.keys(SORTS) as SortKey[]).map((k) => (
                   <option key={k} value={k}>
@@ -116,47 +111,55 @@ export default async function Home({ searchParams }: HomeProps) {
               </select>
               <button
                 type="submit"
-                className="focus-ring inline-flex min-h-11 items-center px-2 text-base font-semibold underline underline-offset-4"
+                className="focus-ring inline-flex min-h-11 items-center px-2 text-base font-medium text-moss underline decoration-moss/40 underline-offset-4 hover:decoration-moss"
               >
                 {browse.sortApply}
               </button>
             </form>
-          </div>
+          }
+        />
+        <p className="text-small mt-3 text-ink-soft" aria-live="polite">
+          {loadFailed ? browse.listLoadError : browse.count(shown.length)}
+        </p>
 
-          <nav aria-label="Filter products" className="mt-6 border-b border-espresso/15">
-            <ul className="-mx-5 flex gap-x-6 overflow-x-auto px-5 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
-              {[{ handle: undefined, title: 'All products' }, ...categories].map(({ handle, title }) => {
-                const current = handle === activeCategory;
-                return (
-                  <li key={title}>
-                    <Link
-                      href={hrefFor(handle)}
-                      aria-current={current ? 'page' : undefined}
-                      className={
-                        'focus-ring inline-flex min-h-11 items-center whitespace-nowrap border-b-2 text-base transition-colors motion-reduce:transition-none ' +
-                        (current ? 'border-forest font-semibold text-forest' : 'border-transparent text-espresso hover:border-espresso/40')
-                      }
-                    >
-                      {title}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-
-          {!loadFailed && shown.length === 0 ? (
-            <p className="mt-10 text-walnut">{browse.emptyCollection}</p>
-          ) : (
-            <ul className="mt-8 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 md:gap-x-6 lg:gap-x-8">
-              {shown.map((product) => (
-                <li key={product.handle}>
-                  <ProductCard product={product} />
+        <nav aria-label="Filter products" className="mt-8">
+          <ul className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
+            {[{ handle: undefined, title: 'All products' }, ...categories].map(({ handle, title }) => {
+              const current = handle === activeCategory;
+              return (
+                <li key={title}>
+                  <Link
+                    href={hrefFor(handle)}
+                    aria-current={current ? 'page' : undefined}
+                    className={
+                      'focus-ring inline-flex min-h-11 items-center whitespace-nowrap rounded-full border px-4 text-[0.9375rem] font-medium transition-colors motion-reduce:transition-none ' +
+                      (current ? 'border-moss bg-moss text-white' : 'border-ink/15 text-ink hover:border-ink/40 hover:bg-surface')
+                    }
+                  >
+                    {title}
+                  </Link>
                 </li>
-              ))}
-            </ul>
-          )}
-        </section>
+              );
+            })}
+          </ul>
+        </nav>
+
+        {!loadFailed && shown.length === 0 ? (
+          <p className="mt-10 text-ink-soft">{browse.emptyCollection}</p>
+        ) : (
+          <ul className="mt-10 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 md:gap-x-6 md:gap-y-12 lg:gap-x-8">
+            {shown.map((product) => (
+              <li key={product.handle}>
+                <ProductCard product={product} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <StoryBlock />
+      <ValuesRows />
+      <JournalTeaser />
     </PageShell>
   );
 }

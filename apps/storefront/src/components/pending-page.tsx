@@ -17,7 +17,7 @@ export function PendingPage({ title }: { title: string }) {
           {title}
         </h1>
         <p className="mt-4 font-semibold">{pendingPage.status}</p>
-        <p className="mt-2 max-w-[48ch] text-walnut">{pendingPage.body}</p>
+        <p className="mt-2 max-w-[48ch] text-ink-soft">{pendingPage.body}</p>
         <ButtonLink href="/#collection" variant="primary" className="mt-8">
           {pendingPage.action}
         </ButtonLink>

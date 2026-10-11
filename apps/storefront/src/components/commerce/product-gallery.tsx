@@ -33,7 +33,7 @@ export function ProductGallery({ images, idPrefix = 'gallery' }: { images: Produ
             id={slideId(i)}
             className={many ? 'relative w-full shrink-0 snap-center scroll-mt-4 lg:w-auto lg:shrink' : 'relative'}
           >
-            <div className="relative aspect-square overflow-hidden rounded-xs border border-espresso/15 bg-parchment sm:aspect-[4/5]">
+            <div className="relative aspect-square overflow-hidden rounded-card bg-surface sm:aspect-[4/5]">
               <Image
                 src={image.url}
                 alt={image.altText}
@@ -46,7 +46,7 @@ export function ProductGallery({ images, idPrefix = 'gallery' }: { images: Produ
               />
             </div>
             {many ? (
-              <p className="text-small absolute bottom-3 left-3 rounded-xs bg-ivory/90 px-2 py-0.5 tabular-nums text-espresso lg:hidden">
+              <p className="text-small absolute bottom-3 left-3 rounded-full bg-page/90 px-2.5 py-0.5 tabular-nums text-ink lg:hidden">
                 <span className="sr-only">{productPage.galleryImage}: </span>
                 {i + 1} / {images.length}
               </p>
@@ -62,7 +62,7 @@ export function ProductGallery({ images, idPrefix = 'gallery' }: { images: Produ
               <a
                 href={`#${slideId(i)}`}
                 aria-label={productPage.galleryJump(i + 1, images.length)}
-                className="focus-ring block size-14 overflow-hidden rounded-xs border border-espresso/30 bg-parchment hover:border-espresso"
+                className="focus-ring block size-14 overflow-hidden rounded-lg border border-ink/15 bg-surface hover:border-moss"
               >
                 <Image src={image.url} alt="" width={112} height={140} unoptimized loading="lazy" className="h-full w-full object-cover" />
               </a>
@@ -72,7 +72,7 @@ export function ProductGallery({ images, idPrefix = 'gallery' }: { images: Produ
       ) : null}
 
       {images.some((i) => i.placeholder) ? (
-        <p className="text-small mt-3 text-walnut">{previewCopy.imagePlaceholderCaption}</p>
+        <p className="text-small mt-3 text-ink-soft">{previewCopy.imagePlaceholderCaption}</p>
       ) : null}
     </section>
   );

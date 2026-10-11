@@ -80,7 +80,7 @@ export function ProvinceForm({
             setValue(e.currentTarget.value);
             if (e.currentTarget.value) e.currentTarget.form?.requestSubmit();
           }}
-          className="focus-ring min-h-11 min-w-0 flex-1 rounded-xs border border-espresso/60 bg-ivory px-3 text-espresso"
+          className="focus-ring min-h-11 min-w-0 flex-1 rounded-lg border border-ink/30 bg-page px-3 text-ink"
         >
           <option value="">{taxCopy.provincePlaceholder}</option>
           {PROVINCES.map(([code, name]) => (
@@ -95,19 +95,19 @@ export function ProvinceForm({
           onClick={(e) => {
             if (pending) e.preventDefault();
           }}
-          className={buttonClassName('secondary', 'min-h-11 shrink-0 bg-ivory !px-4')}
+          className={buttonClassName('secondary', 'min-h-11 shrink-0 bg-page !px-4')}
         >
           {taxCopy.provinceSave}
         </button>
       </div>
-      <p id={hintId} className="text-small mt-2 text-walnut">
+      <p id={hintId} className="text-small mt-2 text-ink-soft">
         {taxCopy.provinceHint}
       </p>
-      <p className="text-small mt-1 text-walnut">{taxCopy.provinceMismatchNote}</p>
+      <p className="text-small mt-1 text-ink-soft">{taxCopy.provinceMismatchNote}</p>
       <div role="status" aria-live="polite" aria-atomic="true">
         {saved ? <p className="sr-only">{saved}</p> : null}
         {problem ? (
-          <p id={errorId} className="text-small mt-2 rounded-xs border border-espresso/40 bg-parchment px-3 py-2 font-semibold">
+          <p id={errorId} className="text-small mt-2 rounded-lg border border-ink/20 bg-surface px-3 py-2 font-semibold">
             {problem}
           </p>
         ) : null}

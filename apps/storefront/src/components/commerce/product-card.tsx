@@ -4,7 +4,8 @@ import type { Product } from '@/lib/commerce/types';
 import { previewCopy, productPage } from '@/lib/content/shop-copy';
 import { Price } from './price';
 
-export function ProductCard({ product }: { product: Product }) {
+/** Flat tile card: image on the surface tint, serif name, price, sizes. `feature` widens the image (first card of a row). */
+export function ProductCard({ product, feature = false }: { product: Product; feature?: boolean }) {
   const image = product.featuredImage;
   const titleId = `product-${product.handle}-title`;
   const { minVariantPrice, maxVariantPrice } = product.priceRange;
@@ -12,17 +13,17 @@ export function ProductCard({ product }: { product: Product }) {
   const sizes = product.variants.length;
 
   return (
-    <article id={`product-${product.handle}`} aria-labelledby={titleId} className="relative flex h-full flex-col gap-3">
-      <div className="relative aspect-[4/5] overflow-hidden rounded-xs border border-espresso/15 bg-parchment">
+    <article id={`product-${product.handle}`} aria-labelledby={titleId} className="group relative flex h-full flex-col gap-3">
+      <div className={`relative overflow-hidden rounded-card bg-surface ${feature ? 'aspect-[5/4] md:aspect-[8/5]' : 'aspect-[4/5]'}`}>
         {image ? (
           <Image
             src={image.url}
             alt={image.altText}
             width={image.width}
             height={image.height}
-            sizes="(min-width: 80rem) 405px, (min-width: 48rem) 30vw, 45vw"
+            sizes={feature ? '(min-width: 80rem) 640px, (min-width: 48rem) 60vw, 90vw' : '(min-width: 80rem) 405px, (min-width: 48rem) 30vw, 45vw'}
             unoptimized
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           />
         ) : null}
       </div>
@@ -31,19 +32,19 @@ export function ProductCard({ product }: { product: Product }) {
           {/* Stretched link: the whole card is the target, the title is the accessible name. */}
           <Link
             href={`/products/${product.handle}`}
-            className="focus-ring after:absolute after:inset-0 after:content-[''] hover:underline hover:decoration-1 hover:underline-offset-4"
+            className="focus-ring after:absolute after:inset-0 after:rounded-card after:content-[''] hover:underline hover:decoration-1 hover:underline-offset-4"
           >
             {product.title}
           </Link>
         </h3>
         <p className="text-small">
-          {varies ? <span className="text-walnut">{productPage.fromPrice} </span> : null}
+          {varies ? <span className="text-ink-soft">{productPage.fromPrice} </span> : null}
           <Price money={minVariantPrice} className="font-semibold" />
         </p>
-        <p className="text-small flex flex-wrap gap-x-2 text-walnut">
+        <p className="text-small flex flex-wrap gap-x-2 text-ink-soft">
           <span>{sizes > 1 ? productPage.sizeCount(sizes) : product.variants[0]?.title}</span>
           {product.sample ? <span>{previewCopy.sampleChip}</span> : null}
-          {!product.availableForSale ? <span className="font-semibold text-espresso">{productPage.soldOut}</span> : null}
+          {!product.availableForSale ? <span className="font-semibold text-ink">{productPage.soldOut}</span> : null}
         </p>
       </div>
     </article>

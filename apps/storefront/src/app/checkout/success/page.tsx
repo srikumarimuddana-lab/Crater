@@ -38,7 +38,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
             <p className="mt-6" role="status">
               {confirmation.processing.body}
             </p>
-            <p className="mt-4 text-walnut">{contactLine(null)}</p>
+            <p className="mt-4 text-ink-soft">{contactLine(null)}</p>
             <Link href={refreshHref} className={buttonClassName('primary', 'mt-8')}>
               {confirmation.processing.refresh}
             </Link>
@@ -78,16 +78,16 @@ function Paid({ order, mode }: { order: Order; mode: ReturnType<typeof commerceM
       {mode === 'stripe-test' ? <p className="mt-6 font-semibold">{c.testOrderNote}</p> : null}
       {mode === 'fixture' ? <p className="mt-6 font-semibold">{c.fixtureOrderNote}</p> : null}
       <p className="mt-6">
-        <span className="text-eyebrow block text-walnut">{c.orderNumberLabel}</span>
+        <span className="text-eyebrow block text-ink-soft">{c.orderNumberLabel}</span>
         <span className="font-display text-3xl">{order.name}</span>
       </p>
-      <p className="text-small mt-1 text-walnut">{c.keepNumber}</p>
+      <p className="text-small mt-1 text-ink-soft">{c.keepNumber}</p>
 
       <section aria-labelledby="ordered-items" className="mt-10">
         <h2 id="ordered-items" className="text-3xl">
           {c.itemsLabel}
         </h2>
-        <ul className="mt-4 divide-y divide-espresso/15 border-y border-espresso/15">
+        <ul className="mt-4 divide-y divide-ink/10 border-y border-ink/10">
           {order.lineItems.map((item) => (
             <li key={item.variantId} className="flex flex-wrap items-baseline justify-between gap-x-4 py-3">
               <span>
@@ -101,18 +101,18 @@ function Paid({ order, mode }: { order: Order; mode: ReturnType<typeof commerceM
         <dl className="mt-4 space-y-2">
           {totals.map(([label, value]) => (
             <div key={label} className="flex justify-between gap-4">
-              <dt className="text-walnut">{label}</dt>
+              <dt className="text-ink-soft">{label}</dt>
               <dd className="tabular-nums">{value}</dd>
             </div>
           ))}
-          <div className="flex justify-between gap-4 border-t border-espresso/15 pt-3">
+          <div className="flex justify-between gap-4 border-t border-ink/10 pt-3">
             <dt className="font-semibold">{c.total}</dt>
             <dd className="text-price">{formatMoney(order.totalPrice)}</dd>
           </div>
         </dl>
       </section>
 
-      <p className="mt-8 text-walnut">{contactLine(null)}</p>
+      <p className="mt-8 text-ink-soft">{contactLine(null)}</p>
       <Link href="/#collection" className={buttonClassName('primary', 'mt-8')}>
         {c.continueShopping}
       </Link>

@@ -29,7 +29,7 @@ test('home renders shopping content without WebGL', async ({ page }) => {
   await page.goto('/');
 
   // The stylesheet applied (an unstyled page would still pass the role checks below).
-  await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(247, 242, 232)');
+  await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(255, 253, 248)');
 
   // Announcement bar: store line plus the preview notice, unmistakable while samples are in use.
   const notice = page.getByRole('region', { name: /preview notice/i });

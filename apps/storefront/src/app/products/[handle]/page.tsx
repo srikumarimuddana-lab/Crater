@@ -99,7 +99,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
     <PageShell>
       <article aria-labelledby="product-title" className="page-gutter pt-4 pb-24 md:pt-6 lg:pb-20">
         <nav aria-label={productPage.breadcrumbLabel} className="text-small">
-          <ol className="flex flex-wrap items-center gap-x-2 text-walnut">
+          <ol className="flex flex-wrap items-center gap-x-2 text-ink-soft">
             <li>
               <Link href="/#collection" className="focus-ring inline-flex min-h-11 items-center underline underline-offset-4">
                 {productPage.shopAll}
@@ -124,20 +124,25 @@ export default async function ProductPage({ params, searchParams }: Props) {
 
           <div className="flex flex-col gap-6 lg:col-span-5 lg:sticky lg:top-6 lg:self-start">
             <header>
-              {product.sample ? <p className="text-small text-walnut">{previewCopy.sampleChip}</p> : null}
-              <h1 id="product-title" className="mt-1 !text-[clamp(2rem,1.6rem+1.4vw,2.75rem)]">
+              <p className="text-small flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="font-medium text-ink-soft">{product.productType}</span>
+                {product.sample ? (
+                  <span className="inline-flex min-h-7 items-center rounded-full bg-sage px-3 text-moss-deep">{previewCopy.sampleChip}</span>
+                ) : null}
+              </p>
+              <h1 id="product-title" className="mt-3 !text-[clamp(2.25rem,1.7rem+1.8vw,3.25rem)]">
                 {product.title}
               </h1>
-              <p className="mt-3 max-w-[48ch] text-walnut">{product.description}</p>
+              <p className="text-lead mt-4 max-w-[44ch] !text-[1.0625rem]">{product.description}</p>
               <p aria-live="polite" aria-atomic="true" className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span className="sr-only">{productPage.priceLabel}: </span>
                 <Price money={variant.price} className="text-price" />
-                {product.sample ? <span className="text-small text-walnut">{previewCopy.samplePriceLabel}</span> : null}
+                {product.sample ? <span className="text-small text-ink-soft">{previewCopy.samplePriceLabel}</span> : null}
               </p>
             </header>
 
             {variantMissing ? (
-              <p role="status" className="text-small rounded-xs border border-espresso/40 bg-parchment px-3 py-2">
+              <p role="status" className="text-small rounded-lg border border-ink/15 bg-warm px-3 py-2">
                 {productPage.variantNotFound}
               </p>
             ) : null}
@@ -146,14 +151,14 @@ export default async function ProductPage({ params, searchParams }: Props) {
               .filter((option) => option.optionValues.length === 1)
               .map((option) => (
                 <p key={option.id} className="text-small font-semibold">
-                  {option.name}: <span className="font-normal text-walnut">{option.optionValues[0].name}</span>
+                  {option.name}: <span className="font-normal text-ink-soft">{option.optionValues[0].name}</span>
                 </p>
               ))}
 
             {product.options.filter((option) => option.optionValues.length > 1).map((option) => (
               <fieldset key={option.id} className="min-w-0">
                 <legend className="text-small font-semibold">
-                  {option.name}: <span className="font-normal text-walnut">{variant.selectedOptions.find((s) => s.name === option.name)?.value}</span>
+                  {option.name}: <span className="font-normal text-ink-soft">{variant.selectedOptions.find((s) => s.name === option.name)?.value}</span>
                   <span className="sr-only">. {productPage.optionLegend(option.name)}</span>
                 </legend>
                 <ul className="mt-3 grid grid-cols-2 gap-2">
@@ -168,13 +173,13 @@ export default async function ProductPage({ params, searchParams }: Props) {
                           scroll={false}
                           aria-current={selected ? 'true' : undefined}
                           className={
-                            'focus-ring flex min-h-14 flex-col justify-center rounded-xs border px-4 py-2 text-base transition-colors motion-reduce:transition-none ' +
-                            (selected ? 'border-2 border-forest bg-ivory ' : 'border-espresso/30 hover:border-espresso ') +
-                            (ok ? '' : 'text-walnut ')
+                            'focus-ring flex min-h-14 flex-col justify-center rounded-lg border px-4 py-2 text-base transition-colors motion-reduce:transition-none ' +
+                            (selected ? 'border-2 border-moss bg-sage ' : 'border-ink/20 hover:border-moss ') +
+                            (ok ? '' : 'text-ink-soft ')
                           }
                         >
                           <span className={`font-semibold ${ok ? '' : 'line-through'}`}>{ov.name}</span>
-                          <span className="text-small text-walnut">
+                          <span className="text-small text-ink-soft">
                             {ok ? null : (
                               <>
                                 {productPage.soldOut}
@@ -196,10 +201,10 @@ export default async function ProductPage({ params, searchParams }: Props) {
               {anyAvailable && !variant.availableForSale ? (
                 <p className="font-semibold">{productPage.variantUnavailable(variant.title)}</p>
               ) : null}
-              {low ? <p className="text-small font-semibold text-espresso">{low}</p> : null}
+              {low ? <p className="text-small font-semibold text-ink">{low}</p> : null}
             </div>
 
-            <p role="note" data-testid="npn-notice" className="text-small border-l-2 border-forest pl-3 text-walnut">
+            <p role="note" data-testid="npn-notice" className="text-small rounded-card bg-sage px-4 py-3 text-moss-deep">
               {productPage.npnNotice}
             </p>
 
@@ -213,28 +218,28 @@ export default async function ProductPage({ params, searchParams }: Props) {
               price={variant.price}
             />
 
-            <div className="border-t border-espresso/15">
+            <div className="border-t border-ink/10">
               {sections.map((sec) => (
-                <details key={sec.key} className="group border-b border-espresso/15">
-                  <summary className="focus-ring flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 font-semibold [&::-webkit-details-marker]:hidden">
+                <details key={sec.key} className="group border-b border-ink/10">
+                  <summary className="focus-ring flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 font-display text-xl [&::-webkit-details-marker]:hidden">
                     {sec.heading}
                     <span aria-hidden="true" className="text-xl leading-none group-open:hidden">+</span>
                     <span aria-hidden="true" className="hidden text-xl leading-none group-open:inline">−</span>
                   </summary>
-                  <div className="pb-5">
+                  <div className="pb-6 text-ink-soft">
                     {sec.body}
-                    {sec.disclaimer ? <p className="text-small mt-3 text-walnut">{sec.disclaimer}</p> : null}
+                    {sec.disclaimer ? <p className="text-small mt-3 text-ink-soft">{sec.disclaimer}</p> : null}
                   </div>
                 </details>
               ))}
             </div>
-            <p className="text-small -mt-3 text-walnut">{detailsSections.sectionNote}</p>
+            <p className="text-small -mt-3 text-ink-soft">{detailsSections.sectionNote}</p>
 
             <dl aria-label={productPage.keyFacts} className="text-small grid grid-cols-[auto_1fr] gap-x-6 gap-y-1">
               <dt className="font-semibold">{productPage.sizeFact}</dt>
-              <dd className="text-walnut">{variant.title}</dd>
+              <dd className="text-ink-soft">{variant.title}</dd>
               <dt className="font-semibold">{productPage.categoryFact}</dt>
-              <dd className="text-walnut">{product.productType}</dd>
+              <dd className="text-ink-soft">{product.productType}</dd>
             </dl>
           </div>
         </div>

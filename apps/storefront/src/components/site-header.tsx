@@ -6,9 +6,7 @@ import { BagControls } from './commerce/bag-controls';
 import { MobileMenu } from './mobile-menu';
 import { NavColumns } from './nav-columns';
 import { ShopMenu } from './shop-menu';
-
-const shopAllClass =
-  'focus-ring inline-flex min-h-11 items-center text-base font-semibold text-espresso underline underline-offset-4 hover:text-forest-hover';
+import { ArrowLink } from './ui/button';
 
 /**
  * Logo centred between the menu control (left) and the bag (right). Server-rendered from the private
@@ -20,30 +18,33 @@ export async function SiteHeader() {
   const mode = commerceMode();
 
   return (
-    <header className="relative border-b border-espresso/15 bg-ivory">
+    <header className="relative border-b border-ink/10 bg-page">
       <div className="page-gutter grid min-h-16 grid-cols-[1fr_auto_1fr] items-center gap-4 md:min-h-20">
         <div className="flex items-center justify-start">
           <ShopMenu label={nav.shop} panelLabel={nav.megaMenuLabel}>
-            <div className="page-gutter py-8">
+            <div className="page-gutter py-10">
               <NavColumns
                 columns={nav.columns}
                 pendingSuffix={nav.pendingSuffix}
                 idPrefix="mega"
                 className="grid grid-cols-3 gap-x-10 gap-y-6"
               />
-              <Link href="/#collection" className={`${shopAllClass} mt-4`}>
+              <ArrowLink href="/#collection" className="mt-6">
                 {productPage.shopAll}
-              </Link>
+              </ArrowLink>
             </div>
           </ShopMenu>
           <MobileMenu>
-            <NavColumns columns={nav.columns} pendingSuffix={nav.pendingSuffix} idPrefix="menu" className="grid gap-4 px-2 pb-2" />
-            <Link href="/#collection" className={`${shopAllClass} mx-2`}>
+            <NavColumns columns={nav.columns} pendingSuffix={nav.pendingSuffix} idPrefix="menu" className="grid gap-5 px-2 pb-2" />
+            <ArrowLink href="/#collection" className="mx-2">
               {productPage.shopAll}
-            </Link>
+            </ArrowLink>
           </MobileMenu>
         </div>
-        <Link href="/" className="focus-ring inline-flex min-h-11 items-center font-display text-2xl tracking-[0.2em] text-forest uppercase">
+        <Link
+          href="/"
+          className="focus-ring inline-flex min-h-11 items-center font-display text-[1.375rem] tracking-[0.22em] text-moss-deep uppercase md:text-2xl"
+        >
           Crater
         </Link>
         <div className="flex items-center justify-end">

@@ -57,10 +57,10 @@ function Recovery({ kind, onRetry }: { kind: Kind; onRetry: () => void }) {
   };
 
   return (
-    <div className="mb-5 space-y-3 rounded-xs border border-espresso/40 bg-parchment px-4 py-3" data-testid="action-recovery">
+    <div className="mb-5 space-y-3 rounded-lg border border-ink/40 bg-surface px-4 py-3" data-testid="action-recovery">
       <div role="alert" className="space-y-2">
-        <p className="font-semibold text-espresso">{recovery.networkError}</p>
-        {kind === 'add' ? <p className="text-small text-espresso">{recovery.addUncertain}</p> : null}
+        <p className="font-semibold text-ink">{recovery.networkError}</p>
+        {kind === 'add' ? <p className="text-small text-ink">{recovery.addUncertain}</p> : null}
       </div>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
         <Button ref={retry} variant="secondary" onClick={onRetry}>
@@ -70,7 +70,7 @@ function Recovery({ kind, onRetry }: { kind: Kind; onRetry: () => void }) {
           <button
             type="button"
             onClick={openBag}
-            className="focus-ring inline-flex min-h-11 items-center font-semibold text-espresso underline underline-offset-4"
+            className="focus-ring inline-flex min-h-11 items-center font-semibold text-ink underline underline-offset-4"
           >
             {recovery.checkBag}
           </button>
