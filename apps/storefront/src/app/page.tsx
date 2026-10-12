@@ -1,16 +1,19 @@
 import Link from 'next/link';
 import { ProductCard } from '@/components/commerce/product-card';
 import {
+  CareSection,
   FeaturedCarousel,
   Hero,
   JournalTeaser,
   RitualTiles,
   StoryBlock,
+  Ticker,
   ValueTiles,
   ValuesRows,
   type RitualTileData,
 } from '@/components/home-sections';
 import { PageShell } from '@/components/page-shell';
+import { RevealObserver } from '@/components/reveal';
 import { SectionHeading } from '@/components/section-heading';
 import { getStorefront } from '@/lib/commerce';
 import type { Collection, Product, ProductsQueryArgs } from '@/lib/commerce/types';
@@ -78,8 +81,10 @@ export default async function Home({ searchParams }: HomeProps) {
   };
 
   return (
-    <PageShell>
+    <PageShell tone="green">
+      <RevealObserver />
       {hero && hero.variants[0] ? <Hero product={hero} /> : null}
+      <Ticker />
       <ValueTiles />
       <FeaturedCarousel products={featured} />
       <RitualTiles tiles={ritualTiles} />
@@ -94,14 +99,14 @@ export default async function Home({ searchParams }: HomeProps) {
           actions={
             <form method="get" action="/" className="flex items-center gap-2">
               {activeCategory ? <input type="hidden" name="category" value={activeCategory} /> : null}
-              <label htmlFor="sort" className="text-small text-ink-soft">
+              <label htmlFor="sort" className="text-small text-grey">
                 {browse.sortLabel}
               </label>
               <select
                 id="sort"
                 name="sort"
                 defaultValue={activeSort}
-                className="focus-ring min-h-11 rounded-lg border border-ink/20 bg-page px-3 text-base"
+                className="focus-ring min-h-11 rounded-full border border-ink/20 bg-page px-4 text-base"
               >
                 {(Object.keys(SORTS) as SortKey[]).map((k) => (
                   <option key={k} value={k}>
@@ -111,14 +116,14 @@ export default async function Home({ searchParams }: HomeProps) {
               </select>
               <button
                 type="submit"
-                className="focus-ring inline-flex min-h-11 items-center px-2 text-base font-medium text-moss underline decoration-moss/40 underline-offset-4 hover:decoration-moss"
+                className="focus-ring inline-flex min-h-11 items-center px-2 text-base font-medium text-deep underline decoration-deep/40 underline-offset-4 hover:decoration-deep"
               >
                 {browse.sortApply}
               </button>
             </form>
           }
         />
-        <p className="text-small mt-3 text-ink-soft" aria-live="polite">
+        <p className="text-small mt-3 text-grey" aria-live="polite">
           {loadFailed ? browse.listLoadError : browse.count(shown.length)}
         </p>
 
@@ -133,7 +138,7 @@ export default async function Home({ searchParams }: HomeProps) {
                     aria-current={current ? 'page' : undefined}
                     className={
                       'focus-ring inline-flex min-h-11 items-center whitespace-nowrap rounded-full border px-4 text-[0.9375rem] font-medium transition-colors motion-reduce:transition-none ' +
-                      (current ? 'border-moss bg-moss text-white' : 'border-ink/15 text-ink hover:border-ink/40 hover:bg-surface')
+                      (current ? 'border-deep bg-deep text-white' : 'border-ink/20 text-ink hover:border-ink hover:bg-cream')
                     }
                   >
                     {title}
@@ -145,7 +150,7 @@ export default async function Home({ searchParams }: HomeProps) {
         </nav>
 
         {!loadFailed && shown.length === 0 ? (
-          <p className="mt-10 text-ink-soft">{browse.emptyCollection}</p>
+          <p className="mt-10 text-grey">{browse.emptyCollection}</p>
         ) : (
           <ul className="mt-10 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 md:gap-x-6 md:gap-y-12 lg:gap-x-8">
             {shown.map((product) => (
@@ -157,6 +162,7 @@ export default async function Home({ searchParams }: HomeProps) {
         )}
       </section>
 
+      <CareSection />
       <StoryBlock />
       <ValuesRows />
       <JournalTeaser />

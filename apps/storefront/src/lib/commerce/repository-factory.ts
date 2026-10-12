@@ -13,7 +13,7 @@ const holder = (): Holder => {
 /**
  * Repository selected by COMMERCE_DB ('memory' default | 'postgres'). The instance
  * (and for Postgres its small connection pool) is a globalThis singleton so dev HMR
- * and warm serverless invocations reuse it instead of opening new pools.
+ * and blush serverless invocations reuse it instead of opening new pools.
  */
 export async function getRepository(env: Record<string, string | undefined> = process.env): Promise<CommerceRepository> {
   const h = holder();

@@ -1,32 +1,31 @@
 import type { Metadata, Viewport } from 'next';
-import { Fraunces, Inter } from 'next/font/google';
+import { Bricolage_Grotesque, Public_Sans } from 'next/font/google';
+import { brand } from '@/lib/content/brand';
 import './globals.css';
 
-// Soft old-style serif with true italics for the editorial headings (docs/visual-contract.md section 2).
-const display = Fraunces({
+// Nuda's heavy headline face (client decision 2026-10-11) and a plain body face; both open licence.
+const display = Bricolage_Grotesque({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-fraunces',
-  style: ['normal', 'italic'],
-  axes: ['opsz', 'SOFT'],
-});
-
-const body = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
+  variable: '--font-bricolage',
   axes: ['opsz'],
 });
 
+const body = Public_Sans({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-public-sans',
+});
+
 export const metadata: Metadata = {
-  title: 'Crater — Herbal extracts preview',
+  title: `${brand.name} — preview`,
   description: 'Preview storefront with sample products. Not a live shop; nothing can be purchased.',
   // Fixture preview: keep it out of search indexes until verified content replaces it.
   robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#FFFDF8',
+  themeColor: '#226C5D',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import { PageShell } from '@/components/page-shell';
 import { ButtonLink } from '@/components/ui/button';
+import { brand } from '@/lib/content/brand';
 import { pendingPage } from '@/lib/content/shop-copy';
 
 /** Metadata for a placeholder page: titled, and kept out of search indexes. */
 export function pendingMetadata(title: string): Metadata {
-  return { title: `${title} — Crater`, robots: { index: false, follow: false } };
+  return { title: `${title} — ${brand.name}`, robots: { index: false, follow: false } };
 }
 
 /** Shared "Content pending" template for pages the owner has not supplied yet. Never invents content. */
@@ -17,7 +18,7 @@ export function PendingPage({ title }: { title: string }) {
           {title}
         </h1>
         <p className="mt-4 font-semibold">{pendingPage.status}</p>
-        <p className="mt-2 max-w-[48ch] text-ink-soft">{pendingPage.body}</p>
+        <p className="mt-2 max-w-[48ch] text-grey">{pendingPage.body}</p>
         <ButtonLink href="/#collection" variant="primary" className="mt-8">
           {pendingPage.action}
         </ButtonLink>

@@ -33,7 +33,7 @@ export function ProductGallery({ images, idPrefix = 'gallery' }: { images: Produ
             id={slideId(i)}
             className={many ? 'relative w-full shrink-0 snap-center scroll-mt-4 lg:w-auto lg:shrink' : 'relative'}
           >
-            <div className="relative aspect-square overflow-hidden rounded-card bg-surface sm:aspect-[4/5]">
+            <div className="relative aspect-square overflow-hidden rounded-card bg-cream sm:aspect-[4/5]">
               <Image
                 src={image.url}
                 alt={image.altText}
@@ -62,7 +62,7 @@ export function ProductGallery({ images, idPrefix = 'gallery' }: { images: Produ
               <a
                 href={`#${slideId(i)}`}
                 aria-label={productPage.galleryJump(i + 1, images.length)}
-                className="focus-ring block size-14 overflow-hidden rounded-lg border border-ink/15 bg-surface hover:border-moss"
+                className="focus-ring block size-14 overflow-hidden rounded-lg border border-ink/15 bg-cream hover:border-deep"
               >
                 <Image src={image.url} alt="" width={112} height={140} unoptimized loading="lazy" className="h-full w-full object-cover" />
               </a>
@@ -72,7 +72,7 @@ export function ProductGallery({ images, idPrefix = 'gallery' }: { images: Produ
       ) : null}
 
       {images.some((i) => i.placeholder) ? (
-        <p className="text-small mt-3 text-ink-soft">{previewCopy.imagePlaceholderCaption}</p>
+        <p className="text-small mt-3 text-grey">{previewCopy.imagePlaceholderCaption}</p>
       ) : null}
     </section>
   );

@@ -116,6 +116,18 @@ export const nav = {
   shop: 'Shop',
   megaMenuLabel: 'Shop menu',
   pendingSuffix: 'content pending',
+  /** Top-level links beside the Shop menu (Nuda: logo left, menu right). Pending pages say so on the page itself. */
+  primary: [
+    { label: 'Home', href: '/' },
+    { label: 'Coaching', href: '/coaching' },
+    { label: 'Education', href: '/education' },
+    { label: 'About', href: '/about' },
+    { label: 'Journal', href: '/journal' },
+  ],
+  quiz: { label: 'Take a quiz', href: '/quiz' },
+  menuLabel: 'Menu',
+  closeMenu: 'Close menu',
+  quizCard: { title: 'Not sure where to start?', body: 'Find your remedy with a short quiz.' },
   columns: [
     {
       heading: 'Formats',
@@ -138,6 +150,9 @@ export const nav = {
     {
       heading: 'Explore',
       items: [
+        { label: 'Coaching', href: '/coaching', pending: true },
+        { label: 'Herbal education', href: '/education', pending: true },
+        { label: 'Take a quiz', href: '/quiz', pending: true },
         { label: 'About', href: '/about', pending: true },
         { label: 'Ingredients & sourcing', href: '/ingredients-sourcing', pending: true },
         { label: 'Journal', href: '/journal', pending: true },
@@ -150,17 +165,26 @@ export const home = {
   /** OWNER: final wording. States only true, neutral facts. */
   announcement: 'Preview store: sample products, not for sale. Shipping within Canada.',
   hero: {
-    /** Format names only (true facts), shown as a small line above the headline. */
-    eyebrow: 'Tinctures · Body oils · Single herbs · Kits & gifts',
-    headline: 'Liquid herbal extracts and body oils',
-    /** The one italic accent word in the headline; must occur in `headline`. */
-    emphasis: 'herbal',
-    subline: 'Tinctures, single herbs, body oils and kits, shown here as sample products.',
-    primaryAction: { label: 'Shop tinctures', href: categoryHref('tinctures') },
-    secondaryAction: { label: 'Browse all products', href: '/#collection' },
+    /** Stacked two-line headline (Nuda); `headline` is the accessible name, the words render on separate lines. */
+    headline: 'Prairie Remedies.',
+    headlineWords: ['Prairie', 'Remedies.'],
+    /** Owner facts only (Saskatchewan company, ships across Canada); products are samples. */
+    subline: 'Herbal remedies, skincare and baby care from Saskatchewan, shipped across Canada. Shown here with sample products.',
+    primaryAction: { label: 'Shop now', href: '/#collection' },
+    secondaryAction: { label: 'Learn more', href: '/about' },
     /** The first seed product is the hero product. */
     productHandle: 'lemon-balm-oat-extract',
   },
+  /** Ticker band under the hero: the client's offerings and Canadian identity, never claims. */
+  ticker: [
+    'Herbal remedies',
+    'Glow Getter™ skincare',
+    'Little Sprout Baby™',
+    'Herbal education',
+    'Holistic coaching',
+    'Rooted on the Prairies',
+    'Proudly Canadian',
+  ],
   /** Only true or neutral facts. OWNER: any further tile (origin, packaging, returns) needs confirmed facts. */
   valueTiles: [
     { title: 'Secure checkout with Stripe', body: 'Payment is taken on a Stripe-hosted page. Card details are never entered on this site.' },
@@ -168,7 +192,7 @@ export const home = {
     { title: 'Prices in Canadian dollars', body: 'Every price on this site is shown in CAD.' },
   ],
   featured: {
-    eyebrow: 'The collection',
+    eyebrow: 'Product range',
     title: 'Featured formulas',
     emphasis: 'formulas',
     /** Seed order, products 1 to 6. This is not a sales ranking. */
@@ -195,9 +219,36 @@ export const home = {
       { label: 'Body care', description: 'Body oils in 100 mL bottles.', href: categoryHref('body-care') },
     ],
   },
+  /** Coaching and education (the client's services) plus the quiz entry point; every page is still pending. */
+  care: {
+    eyebrow: 'Beyond the jar',
+    title: 'Care beyond the jar.',
+    emphasis: 'jar.',
+    cards: [
+      {
+        title: 'Holistic coaching',
+        body: 'Health and wellness coaching, including menopause coaching. Programme details are pending.',
+        href: '/coaching',
+        action: 'Learn more',
+      },
+      {
+        title: 'Herbal education',
+        body: 'Downloadable PDF guides and future online courses. The library is pending.',
+        href: '/education',
+        action: 'Learn more',
+      },
+    ],
+    quiz: {
+      eyebrow: 'Find your fit',
+      title: 'Not sure where to start?',
+      body: 'A short quiz will point you to a product, a guide or a coaching programme. It is being built.',
+      action: 'Take a quiz',
+      href: '/quiz',
+    },
+  },
   /** OWNER: the story (who, why, where) is pending. */
   story: {
-    eyebrow: 'About Crater',
+    eyebrow: 'About the founder',
     title: 'Our story',
     emphasis: 'story',
     body: 'Placeholder. The owner’s story will be added before launch.',
@@ -240,6 +291,9 @@ export const footer = {
       heading: 'About',
       items: [
         { label: 'About', href: '/about', pending: true },
+        { label: 'Coaching', href: '/coaching', pending: true },
+        { label: 'Herbal education', href: '/education', pending: true },
+        { label: 'Take a quiz', href: '/quiz', pending: true },
         { label: 'Ingredients & sourcing', href: '/ingredients-sourcing', pending: true },
         { label: 'Journal', href: '/journal', pending: true },
       ],
@@ -255,6 +309,8 @@ export const footer = {
     },
   ],
   pendingSuffix: 'content pending',
+  /** Elise-style footer blocks. Contact details are OWNER inputs and stay unprinted until supplied. */
+  getInTouch: { heading: 'Get in touch', body: 'Contact details will be added before launch.' },
   /** Hidden until an email provider and CASL-compliant consent text are chosen. OWNER decision. */
   newsletter: {
     enabled: false,

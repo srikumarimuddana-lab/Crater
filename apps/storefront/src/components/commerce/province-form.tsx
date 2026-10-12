@@ -100,14 +100,14 @@ export function ProvinceForm({
           {taxCopy.provinceSave}
         </button>
       </div>
-      <p id={hintId} className="text-small mt-2 text-ink-soft">
+      <p id={hintId} className="text-small mt-2 text-grey">
         {taxCopy.provinceHint}
       </p>
-      <p className="text-small mt-1 text-ink-soft">{taxCopy.provinceMismatchNote}</p>
+      <p className="text-small mt-1 text-grey">{taxCopy.provinceMismatchNote}</p>
       <div role="status" aria-live="polite" aria-atomic="true">
         {saved ? <p className="sr-only">{saved}</p> : null}
         {problem ? (
-          <p id={errorId} className="text-small mt-2 rounded-lg border border-ink/20 bg-surface px-3 py-2 font-semibold">
+          <p id={errorId} className="text-small mt-2 rounded-lg border border-ink/20 bg-cream px-3 py-2 font-semibold">
             {problem}
           </p>
         ) : null}

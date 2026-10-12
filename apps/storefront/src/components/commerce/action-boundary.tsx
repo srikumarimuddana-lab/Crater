@@ -57,7 +57,7 @@ function Recovery({ kind, onRetry }: { kind: Kind; onRetry: () => void }) {
   };
 
   return (
-    <div className="mb-5 space-y-3 rounded-lg border border-ink/40 bg-surface px-4 py-3" data-testid="action-recovery">
+    <div className="mb-5 space-y-3 rounded-lg border border-ink/40 bg-cream px-4 py-3" data-testid="action-recovery">
       <div role="alert" className="space-y-2">
         <p className="font-semibold text-ink">{recovery.networkError}</p>
         {kind === 'add' ? <p className="text-small text-ink">{recovery.addUncertain}</p> : null}

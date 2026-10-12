@@ -1,16 +1,15 @@
-# Visual contract: Bright Atelier (preview)
+# Visual contract: Prairie Remedies (preview)
 
-Status: the customer chose the Elise template's editorial structure and asked for the brightness of the
-Nuda template ("elise is ok but nuda is brighter"), 2026-10-11. This replaces the Phase 1/2 "Forest & Gilt"
-palette (2026-10-09); grid, shopping conventions and composition rules carry over. No brand identity,
-photography or label art has been supplied: all names, prices, copy and illustrations remain marked fixtures.
-Contrast ratios are WCAG 2.x, computed with a script (`python3 -I contrast.py`, relative luminance formula).
+Status: the client's direction from the shared design session (2026-10-11), applied to the storefront on
+2026-10-12. It replaces Bright Atelier (2026-10-11) and Forest & Gilt (2026-10-09); grid and shopping
+conventions carry over. The brand is The Creator's Remedy (Saskatchewan, shipping across Canada). No
+photography, product list or approved copy has been supplied: names, prices, copy and illustrations remain
+marked fixtures. Contrast ratios are WCAG 2.x, computed with a script.
 
-Reference facts (extracted from the live templates, not copied): Elise uses a cream page (#FFFBF5), a warm
-peach surface (#FFF4E3), deep ink (#1C1812), dark sage and near-black section bands, a soft old-style serif
-with one italic word per heading, pill labels above headings, 01–04 numbered lists and "→" links. Nuda uses
-a white page, an off-white alternate band (#F7F5EF), dark-grey text, a fresh green accent and one dark
-strip only. Crater keeps Elise's devices and drops every dark band.
+Sources: Nuda's palette as read from its live page (deep green, prairie green, mint, cream, ink, grey) with
+the client's adjustments ("green is fine, a little pink is fine, gold writings", no orange; keep the
+original logo colours, so the gold is the logo's amber). Structure borrows Nuda's hero, ticker and
+navigation and Elise's footer. Nothing is copied from either template.
 
 ## 1. Palette and contrast
 
@@ -18,61 +17,69 @@ Tokens live in `apps/storefront/src/app/globals.css` (`@theme`).
 
 | Token | Hex | Role |
 | --- | --- | --- |
-| `page` | `#FFFDF8` | Page background, header, hero, collection |
-| `surface` | `#F7F4EC` | Image tiles, cards, footer, hover fills, packshot backdrop |
-| `warm` | `#FFF3E4` | Peach-cream band ("Our story"), notices and summary panels |
-| `sage` | `#E6F0E6` | Pale sage band (announcement bar, "Shop by ritual"), eyebrow pills, selected size tile, NPN note |
-| `ink` | `#211D17` | Text and headings |
-| `ink-soft` | `#5E5547` | Secondary text, captions, lead paragraphs |
-| `moss` | `#226A49` | Links, primary button, active filter, focus ring |
-| `moss-hover` | `#17583A` | Primary button hover |
-| `moss-deep` | `#16452E` | Wordmark, text on sage, test-mode notice fill |
-| `bronze` | `#8F6437` | The italic accent word, 01–04 numerals, footer column headings |
-| `bronze-soft` | `#B5895E` | Ornament only (value-strip dots); never text |
-| hairline | `ink` at 10–20% | Dividers (`border-ink/10`), control borders (`border-ink/20`) |
+| `page` | `#FFFFFF` | Page background, inner-page header |
+| `cream` | `#F7F5EF` | Footer, section tints, image tiles, cards, packshot backdrop |
+| `mint-pale` | `#EAFBF1` | Section tint ("Shop by ritual"), eyebrow pills, selected size tile, NPN note |
+| `mint` | `#B5FFD8` | Announcement bar, highlights, hero gradient end |
+| `blush` | `#F8E1E7` | "A little pink": story band, notice panels |
+| `rose` | `#E9A9BA` | Decorative only; never text |
+| `ink` | `#242424` | Text, ticker band |
+| `grey` | `#4D4D4D` | Secondary text |
+| `deep` | `#226C5D` | Hero and home header, buttons, links, active filter, focus ring |
+| `deep-hover` | `#1B5A4D` | Button hover |
+| `prairie` | `#329258` | Gradient mid-stop and large accents only |
+| `amber` | `#A8832F` | Gold lettering at display size on light (the accent word) |
+| `amber-deep` | `#8A6A22` | Small gold labels (footer column headings, numerals) |
+| `amber-light` | `#F3D58C` | Gold on deep green at display size (hero gradient, ticker marks) |
+| `leaf` | `#FF0000` | Maple leaf |
+| hairline | `ink` at 10–20% | Dividers and control borders |
 
 | Foreground on background | Ratio | Use |
 | --- | --- | --- |
-| ink on page / surface / warm / sage | 16.5 / 15.3 / 15.3 / 14.4 | Body, headings |
-| ink-soft on page / surface / warm / sage | 7.2 / 6.7 / 6.7 / 6.3 | Captions, lead, hints |
-| moss on page / surface / sage | 6.4 / 5.9 / 5.6 | Links, focus ring, secondary button |
-| white on moss / moss-hover | 6.5 / 8.4 | Primary button label, active filter |
-| moss-deep on sage | 9.3 | Announcement bar, eyebrow pills, NPN note |
-| bronze on page / surface | 5.1 / 4.7 | Accent word (display size), numerals, footer headings |
-| page vs surface / sage / warm | 1.08 / 1.15 / 1.08 | Tints are quiet steps, not contrast |
+| ink on page / cream / mint-pale / mint / blush | 15.5 / 14.2 / 14.5 / 13.5 / 12.5 | Body, headings, announcement |
+| grey on page / cream / mint-pale / blush | 8.5 / 7.8 / 7.9 / 6.8 | Secondary text |
+| deep on page / cream / mint-pale / mint | 6.2 / 5.7 / 5.8 / 5.4 | Links, eyebrow pills, focus ring |
+| white on deep / deep-hover | 6.2 / 7.4 | Hero text, button labels, home header |
+| amber on page (24px and above) | 3.5 | Accent word in headings |
+| amber-deep on page / cream | 5.0 / 4.6 | Footer headings, numerals |
+| amber-light on deep (display size) | 4.4 | Hero gradient end, ticker marks |
+| mint on deep | 5.4 | Alternative gradient |
 
-Forbidden: `bronze-soft` as text (3.1 on page); bronze on sage below 24px (4.4). There is no dark band on any
-shop page; moss fills appear only on buttons, the active filter and the stripe-test notice.
+Forbidden: `prairie`, `amber` or `rose` as small text; white on `prairie` (3.9); orange anywhere. The logo's
+exact amber will replace `amber`/`amber-light` once the file is supplied and sampled.
 
 ## 2. Type roles
 
-Fonts via `next/font/google` (both SIL Open Font Licence): `--font-display` Fraunces (variable, roman and
-italic, `opsz` and `SOFT` axes, `'SOFT' 50` on headings); `--font-sans` Inter (variable, `opsz`).
+Fonts via `next/font/google` (both SIL Open Font Licence): `--font-display` Bricolage Grotesque (variable,
+`opsz` axis, weights 600–800 in use); `--font-sans` Public Sans (variable).
 
 | Role | Font | Size (clamp) | Line-height | Tracking |
 | --- | --- | --- | --- | --- |
-| h1 | display 400 | `clamp(2.5rem, 1.4rem + 4.2vw, 5.25rem)`; hero caps at 4.5rem | 1.04 | -0.02em |
-| h2 | display 400 | `clamp(2rem, 1.35rem + 2.6vw, 3.5rem)` (32 / 42 / 56px) | 1.08 | -0.015em |
-| h3 (card title) | display 500 | `clamp(1.25rem, 1.15rem + 0.5vw, 1.5rem)`; cards 1.25rem | 1.2 | 0 |
-| accent word | display italic, bronze, `'SOFT' 80` | inherits | | |
-| eyebrow pill | sans 500 | `0.8125rem`, sentence case, sage pill, moss-deep text | 1.3 | 0.01em |
-| numeral | display 400, tabular | `1.5rem`, bronze, `aria-hidden` | 1 | 0 |
-| lead | sans 400, ink-soft | `clamp(1.125rem, 1.05rem + 0.3vw, 1.3125rem)` | 1.5 | 0 |
+| hero title | display 800 | `clamp(3.25rem, 1.6rem + 7.4vw, 7.5rem)` (52 / 84 / 120px), two stacked words | 0.94 | -0.035em |
+| h1 | display 700 | `clamp(2.5rem, 1.6rem + 3.6vw, 4.5rem)`; product page caps at 3.25rem | 1 | -0.025em |
+| h2 | display 700 | `clamp(2rem, 1.4rem + 2.4vw, 3.25rem)` | 1.05 | -0.02em |
+| h3 / card title | display 600 | `clamp(1.25rem, 1.15rem + 0.5vw, 1.5rem)`; cards 1.25rem | 1.2 | -0.01em |
+| accent word | display, amber (amber-light gradient on green) | inherits | | |
+| eyebrow pill | sans 600 | `0.8125rem`, sentence case, mint-pale pill, deep text | 1.3 | 0.01em |
+| ticker | display 600 | `1.125rem`, white on ink | | |
+| numeral | display 700, tabular | `1.5rem`, amber-deep, `aria-hidden` | 1 | 0 |
+| lead | sans 400, grey | `clamp(1.125rem, 1.05rem + 0.3vw, 1.3125rem)` | 1.5 | 0 |
 | body | sans 400 | `clamp(1rem, 0.97rem + 0.12vw, 1.0625rem)` (>=16px) | 1.6 | 0 |
-| small | sans 400/500 | `clamp(0.875rem, 0.85rem + 0.1vw, 0.9375rem)` | 1.5 | 0.005em |
-| price | sans 600, tabular-nums | `clamp(1.125rem, 1rem + 0.5vw, 1.5rem)` | 1.2 | 0 |
-| button | sans 500 | `1rem`, sentence case | 1.2 | 0 |
+| small | sans 400/600 | `clamp(0.875rem, 0.85rem + 0.1vw, 0.9375rem)` | 1.5 | 0.005em |
+| price | sans 700, tabular-nums | `clamp(1.125rem, 1rem + 0.5vw, 1.5rem)` | 1.2 | 0 |
+| button | sans 600 | `1rem`, sentence case, pill | 1.2 | 0 |
 
-Accent-word rule: exactly one word per h1 and per section h2, taken from the copy (`emphasis` fields in
-`shop-copy.ts`), rendered by `<Emphasis>` as a `span.accent-word` so the heading's text content, and
-therefore every region name the tests assert, is unchanged. Never on product names, h3, prices or buttons.
+Accent-word rule ("gold writings"): one word per h1 and per section h2, taken from the copy (`emphasis`),
+rendered by `<Emphasis>` as a span so heading text content, and every region name the tests assert, is
+unchanged. On green bands the word uses the white-to-amber gradient. Never on product names or prices.
 
 ## 3. Spacing and grid
 
 Scale (4px base): `--space-1..10` = 4, 8, 12, 16, 24, 32, 48, 64, 96, 128px. Section padding-block: 64 (390),
-96 (768 and up). Radius: 10px images, cards and panels (`rounded-card`); 8px buttons, inputs, size tiles
-(`rounded-lg`); 999px pills (eyebrows, filters, chips). No shadows on cards or buttons; the mega menu, mobile
-menu and bag drawer carry one soft floating shadow.
+96 (768 and up). Radius: 24px cards, image tiles, panels and the quiz banner (`rounded-card`); 16px size
+tiles and the phone-menu quiz card (`rounded-tile`); 8px inputs; 999px buttons, filters, tags and pills.
+No card shadows; the hero packshot carries one soft drop shadow; the Shop menu, phone-menu panel and bag
+drawer carry one floating shadow.
 
 | Viewport | Columns | Gutter | Side margin | Content width |
 | --- | --- | --- | --- | --- |
@@ -80,73 +87,74 @@ menu and bag drawer carry one soft floating shadow.
 | 768 | 8 | 24px | 32px | 704px |
 | 1440 | 12 | 32px | 80px | max 1280px, centered (`--max-content: 80rem`) |
 
-## 4. Focus, targets, buttons
+## 4. Focus, targets, buttons and motion
 
-- Focus: 3px moss outline, 3px offset, on every surface (at least 5.2:1 on sage). `forced-colors` uses `Highlight`.
-- Targets at least 44px; buttons 48px tall, sentence case, 8px radius.
-- `primary`: moss fill, white label, hover moss-hover. `secondary`: 1px moss border, moss label, hover sage.
-  `ArrowLink`: moss text link with an `aria-hidden` "→" that nudges 4px on hover (none under reduced motion).
-- Carousel buttons: 44px circles, hairline border, hover sage, `aria-disabled` at either end.
+- Focus: 3px deep-green outline, 3px offset; white on green bands (`.on-green`). `forced-colors` uses `Highlight`.
+- Targets at least 44px; buttons 48px tall, pills, sentence case, Nuda wording ("Shop now", "Learn more",
+  "View all products", "Take a quiz").
+- `primary`: deep fill, white label. `secondary`: ink outline. `light` (on green): white fill, deep label,
+  hover mint. `outline-light` (on green): white outline. `ArrowLink`: text link with an `aria-hidden` "→".
+- Motion (CSS and one small observer; everything still under `prefers-reduced-motion: reduce` and complete
+  without script): hero words slide in from left and right and the lead fades in on load; the ticker scrolls
+  continuously (the duplicate row is `aria-hidden`); buttons lift 2px on hover; `.reveal` sections below
+  the fold rise and fade in once when they enter (marked by `RevealObserver` after hydration only).
+  Nothing animates the hero image, so layout stays stable while fonts and images load.
 
 ## 5. Composition
 
-- Announcement bar: sage band, moss-deep text, hairline below ("Preview store: sample products, not for sale.").
-- Header: page colour, hairline; "Shop" mega menu left, centred Fraunces CRATER wordmark (moss-deep, 0.22em
-  tracking), "Bag (n)" right; "Menu" disclosure on small screens. Mega menu columns use display headings.
-- Hero: page colour, no band. Formats line (true format names) above the h1; h1 with the accent word
-  ("Liquid *herbal* extracts and body oils"); lead; primary button plus "Browse all products →". The packshot
-  sits in a 10px surface tile (4:3 at 390, 5:4 at 768, 3:2 at 1440) with the product link, size, price and
-  "Sample price" caption below. DOM order head, media, caption at every width; the h1 reserves 3 lines on
-  small screens so font swap cannot shift it.
-- Store information: hairline strip, three true facts with a bronze-soft dot each, no claims.
-- Featured formulas: eyebrow "The collection", h2 with accent word, "View all products →" and carousel
-  controls; a scroll-snap list of six cards where the first is a wider feature card (8:5 image at 768 and up).
-- Shop by ritual: sage band; eyebrow "Four rituals"; four tiles numbered 01–04 (`aria-hidden`, bronze display
-  numerals over the image) with an arrow after the label. Link names still start with the label.
-- Shop all: eyebrow "Every sample product", h2 "Shop *all*", count in a live region, sort form on the right,
-  pill filters (active: moss fill, white text, `aria-current="page"`), 2 / 3 / 3 column grid of flat tile
-  cards (surface tile, serif name, price, sizes, "Sample product"). It sits before the story and values,
-  which are still placeholders.
-- Our story: warm band, eyebrow "About Crater", two columns, "Content pending" outline chip.
-- What we care about: page colour, hairline rows numbered 01–03, display row titles, ink-soft placeholders.
-- Footer: surface band with a hairline, Fraunces wordmark, three link columns with bronze headings, pending
-  markers, and the preview note. No dark footer.
-- Product page: breadcrumb; gallery about 7/12 in surface tiles (strip with "1 / 2" pills below lg); sticky
-  buy box about 5/12: category line plus "Sample product" pill, h1, lead, price with "Sample price", size
-  tiles (selected: 2px moss border and sage fill), NPN note in a sage panel, quantity stepper, full-width
-  "Add to bag — price", tax note, display-type accordions, key facts. Sticky mobile add-to-bag bar after the
-  main button scrolls away.
-- Bag drawer and /cart: page colour, hairlines, warm notice panels, surface summary panel, moss Checkout.
+- Announcement bar: mint band, ink text ("Preview store: sample products, not for sale. Shipping within Canada.").
+- Header: logo left (the supplied file, or the brand name as text), primary links on wide screens
+  ("Home", "Shop" menu, "Coaching", "Education", "About", "Journal"), a "Take a quiz" pill, "Bag (n)",
+  and on small screens "Menu". The home page's header sits on the green hero (white text, white quiz
+  pill); inner pages use a white header with a hairline. The Shop menu is unchanged (three columns plus
+  "Shop all →"). The phone menu slides in from the right over a dimmed page; the "Menu" control becomes the
+  round close button in the panel's corner; it lists the primary links, the Shop columns and a quiz card.
+- Hero: green gradient with a faint texture; Canadian tags ("Proudly Canadian" with a maple leaf,
+  "Saskatchewan-born", "Coast to coast"); the stacked "Prairie / Remedies." headline; lead; white "Shop
+  now" pill and "Learn more →"; the packshot in a 24px cream tile overlapping the headline column on wide
+  screens, with the product link, size, price and "Sample price" caption below. DOM order head, media,
+  caption at every width; the h1 reserves two lines on small screens.
+- Ticker: ink band with the client's offerings and Canadian lines, separated by amber marks.
+- Store information: hairline strip with the three true facts.
+- Featured formulas: eyebrow "Product range", gold "formulas", "View all products →", carousel with a
+  wider feature card first.
+- Shop by ritual: pale mint band; eyebrow "Four rituals"; tiles numbered 01–04 with an arrow after the label.
+- Shop all: eyebrow, gold "all", count, sort, pill filters (active deep fill), 2 / 3 / 3 grid of flat cream
+  tile cards. Before the story and values, which are placeholders.
+- Care beyond the jar: two cream cards (Holistic coaching, Herbal education, both "Learn more →" to pending
+  pages) and a deep-green quiz banner ("Not sure where to start?", white "Take a quiz" pill).
+- Our story: blush band, eyebrow "About the founder", "Content pending" chip.
+- What we care about: hairline rows numbered 01–03.
+- Footer: cream; logo, tagline "Rooted on the Prairies.", Canadian tags, "Get in touch" (details pending),
+  Shop / About / Help columns with amber-deep headings, the brand name set very large at 15% deep green,
+  then the preview note and copyright.
+- Product page: category line plus "Sample product" pill, heavy h1, lead, price, size tiles (selected: deep
+  border, pale mint fill), pale mint NPN note, stepper, full-width pill "Add to bag — price", accordions,
+  key facts; sticky phone bar. Bag drawer and /cart: white, hairlines, blush notices, cream summary panel.
 
 ## 6. Placeholder packshots
 
 Generated by `apps/storefront/scripts/generate-placeholder-packshots.mjs` into
-`public/products/<handle>/packshot.svg` and `detail.svg` (800×1000). Surface backdrop (#F7F4EC) with a
-slightly deeper floor (#EDE7DA) and a soft contact shadow, so bottles sit on the same tone as the card tiles;
-amber glass, gilt caps, ivory labels with a green or bronze band. Every image carries a corner "Placeholder
-illustration" note and the page adds an HTML caption. Not approved packaging.
+`public/products/<handle>/packshot.svg` and `detail.svg` (800×1000): cream backdrop (#F7F5EF) with a
+deeper floor (#EFEDE6), amber glass, gilt caps, white labels reading "THE CREATOR'S REMEDY" with a green or
+amber band, and a corner "Placeholder illustration" note. Not approved packaging; replaced by photography.
 
-## 6a. Real-store conventions (user direction, 2026-10-09, amended 2026-10-11)
+## 6a. Real-store conventions (user direction, 2026-10-09, amended 2026-10-12)
 
-Follow common premium Shopify-theme and editorial skincare conventions; never copy a brand's assets, copy or
-distinctive layout. Amended for the Elise structure:
+Follow common premium Shopify-theme conventions; never copy a template's assets, copy or distinctive
+layout. Amended for the Nuda direction: pills for buttons, filters and tags; one sentence-case eyebrow
+pill and one gold word per section heading; numbered 01–04 tiles are indices, never steps or durations;
+the hero, header and quiz banner are the only deep-green surfaces; the ticker is the only dark band.
 
-- Allowed once per section: a sentence-case eyebrow pill above the h2, and one italic accent word in the
-  h1/h2. Still avoided: centring every section, ornaments, glows behind content, uppercase-tracked labels,
-  gold rings around images, description text on cards.
-- Filters are pills (not underlined text links); buttons are sentence case, 8px radius, 48px tall.
-- Numbered sequences (01–04) are decorative indices, never steps, durations or routines.
-- Hairlines (ink at 10%) separate sections; tints (sage, warm, surface) replace dark bands.
+## 7. Inputs still needed from the client
 
-## 7. Assets still needed from the brand
-
-Product names, handles and real SKUs; packaging dimensions and materials; front/back/side photography;
-approved label artwork; approved benefit copy and licensed claims; real sizes and prices; ingredient
-records; logo/wordmark; ritual and ingredient photography; the owner's story and sourcing, making and
-packaging facts; shipping and returns policy; usage rights for all of the above.
+The logo file (placed in `apps/storefront/public/brand/`); the product list for the three collections
+(herbal remedies, Glow Getter™ skincare, Little Sprout Baby™) with sizes, prices and photography; the
+founder's story and credentials; coaching programmes and the education library; the quiz questions and
+logic; contact details, business numbers and policies; NPN numbers and approved claims; usage rights.
 
 ## Open decisions
 
-1. Whether the customer wants one deep-green band (for example the footer) for gravity; the preview has none.
-2. Whether real reviews, a journal and an FAQ exist to fill the Elise sections that were omitted.
-3. Currency display ("$24.00 CAD" today) and whether sample prices stay visible.
+1. Reseeding the sample catalogue with the client's three collections once the product list exists.
+2. Whether real photography replaces the hero texture (the design intends a photo behind the headline).
+3. Journal, reviews and FAQ sections stay absent until real content exists.

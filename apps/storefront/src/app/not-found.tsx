@@ -10,7 +10,7 @@ export default function NotFound() {
         <h1 id="not-found-title" className="max-w-[18ch] !text-[clamp(2rem,1.6rem+1.4vw,2.75rem)]">
           {recovery.pageNotFoundHeading}
         </h1>
-        <p className="max-w-[48ch] text-ink-soft">{recovery.pageNotFoundBody}</p>
+        <p className="max-w-[48ch] text-grey">{recovery.pageNotFoundBody}</p>
         <ButtonLink href="/#collection" className="mt-4">
           {recovery.pageNotFoundAction}
         </ButtonLink>

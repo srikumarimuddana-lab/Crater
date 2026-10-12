@@ -111,7 +111,7 @@ function AddToBagForm({
         : `${addToBag.idle} — ${formatMoney(price)}`;
 
   const stepper =
-    'focus-ring inline-flex size-11 items-center justify-center text-xl leading-none hover:bg-sage';
+    'focus-ring inline-flex size-11 items-center justify-center text-xl leading-none hover:bg-mint-pale';
 
   return (
     <>
@@ -164,7 +164,7 @@ function AddToBagForm({
             <span aria-hidden="true">+</span>
           </button>
         </div>
-        <p id="quantity-hint" className="text-small mt-1 text-ink-soft">
+        <p id="quantity-hint" className="text-small mt-1 text-grey">
           {productPage.quantityHint(MAX_LINE_QUANTITY)}
         </p>
         {quantityMessage ? (
@@ -183,12 +183,12 @@ function AddToBagForm({
         onClick={(e) => {
           if (pending) e.preventDefault();
         }}
-        className={buttonClassName('primary', 'w-full disabled:cursor-not-allowed disabled:bg-ink-soft/60 disabled:text-white')}
+        className={buttonClassName('primary', 'w-full disabled:cursor-not-allowed disabled:bg-grey/60 disabled:text-white')}
       >
         {label}
       </button>
 
-      <p className="text-small -mt-2 text-ink-soft">{bag.taxShippingNote}</p>
+      <p className="text-small -mt-2 text-grey">{bag.taxShippingNote}</p>
 
       <div role="status" aria-live="polite" aria-atomic="true" className="min-h-6">
         {feedback.map((text) => (

@@ -28,7 +28,7 @@ export function NavColumns({
         const id = `${idPrefix}-${col.heading.toLowerCase()}`;
         return (
           <div key={col.heading}>
-            <p id={id} className="font-display text-xl text-moss-deep">
+            <p id={id} className="font-display text-xl text-deep">
               {col.heading}
             </p>
             <ul aria-labelledby={id} className="mt-1">
@@ -36,7 +36,7 @@ export function NavColumns({
                 <li key={item.href + item.label}>
                   <Link href={item.href} className={linkClass}>
                     {item.label}
-                    {item.pending ? <span className="text-small whitespace-nowrap text-ink-soft">{pendingSuffix}</span> : null}
+                    {item.pending ? <span className="text-small whitespace-nowrap text-grey">{pendingSuffix}</span> : null}
                   </Link>
                 </li>
               ))}

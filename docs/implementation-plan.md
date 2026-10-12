@@ -151,6 +151,36 @@ moss/bronze` everywhere), `src/lib/content/shop-copy.ts` (eyebrow and emphasis f
 - Not exercised: admin e2e (unchanged, scoped under `[data-admin]` with its own tokens),
   Stripe test-mode redirect, 768px screenshots (tests ran at 768; no visual inspection).
 
+## Design update: Prairie Remedies realignment (2026-10-12)
+
+**Owner:** design architect (coordinator). Source: the client's later direction extracted from the
+shared design session (`docs/design/client-direction-2026-10-11.md`); the user asked to realign the
+storefront with it and to use the customer's logo unchanged.
+
+**Scope:** tokens revalued to Nuda's palette with the client's adjustments (green, a little blush,
+amber gold, no orange); Bricolage Grotesque + Public Sans; green gradient hero with the stacked
+"Prairie / Remedies." headline (second word fades to amber), Canadian tags, white pill button and
+arrow link, overlapping packshot with price caption; ticker band; logo-left header with primary links,
+Shop menu, a "Take a quiz" button and a slide-out phone menu; pill buttons and filters; "Care beyond the
+jar" section (coaching, education, quiz banner); blush story band; Elise-style cream footer with the
+brand name set large; scroll motion (observer-driven rise-in, hero slide-in, ticker, button lift; still
+under reduced motion and without script); brand module and metadata; logo slot in `public/brand/`;
+pending pages `/coaching`, `/education`, `/quiz`; packshot labels and backdrop.
+
+- [x] Evidence (2026-10-12): typecheck, lint and build pass; Playwright home, product-cart and tax
+  specs 172 passed, 11 skipped (phone-only and desktop-only cases), 0 failed at 390 / 768 / 1440
+  against the production build with `COMMERCE_DB=memory`, including the axe scans, no-JavaScript
+  paths, the delayed-font layout check and the claim-word scans; a first run found and fixed four
+  regressions (a low-contrast decorative footer name, the quiz pill overflowing at 390, the hero
+  tag row re-wrapping on font load at 768, and a hover transform that kept a no-script button from
+  reading as stable); screenshots of home, product, cart, bag drawer, phone menu and Shop menu
+  inspected at 390 and 1440 (`docs/design/screens`).
+- Not exercised: 768px visual inspection; admin e2e (unchanged); Stripe test mode; the logo image path
+  (no file supplied yet, the text fallback was verified instead).
+- Open: the client's logo file; real product list, prices, story, credentials, policies, photos; quiz,
+  coaching and education content; whether the sample catalogue should be reseeded with the client's
+  three collections.
+
 ## Phase 3: one progressive 3D hero
 
 **Owner:** Experience engineer; art director/product strategist supply assets.

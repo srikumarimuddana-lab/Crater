@@ -12,8 +12,8 @@ const useHydrated = () =>
     () => false,
   );
 
-const triggerClass =
-  'focus-ring inline-flex min-h-11 cursor-pointer list-none items-center gap-2 px-1 text-[0.9375rem] font-semibold text-ink underline-offset-[0.45em] hover:underline hover:decoration-1 [&::-webkit-details-marker]:hidden';
+const triggerBase =
+  'focus-ring inline-flex min-h-11 cursor-pointer list-none items-center gap-2 px-1 text-[0.9375rem] font-semibold underline-offset-[0.45em] hover:underline hover:decoration-1 [&::-webkit-details-marker]:hidden ';
 const panelClass = 'absolute inset-x-0 top-full z-30 border-b border-ink/10 bg-page shadow-lg shadow-ink/5';
 
 /**
@@ -21,7 +21,18 @@ const panelClass = 'absolute inset-x-0 top-full z-30 border-b border-ink/10 bg-p
  * afterwards a disclosure button with aria-expanded. Escape closes it and returns focus to the button;
  * so do an outside click, tabbing out, and any navigation. The panel is positioned against the header.
  */
-export function ShopMenu({ label, panelLabel, children }: { label: string; panelLabel: string; children: ReactNode }) {
+export function ShopMenu({
+  label,
+  panelLabel,
+  tone = 'light',
+  children,
+}: {
+  label: string;
+  panelLabel: string;
+  tone?: 'light' | 'green';
+  children: ReactNode;
+}) {
+  const triggerClass = triggerBase + (tone === 'green' ? 'text-white' : 'text-ink');
   const hydrated = useHydrated();
   // The menu is open for exactly one location: any navigation (including Back and Forward) closes it.
   const [openAt, setOpenAt] = useState<string | null>(null);
@@ -54,7 +65,7 @@ export function ShopMenu({ label, panelLabel, children }: { label: string; panel
 
   if (!hydrated) {
     return (
-      <details className="hidden lg:block">
+      <details className="lg:block">
         <summary className={triggerClass}>{label}</summary>
         <nav aria-label={panelLabel} className={panelClass}>
           {children}
@@ -66,7 +77,7 @@ export function ShopMenu({ label, panelLabel, children }: { label: string; panel
   return (
     <div
       ref={wrapRef}
-      className="hidden lg:block"
+      className="lg:block"
       onKeyDown={(e) => {
         if (e.key === 'Escape' && open) {
           e.stopPropagation();

@@ -29,15 +29,16 @@ test('home renders shopping content without WebGL', async ({ page }) => {
   await page.goto('/');
 
   // The stylesheet applied (an unstyled page would still pass the role checks below).
-  await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(255, 253, 248)');
+  await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
 
   // Announcement bar: store line plus the preview notice, unmistakable while samples are in use.
   const notice = page.getByRole('region', { name: /preview notice/i });
   await expect(notice).toContainText('Shipping within Canada');
   await expect(notice).toContainText(/sample products/i);
 
-  const hero = page.getByRole('region', { name: 'Liquid herbal extracts and body oils' });
+  const hero = page.getByRole('region', { name: 'Prairie Remedies.' });
   await expect(hero.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(hero.getByText('Proudly Canadian')).toBeVisible();
   await expect(hero.getByText('30 mL')).toBeVisible();
   await expect(hero.getByText('$24.00 CAD')).toBeVisible();
 
@@ -45,9 +46,9 @@ test('home renders shopping content without WebGL', async ({ page }) => {
   await expect(heroImage).toBeVisible();
   await expect.poll(() => heroImage.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
 
-  // Two actions: tinctures and the whole collection.
-  await expect(hero.getByRole('link', { name: 'Shop tinctures' })).toHaveAttribute('href', '/?category=tinctures#collection');
-  await expect(hero.getByRole('link', { name: 'Browse all products' })).toHaveAttribute('href', '/#collection');
+  // Two actions (Nuda wording): the collection and the founder page.
+  await expect(hero.getByRole('link', { name: 'Shop now' })).toHaveAttribute('href', '/#collection');
+  await expect(hero.getByRole('link', { name: 'Learn more' })).toHaveAttribute('href', '/about');
   const product = hero.getByRole('link', { name: 'Lemon Balm & Oat Extract' });
   await expect(product).toHaveAttribute('href', '/products/lemon-balm-oat-extract');
   await product.click();
@@ -104,19 +105,35 @@ test('home renders shopping content without WebGL', async ({ page }) => {
   await expect(page.locator('canvas')).toHaveCount(0);
 });
 
-test('header: centred logo, bag on the right, preview notice above', async ({ page }, testInfo) => {
+test('header: logo on the left, menu and bag on the right, quiz button, preview notice above', async ({ page }, testInfo) => {
   await page.goto('/');
-  const logo = page.getByRole('banner').getByRole('link', { name: 'Crater' });
+  const logo = page.getByRole('banner').getByRole('link', { name: "The Creator's Remedy" });
   const box = (await logo.boundingBox())!;
   const viewport = page.viewportSize()!;
-  expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThan(4);
+  expect(box.x).toBeLessThan(viewport.width / 4);
   const bag = page.getByRole('banner').getByRole('button', { name: /^bag\b/i });
   const bagBox = (await bag.boundingBox())!;
   expect(bagBox.x).toBeGreaterThan(viewport.width / 2);
   if (testInfo.project.name === 'desktop-1440') {
     const shop = (await page.getByRole('banner').getByRole('button', { name: 'Shop', exact: true }).boundingBox())!;
-    expect(shop.x).toBeLessThan(viewport.width / 2);
+    expect(shop.x).toBeGreaterThan(box.x + box.width);
+    await expect(page.getByRole('banner').getByRole('link', { name: 'Take a quiz' })).toHaveAttribute('href', '/quiz');
+    await expect(page.getByRole('banner').getByRole('link', { name: 'Coaching' })).toHaveAttribute('href', '/coaching');
   }
+});
+
+test('phone menu: slides out, lists the links and the quiz, closes with Escape', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'desktop-1440', 'The slide-out menu is for small screens.');
+  await page.goto('/');
+  const menu = page.getByRole('banner').locator('summary', { hasText: 'Menu' });
+  await menu.click();
+  const panel = page.getByRole('navigation', { name: 'Menu' });
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole('link', { name: 'Coaching', exact: true })).toHaveAttribute('href', '/coaching');
+  await expect(panel.getByRole('link', { name: 'Tinctures' })).toHaveAttribute('href', '/?category=tinctures#collection');
+  await expect(panel.getByRole('link', { name: 'Take a quiz' }).first()).toHaveAttribute('href', '/quiz');
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeHidden();
 });
 
 test('mega menu: opens by keyboard, lists the columns, closes on Escape and returns focus', async ({ page }, testInfo) => {
@@ -249,6 +266,9 @@ test.describe('carousel without JavaScript', () => {
 
 for (const [path, title] of [
   ['/about', 'About'],
+  ['/coaching', 'Coaching'],
+  ['/education', 'Herbal education'],
+  ['/quiz', 'Take a quiz'],
   ['/ingredients-sourcing', 'Ingredients & sourcing'],
   ['/journal', 'Journal'],
   ['/shipping-returns', 'Shipping & returns'],
@@ -324,12 +344,12 @@ test('home preserves layout during delayed image and font loading', async ({ pag
   });
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  const hero = page.getByRole('region', { name: 'Liquid herbal extracts and body oils' });
+  const hero = page.getByRole('region', { name: 'Prairie Remedies.' });
   const heroImage = hero.getByRole('img', { name: /Lemon Balm & Oat Extract/ });
 
   // Content and action are usable while images and fonts are still pending.
   await expect(hero.getByRole('heading', { level: 1 })).toBeVisible();
-  await expect(hero.getByRole('link', { name: 'Shop tinctures' })).toBeVisible();
+  await expect(hero.getByRole('link', { name: 'Shop now' })).toBeVisible();
   const before = await heroImage.boundingBox();
   expect(before?.height ?? 0).toBeGreaterThan(100);
   const headingBefore = await hero.getByRole('heading', { level: 1 }).boundingBox();

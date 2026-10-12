@@ -4,7 +4,7 @@ import type { Product } from '@/lib/commerce/types';
 import { previewCopy, productPage } from '@/lib/content/shop-copy';
 import { Price } from './price';
 
-/** Flat tile card: image on the surface tint, serif name, price, sizes. `feature` widens the image (first card of a row). */
+/** Flat tile card: image on the cream tint, serif name, price, sizes. `feature` widens the image (first card of a row). */
 export function ProductCard({ product, feature = false }: { product: Product; feature?: boolean }) {
   const image = product.featuredImage;
   const titleId = `product-${product.handle}-title`;
@@ -14,7 +14,7 @@ export function ProductCard({ product, feature = false }: { product: Product; fe
 
   return (
     <article id={`product-${product.handle}`} aria-labelledby={titleId} className="group relative flex h-full flex-col gap-3">
-      <div className={`relative overflow-hidden rounded-card bg-surface ${feature ? 'aspect-[5/4] md:aspect-[8/5]' : 'aspect-[4/5]'}`}>
+      <div className={`relative overflow-hidden rounded-card bg-cream ${feature ? 'aspect-[5/4] md:aspect-[8/5]' : 'aspect-[4/5]'}`}>
         {image ? (
           <Image
             src={image.url}
@@ -38,10 +38,10 @@ export function ProductCard({ product, feature = false }: { product: Product; fe
           </Link>
         </h3>
         <p className="text-small">
-          {varies ? <span className="text-ink-soft">{productPage.fromPrice} </span> : null}
+          {varies ? <span className="text-grey">{productPage.fromPrice} </span> : null}
           <Price money={minVariantPrice} className="font-semibold" />
         </p>
-        <p className="text-small flex flex-wrap gap-x-2 text-ink-soft">
+        <p className="text-small flex flex-wrap gap-x-2 text-grey">
           <span>{sizes > 1 ? productPage.sizeCount(sizes) : product.variants[0]?.title}</span>
           {product.sample ? <span>{previewCopy.sampleChip}</span> : null}
           {!product.availableForSale ? <span className="font-semibold text-ink">{productPage.soldOut}</span> : null}

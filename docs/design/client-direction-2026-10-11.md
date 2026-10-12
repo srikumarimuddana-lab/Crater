@@ -94,7 +94,16 @@ team, address, business and GST/HST numbers, NPN numbers, real reviews, photos; 
 tagline's "is the cure" wording against Health Canada advertising rules; coaching disclaimer
 against the nursing college's rules.
 
-## 7. Gap against this repository's storefront (Bright Atelier, same date)
+## 7. Realignment status (2026-10-12)
+
+The storefront was realigned to this direction on 2026-10-12 (commit on `claude/zen-lovelace-3mi1ro`;
+record in `implementation-plan.md`). Done: palette, fonts, hero, ticker, navigation and phone menu, quiz
+button, pill buttons and wording, section tints, footer, scroll motion, coaching/education/quiz pending
+pages, brand name and metadata, packshot labels. Not done, by design: the sample catalogue is unchanged
+until the client's product list exists; the quiz, coaching and education pages carry no content yet; the
+logo file still has to be added to `apps/storefront/public/brand/` (it was hidden in the share link).
+
+### Original gap table (before realignment)
 
 | Topic | This repository today | Client's latest direction |
 | --- | --- | --- |

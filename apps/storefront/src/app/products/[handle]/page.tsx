@@ -7,6 +7,7 @@ import { Price } from '@/components/commerce/price';
 import { PageShell } from '@/components/page-shell';
 import { getStorefront } from '@/lib/commerce';
 import type { Product, ProductVariant } from '@/lib/commerce/types';
+import { brand } from '@/lib/content/brand';
 import { detailsSections, lowStockText, previewCopy, productPage } from '@/lib/content/shop-copy';
 
 type Props = {
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }: Pick<Props, 'params'>): Promi
   const product = await getStorefront().product({ handle });
   if (!product) return { title: productPage.notFoundHeading, robots: { index: false, follow: false } };
   return {
-    title: `${product.title} — Crater`,
+    title: `${product.title} — ${brand.name}`,
     description: product.description,
     // Sample products stay out of search indexes until verified content replaces them.
     robots: product.sample ? { index: false, follow: false } : undefined,
@@ -99,7 +100,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
     <PageShell>
       <article aria-labelledby="product-title" className="page-gutter pt-4 pb-24 md:pt-6 lg:pb-20">
         <nav aria-label={productPage.breadcrumbLabel} className="text-small">
-          <ol className="flex flex-wrap items-center gap-x-2 text-ink-soft">
+          <ol className="flex flex-wrap items-center gap-x-2 text-grey">
             <li>
               <Link href="/#collection" className="focus-ring inline-flex min-h-11 items-center underline underline-offset-4">
                 {productPage.shopAll}
@@ -125,9 +126,9 @@ export default async function ProductPage({ params, searchParams }: Props) {
           <div className="flex flex-col gap-6 lg:col-span-5 lg:sticky lg:top-6 lg:self-start">
             <header>
               <p className="text-small flex flex-wrap items-center gap-x-3 gap-y-1">
-                <span className="font-medium text-ink-soft">{product.productType}</span>
+                <span className="font-medium text-grey">{product.productType}</span>
                 {product.sample ? (
-                  <span className="inline-flex min-h-7 items-center rounded-full bg-sage px-3 text-moss-deep">{previewCopy.sampleChip}</span>
+                  <span className="inline-flex min-h-7 items-center rounded-full bg-mint-pale px-3 text-deep">{previewCopy.sampleChip}</span>
                 ) : null}
               </p>
               <h1 id="product-title" className="mt-3 !text-[clamp(2.25rem,1.7rem+1.8vw,3.25rem)]">
@@ -137,12 +138,12 @@ export default async function ProductPage({ params, searchParams }: Props) {
               <p aria-live="polite" aria-atomic="true" className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span className="sr-only">{productPage.priceLabel}: </span>
                 <Price money={variant.price} className="text-price" />
-                {product.sample ? <span className="text-small text-ink-soft">{previewCopy.samplePriceLabel}</span> : null}
+                {product.sample ? <span className="text-small text-grey">{previewCopy.samplePriceLabel}</span> : null}
               </p>
             </header>
 
             {variantMissing ? (
-              <p role="status" className="text-small rounded-lg border border-ink/15 bg-warm px-3 py-2">
+              <p role="status" className="text-small rounded-lg border border-ink/15 bg-blush px-3 py-2">
                 {productPage.variantNotFound}
               </p>
             ) : null}
@@ -151,14 +152,14 @@ export default async function ProductPage({ params, searchParams }: Props) {
               .filter((option) => option.optionValues.length === 1)
               .map((option) => (
                 <p key={option.id} className="text-small font-semibold">
-                  {option.name}: <span className="font-normal text-ink-soft">{option.optionValues[0].name}</span>
+                  {option.name}: <span className="font-normal text-grey">{option.optionValues[0].name}</span>
                 </p>
               ))}
 
             {product.options.filter((option) => option.optionValues.length > 1).map((option) => (
               <fieldset key={option.id} className="min-w-0">
                 <legend className="text-small font-semibold">
-                  {option.name}: <span className="font-normal text-ink-soft">{variant.selectedOptions.find((s) => s.name === option.name)?.value}</span>
+                  {option.name}: <span className="font-normal text-grey">{variant.selectedOptions.find((s) => s.name === option.name)?.value}</span>
                   <span className="sr-only">. {productPage.optionLegend(option.name)}</span>
                 </legend>
                 <ul className="mt-3 grid grid-cols-2 gap-2">
@@ -173,13 +174,13 @@ export default async function ProductPage({ params, searchParams }: Props) {
                           scroll={false}
                           aria-current={selected ? 'true' : undefined}
                           className={
-                            'focus-ring flex min-h-14 flex-col justify-center rounded-lg border px-4 py-2 text-base transition-colors motion-reduce:transition-none ' +
-                            (selected ? 'border-2 border-moss bg-sage ' : 'border-ink/20 hover:border-moss ') +
-                            (ok ? '' : 'text-ink-soft ')
+                            'focus-ring flex min-h-14 flex-col justify-center rounded-tile border px-4 py-2 text-base transition-colors motion-reduce:transition-none ' +
+                            (selected ? 'border-2 border-deep bg-mint-pale ' : 'border-ink/20 hover:border-deep ') +
+                            (ok ? '' : 'text-grey ')
                           }
                         >
                           <span className={`font-semibold ${ok ? '' : 'line-through'}`}>{ov.name}</span>
-                          <span className="text-small text-ink-soft">
+                          <span className="text-small text-grey">
                             {ok ? null : (
                               <>
                                 {productPage.soldOut}
@@ -204,7 +205,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
               {low ? <p className="text-small font-semibold text-ink">{low}</p> : null}
             </div>
 
-            <p role="note" data-testid="npn-notice" className="text-small rounded-card bg-sage px-4 py-3 text-moss-deep">
+            <p role="note" data-testid="npn-notice" className="text-small rounded-card bg-mint-pale px-4 py-3 text-deep">
               {productPage.npnNotice}
             </p>
 
@@ -226,20 +227,20 @@ export default async function ProductPage({ params, searchParams }: Props) {
                     <span aria-hidden="true" className="text-xl leading-none group-open:hidden">+</span>
                     <span aria-hidden="true" className="hidden text-xl leading-none group-open:inline">−</span>
                   </summary>
-                  <div className="pb-6 text-ink-soft">
+                  <div className="pb-6 text-grey">
                     {sec.body}
-                    {sec.disclaimer ? <p className="text-small mt-3 text-ink-soft">{sec.disclaimer}</p> : null}
+                    {sec.disclaimer ? <p className="text-small mt-3 text-grey">{sec.disclaimer}</p> : null}
                   </div>
                 </details>
               ))}
             </div>
-            <p className="text-small -mt-3 text-ink-soft">{detailsSections.sectionNote}</p>
+            <p className="text-small -mt-3 text-grey">{detailsSections.sectionNote}</p>
 
             <dl aria-label={productPage.keyFacts} className="text-small grid grid-cols-[auto_1fr] gap-x-6 gap-y-1">
               <dt className="font-semibold">{productPage.sizeFact}</dt>
-              <dd className="text-ink-soft">{variant.title}</dd>
+              <dd className="text-grey">{variant.title}</dd>
               <dt className="font-semibold">{productPage.categoryFact}</dt>
-              <dd className="text-ink-soft">{product.productType}</dd>
+              <dd className="text-grey">{product.productType}</dd>
             </dl>
           </div>
         </div>

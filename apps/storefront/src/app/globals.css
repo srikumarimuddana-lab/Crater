@@ -1,29 +1,35 @@
 @import 'tailwindcss';
 
 /*
- * Bright Atelier tokens (user decision 2026-10-11): Elise's editorial structure at Nuda's brightness.
- * Contrast data and roles: docs/visual-contract.md. No dark bands; green is reserved for actions.
+ * Prairie Remedies tokens (client decision 2026-10-11, see docs/design/client-direction-2026-10-11.md):
+ * Nuda's palette as adjusted by the client (green stays, a little blush pink, gold lettering, no orange).
+ * Contrast data and roles: docs/visual-contract.md.
  */
 @theme {
-  --color-page: #fffdf8; /* near-white, faintly warm page */
-  --color-surface: #f7f4ec; /* image tiles, cards, footer, hover fills */
-  --color-warm: #fff3e4; /* peach-cream band (story, summary panels) */
-  --color-sage: #e6f0e6; /* pale sage band (announcement, rituals, chips, selected tiles) */
-  --color-ink: #211d17; /* text (16.5:1 on page) */
-  --color-ink-soft: #5e5547; /* secondary text (7.2:1 on page, 6.3:1 on sage) */
-  --color-moss: #226a49; /* links, primary action, focus ring (6.4:1 on page; white on it 6.5:1) */
-  --color-moss-hover: #17583a;
-  --color-moss-deep: #16452e; /* text on sage, wordmark */
-  --color-bronze: #8f6437; /* italic emphasis word, numerals, small accents (5.1:1 on page) */
-  --color-bronze-soft: #b5895e; /* ornament and hairlines only; never small text */
+  --color-page: #ffffff; /* page */
+  --color-cream: #f7f5ef; /* footer, section tints, image tiles, packshot backdrop */
+  --color-mint-pale: #eafbf1; /* section tint, eyebrow pills, selected tiles, NPN note */
+  --color-mint: #b5ffd8; /* announcement bar, highlights, gradient start */
+  --color-blush: #f8e1e7; /* "a little pink": story band, notices */
+  --color-rose: #e9a9ba; /* decorative only (never text) */
+  --color-ink: #242424; /* text (15.5:1 on white) */
+  --color-grey: #4d4d4d; /* secondary text (8.5:1 on white) */
+  --color-deep: #226c5d; /* hero, header on the home page, buttons, links, focus ring (white on it 6.2:1) */
+  --color-deep-hover: #1b5a4d;
+  --color-prairie: #329258; /* gradient mid-stop, large accents only (3.9:1 on white) */
+  --color-amber: #a8832f; /* gold lettering at display size on light (3.5:1: 24px and above only) */
+  --color-amber-deep: #8a6a22; /* small gold labels on light (5.0:1) */
+  --color-amber-light: #f3d58c; /* gold on deep green, display size only (4.4:1) */
+  --color-leaf: #ff0000; /* maple leaf */
 
-  --radius-card: 10px;
+  --radius-card: 24px;
+  --radius-tile: 16px;
   --container-content: 80rem;
 }
 
 @theme inline {
-  --font-display: var(--font-fraunces), 'Fraunces', Georgia, 'Times New Roman', serif;
-  --font-sans: var(--font-inter), 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), 'Bricolage Grotesque', 'Helvetica Neue', Arial, sans-serif;
+  --font-sans: var(--font-public-sans), 'Public Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
@@ -57,28 +63,28 @@
   h2,
   h3 {
     font-family: var(--font-display);
-    font-weight: 400;
+    font-weight: 700;
     font-optical-sizing: auto;
-    font-variation-settings: 'SOFT' 50;
     text-wrap: balance;
   }
 
   h1 {
-    font-size: clamp(2.5rem, 1.4rem + 4.2vw, 5.25rem);
-    line-height: 1.04;
-    letter-spacing: -0.02em;
+    font-size: clamp(2.5rem, 1.6rem + 3.6vw, 4.5rem);
+    line-height: 1;
+    letter-spacing: -0.025em;
   }
 
   h2 {
-    font-size: clamp(2rem, 1.35rem + 2.6vw, 3.5rem);
-    line-height: 1.08;
-    letter-spacing: -0.015em;
+    font-size: clamp(2rem, 1.4rem + 2.4vw, 3.25rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
   }
 
   h3 {
     font-size: clamp(1.25rem, 1.15rem + 0.5vw, 1.5rem);
     line-height: 1.2;
-    font-weight: 500;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   /* Anchored sections clear the top edge when jumped to. */
@@ -87,8 +93,13 @@
   }
 
   :focus-visible {
-    outline: 3px solid var(--color-moss);
+    outline: 3px solid var(--color-deep);
     outline-offset: 3px;
+  }
+
+  /* Green bands (hero, home header): white ring. */
+  .on-green :focus-visible {
+    outline-color: #ffffff;
   }
 
   @media (forced-colors: active) {
@@ -106,31 +117,45 @@
   }
 }
 
-/* The one italic word in a headline (Elise's device): display italic in bronze. Decorative, so a span, not <em>. */
+/* The gold word in a headline ("gold writings"): display size only, so amber keeps 3:1 on light. */
 @utility accent-word {
-  font-style: italic;
-  color: var(--color-bronze);
-  font-variation-settings: 'SOFT' 80;
+  color: var(--color-amber);
 }
 
-/* Section label pill above an h2: sentence case, sage fill, moss-deep text (9.3:1). */
+/* Big words on green sections fade from white into the logo's amber (a decorative span; text content unchanged). */
+@utility text-gradient-amber {
+  color: #ffffff;
+  background-image: linear-gradient(293deg, var(--color-amber-light) 0%, #ffffff 58%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Section label pill above an h2: sentence case, pale mint fill, deep green text (5.8:1). */
 @utility eyebrow {
   display: inline-flex;
   align-items: center;
   min-height: 1.75rem;
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
-  background: var(--color-sage);
-  color: var(--color-moss-deep);
+  background: var(--color-mint-pale);
+  color: var(--color-deep);
   font-size: 0.8125rem;
   line-height: 1.3;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.01em;
 }
 
-/* On the sage band the pill takes the page colour so it stays visible. */
-.bg-sage .eyebrow {
+/* On tinted bands the pill takes the page colour so it stays visible. */
+.bg-mint-pale .eyebrow,
+.bg-cream .eyebrow,
+.bg-blush .eyebrow {
   background: var(--color-page);
+}
+
+.on-green .eyebrow {
+  background: rgb(255 255 255 / 0.16);
+  color: #ffffff;
 }
 
 /* Display numerals for 01–04 sequences; always aria-hidden in markup. */
@@ -138,15 +163,15 @@
   font-family: var(--font-display);
   font-size: 1.5rem;
   line-height: 1;
-  font-weight: 400;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--color-bronze);
+  color: var(--color-amber-deep);
 }
 
 @utility text-lead {
   font-size: clamp(1.125rem, 1.05rem + 0.3vw, 1.3125rem);
   line-height: 1.5;
-  color: var(--color-ink-soft);
+  color: var(--color-grey);
   text-wrap: pretty;
 }
 
@@ -159,7 +184,7 @@
 @utility text-eyebrow {
   font-size: 0.8125rem;
   line-height: 1.3;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -167,7 +192,7 @@
 @utility text-price {
   font-size: clamp(1.125rem, 1rem + 0.5vw, 1.5rem);
   line-height: 1.2;
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -186,6 +211,29 @@
   }
 }
 
+/* Hero band: Nuda's green gradient with a faint paint texture behind it (a photo replaces it when supplied). */
+.hero-band {
+  background: linear-gradient(135deg, var(--color-deep) 0%, var(--color-prairie) 60%, #5fbf8c 100%);
+}
+
+.hero-texture::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.16;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012' numOctaves='3' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.9 0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 480px 480px;
+}
+
+.hero-title {
+  font-size: clamp(3.25rem, 1.6rem + 7.4vw, 7.5rem);
+  line-height: 0.94;
+  letter-spacing: -0.035em;
+  font-weight: 800;
+}
+
 /* Arrow-led text link ("View all products →"). The arrow nudges on hover unless motion is reduced. */
 .link-arrow .arrow {
   display: inline-block;
@@ -196,7 +244,121 @@
   transform: translateX(4px);
 }
 
+/* Ticker band under the hero: the second copy is aria-hidden and only exists for the loop. */
+.ticker {
+  overflow: hidden;
+}
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+}
+
+@keyframes ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Scroll motion (Nuda): sections rise and fade in, images scale in, hero words slide in. Still under reduced motion. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes zoom-in {
+  from {
+    opacity: 0.6;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ticker-track {
+    animation: ticker 40s linear infinite;
+  }
+
+  .hero-slide-left {
+    animation: slide-left 800ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  .hero-slide-right {
+    animation: slide-right 800ms cubic-bezier(0.2, 0.7, 0.2, 1) 120ms both;
+  }
+
+  .hero-fade {
+    animation: fade-in 900ms ease-out 240ms both;
+  }
+
+  /* Marked by RevealObserver once hydrated: only elements below the fold wait, then rise in. */
+  .reveal[data-reveal='pending'],
+  .reveal-zoom[data-reveal='pending'] {
+    opacity: 0;
+  }
+
+  .reveal[data-reveal='in'] {
+    animation: rise 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  .reveal-zoom[data-reveal='in'] {
+    animation: zoom-in 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    width: auto;
+    flex-wrap: wrap;
+  }
+
+  .ticker-dup {
+    display: none;
+  }
+
   .link-arrow .arrow {
     transition: none;
   }
@@ -210,19 +372,88 @@
   position: absolute;
   left: 1rem;
   top: 0.5rem;
-  z-index: 50;
+  z-index: 60;
   padding: 0.75rem 1rem;
   min-height: 44px;
-  background: var(--color-moss);
+  background: var(--color-deep);
   color: #ffffff;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 999px;
   transform: translateY(-200%);
 }
 
 .skip-link:focus-visible {
   transform: none;
-  outline-color: var(--color-moss-deep);
+  outline-color: var(--color-ink);
+}
+
+/* Phone menu (Nuda): a panel slides in from the right over a dimmed page. While open, the <summary> becomes
+   the round close control in the panel's top-right corner, so the panel always closes, with or without script. */
+.mnav > summary {
+  position: relative;
+  z-index: 52;
+}
+
+.mnav[open] > summary {
+  position: fixed;
+  top: 0.625rem;
+  right: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--color-mint-pale);
+  color: var(--color-deep);
+  font-size: 0;
+  text-decoration: none;
+}
+
+.mnav[open] > summary::after {
+  content: '×';
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.mnav-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgb(36 36 36 / 0.45);
+  opacity: 1;
+  transition: opacity 220ms ease-out;
+}
+
+.mnav-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 51;
+  width: min(22rem, 88vw);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--color-page);
+  color: var(--color-ink);
+  box-shadow: -24px 0 48px -24px rgb(36 36 36 / 0.35);
+  transform: none;
+  transition: transform 260ms ease-out;
+}
+
+@starting-style {
+  .mnav[open] .mnav-panel {
+    transform: translateX(100%);
+  }
+
+  .mnav[open] .mnav-backdrop {
+    opacity: 0;
+  }
+}
+
+body:has(.mnav[open]) {
+  overflow: hidden;
 }
 
 /* Bag drawer: native modal dialog, slides from the right; a full-width sheet on small screens. */
@@ -230,8 +461,8 @@
   margin: 0 0 0 auto;
   padding: 0;
   border: 0;
-  border-left: 1px solid rgb(33 29 23 / 0.12);
-  box-shadow: 0 24px 48px -16px rgb(33 29 23 / 0.18);
+  border-left: 1px solid rgb(36 36 36 / 0.12);
+  box-shadow: 0 24px 48px -16px rgb(36 36 36 / 0.25);
   width: min(100%, 28rem);
   max-width: 100%;
   height: 100dvh;
@@ -254,7 +485,7 @@
 }
 
 .bag-dialog::backdrop {
-  background: rgb(33 29 23 / 0.4);
+  background: rgb(36 36 36 / 0.45);
   opacity: 0;
   transition:
     opacity 220ms ease-out,
@@ -274,7 +505,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .bag-dialog,
-  .bag-dialog::backdrop {
+  .bag-dialog::backdrop,
+  .mnav-panel,
+  .mnav-backdrop {
     transition: none;
   }
 }
@@ -287,5 +520,5 @@ body:has(.bag-dialog[open]) {
 /* Featured carousel: a thin native scrollbar keeps the list scrollable (and visible) without JavaScript. */
 .featured-scroller {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-ink-soft) transparent;
+  scrollbar-color: var(--color-grey) transparent;
 }

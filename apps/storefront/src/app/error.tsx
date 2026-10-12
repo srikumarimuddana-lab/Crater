@@ -9,7 +9,7 @@ export default function RouteError({ reset }: { error: Error & { digest?: string
   return (
     <main id="main" className="page-gutter flex flex-col items-start gap-5 py-16 md:py-24">
       <h1 className="max-w-[18ch]">{recovery.errorPageHeading}</h1>
-      <p className="max-w-[48ch] text-ink-soft">{recovery.errorPageBody}</p>
+      <p className="max-w-[48ch] text-grey">{recovery.errorPageBody}</p>
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <Button onClick={reset}>{recovery.retry}</Button>
         <Link href="/" className="focus-ring inline-flex min-h-13 items-center justify-center px-6 font-semibold underline underline-offset-4">

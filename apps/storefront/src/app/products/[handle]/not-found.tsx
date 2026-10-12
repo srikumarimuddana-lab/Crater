@@ -9,7 +9,7 @@ export default function ProductNotFound() {
         <h1 id="not-found-title" className="max-w-[18ch] !text-[clamp(2rem,1.6rem+1.4vw,2.75rem)]">
           {productPage.notFoundHeading}
         </h1>
-        <p className="max-w-[48ch] text-ink-soft">{productPage.notFoundBody}</p>
+        <p className="max-w-[48ch] text-grey">{productPage.notFoundBody}</p>
         <ButtonLink href="/#collection" className="mt-4">
           {productPage.notFoundAction}
         </ButtonLink>

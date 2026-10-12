@@ -9,10 +9,10 @@ const out = process.argv[2];
 if (!out) throw new Error('Pass the output directory, e.g. public/products');
 
 const c = {
-  studio: '#F7F4EC', studioFloor: '#EDE7DA',
+  studio: '#F7F5EF', studioFloor: '#EFEDE6',
   amber: '#7A4A1E', amberDeep: '#4E2E12', amberLight: '#A8692E',
-  forest: '#16452E', forestHover: '#226A49', espresso: '#211D17', walnut: '#5E5547',
-  gold: '#B5895E', goldLight: '#D9BE93', goldDeep: '#8F6437', ivory: '#FFFDF8',
+  forest: '#226C5D', forestHover: '#329258', espresso: '#242424', walnut: '#4D4D4D',
+  gold: '#C9A24A', goldLight: '#F3D58C', goldDeep: '#A8832F', ivory: '#FFFFFF',
   kraft: '#C9A57A', kraftDeep: '#A88457', leaf: '#4F6B4A',
 };
 const esc = (s) => s.replace(/&/g, '&amp;');
@@ -34,7 +34,7 @@ const defs = `
   <defs>
     <linearGradient id="glass" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c.amberDeep}"/><stop offset="0.35" stop-color="${c.amberLight}"/><stop offset="0.6" stop-color="${c.amber}"/><stop offset="1" stop-color="${c.amberDeep}"/></linearGradient>
     <linearGradient id="gilt" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c.goldDeep}"/><stop offset="0.45" stop-color="${c.goldLight}"/><stop offset="1" stop-color="${c.goldDeep}"/></linearGradient>
-    <radialGradient id="floorShadow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#211D17" stop-opacity="0.16"/><stop offset="1" stop-color="#2A1D15" stop-opacity="0"/></radialGradient>
+    <radialGradient id="floorShadow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#242424" stop-opacity="0.16"/><stop offset="1" stop-color="#2A1D15" stop-opacity="0"/></radialGradient>
   </defs>`;
 
 const backdrop = `
@@ -53,7 +53,7 @@ function label(cx, y, w, h, title, band) {
   return `
   <rect x="${cx - w / 2}" y="${y}" width="${w}" height="${h}" rx="3" fill="${c.ivory}"/>
   <rect x="${cx - w / 2}" y="${y + h * 0.72}" width="${w}" height="${h * 0.12}" fill="${band}"/>
-  <text x="${cx}" y="${y + h * 0.2}" text-anchor="middle" font-family="Didot, 'Bodoni 72', Georgia, serif" font-size="${Math.round(w * 0.11)}" letter-spacing="4" fill="${c.espresso}">CRATER</text>
+  <text x="${cx}" y="${y + h * 0.2}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="bold" font-size="${Math.round(w * 0.068)}" letter-spacing="1.2" fill="${c.forest}">THE CREATOR'S REMEDY</text>
   ${lines.map((l, i) => `<text x="${cx}" y="${y + h * (0.4 + i * 0.13)}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="${fs1}" fill="${c.espresso}">${esc(l)}</text>`).join('')}
   <text x="${cx}" y="${y + h * 0.95}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="${Math.round(w * 0.07)}" fill="${c.walnut}">SAMPLE</text>`;
 }
@@ -92,7 +92,7 @@ function kitBox(title) {
   <path d="M170 470 L630 470 L640 440 L160 440 Z" fill="${c.kraftDeep}"/>
   <rect x="300" y="530" width="200" height="110" rx="3" fill="${c.ivory}"/>
   <rect x="300" y="610" width="200" height="12" fill="${c.forest}"/>
-  <text x="400" y="565" text-anchor="middle" font-family="Didot, 'Bodoni 72', Georgia, serif" font-size="22" letter-spacing="4" fill="${c.espresso}">CRATER</text>
+  <text x="400" y="565" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="bold" font-size="15" letter-spacing="1.5" fill="${c.forest}">THE CREATOR'S REMEDY</text>
   <text x="400" y="595" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="16" fill="${c.espresso}">${esc(title)}</text>`;
 }
 

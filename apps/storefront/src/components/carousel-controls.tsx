@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useHydrated } from './use-hydrated';
 
 const buttonClass =
-  'focus-ring inline-flex size-11 items-center justify-center rounded-full border border-ink/20 text-xl leading-none text-ink hover:bg-sage aria-disabled:cursor-not-allowed aria-disabled:border-ink/10 aria-disabled:text-ink-soft/50 aria-disabled:hover:bg-transparent';
+  'focus-ring inline-flex size-11 items-center justify-center rounded-full border border-ink/20 text-xl leading-none text-ink hover:bg-mint-pale aria-disabled:cursor-not-allowed aria-disabled:border-ink/10 aria-disabled:text-grey/50 aria-disabled:hover:bg-transparent';
 
 /**
  * Previous and next buttons for a horizontal scroll-snap list. The list is a plain scrollable list

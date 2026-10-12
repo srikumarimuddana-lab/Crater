@@ -23,9 +23,24 @@ is a preview assumption, not a restriction on the eventual selling markets.
 - The 3D hero (Phase 3) now features an amber glass dropper bottle instead of a
   serum bottle.
 
-## Working direction: Bright Atelier (user decision, 2026-10-11)
+## Working direction: Prairie Remedies (client decision, 2026-10-11; built 2026-10-12)
 
-The customer reviewed two Framer templates, Elise (https://elise.framer.media/) and Nuda
+The client's later feedback, recorded from the shared design session in
+`design/client-direction-2026-10-11.md`, supersedes Bright Atelier. The brand is The
+Creator's Remedy (a Saskatchewan company shipping across Canada). The storefront now uses
+Nuda's palette as the client adjusted it (deep green `#226C5D` for the hero, header and
+buttons, prairie green and mint in the gradient, cream sections, a little blush pink, gold
+lettering in the logo's amber, no orange), Bricolage Grotesque headlines with Public Sans
+body, pill buttons with Nuda's wording, a logo-left header with a slide-out phone menu and
+a "Take a quiz" button, a ticker band and scroll motion, and an Elise-style cream footer.
+The customer's logo is used exactly as supplied through `public/brand/` (see its README);
+until the file is added the brand name renders as text. Coaching, education and the quiz
+have pending pages; the sample catalogue (tinctures, body oils, kits) stays until the
+client's real product list (balms, skincare, baby care) replaces the seed.
+
+## Superseded: Bright Atelier (user decision, 2026-10-11)
+
+Kept for reference. The customer reviewed two Framer templates, Elise (https://elise.framer.media/) and Nuda
 (https://nuda.framer.website/), chose Elise, and said "elise is ok but nuda is brighter,
 I like the brightness of nuda". The storefront now carries Elise's editorial structure
 (soft serif with one italic accent word per heading, sentence-case eyebrow pills, 01–04

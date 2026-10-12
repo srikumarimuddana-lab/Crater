@@ -1,18 +1,27 @@
 'use client';
 
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, type ReactNode } from 'react';
-
-const summaryClass =
-  'focus-ring inline-flex min-h-11 cursor-pointer list-none items-center px-2 text-[0.9375rem] font-semibold text-ink underline-offset-[0.45em] hover:underline hover:decoration-1 [&::-webkit-details-marker]:hidden';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 /**
- * The small-screen "Menu" disclosure. A native <details>, so it opens without JavaScript, and a full
- * page load starts it closed. Once hydrated, client-side navigations keep this header mounted, so it is
- * closed on a link click and whenever the path or query changes (including Back and Forward).
+ * The small-screen "Menu": a native <details>, so it opens without JavaScript. When open, its panel slides in
+ * from the right over a dimmed page (Nuda) and the <summary> moves to the top-right corner as the close
+ * control, so the panel can always be closed, with or without script. Once hydrated, Escape and the backdrop
+ * close it too, and client-side navigations close it on any path or query change.
  */
-export function MobileMenu({ children }: { children: ReactNode }) {
+export function MobileMenu({
+  children,
+  tone = 'light',
+  label,
+  closeLabel,
+}: {
+  children: ReactNode;
+  tone?: 'light' | 'green';
+  label: string;
+  closeLabel: string;
+}) {
   const ref = useRef<HTMLDetailsElement>(null);
+  const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const search = useSearchParams().toString();
 
@@ -20,18 +29,44 @@ export function MobileMenu({ children }: { children: ReactNode }) {
     if (ref.current) ref.current.open = false;
   }, [pathname, search]);
 
+  const close = (returnFocus = false) => {
+    const el = ref.current;
+    if (!el) return;
+    el.open = false;
+    if (returnFocus) el.querySelector('summary')?.focus();
+  };
+
+  const summaryClass =
+    'focus-ring inline-flex min-h-11 cursor-pointer list-none items-center px-2 text-[0.9375rem] font-semibold underline-offset-[0.45em] hover:underline hover:decoration-1 [&::-webkit-details-marker]:hidden ' +
+    (tone === 'green' ? 'text-white' : 'text-ink');
+
   return (
-    <details ref={ref} className="relative lg:hidden">
-      <summary className={summaryClass}>Menu</summary>
+    <details
+      ref={ref}
+      className="mnav lg:hidden"
+      onToggle={(e) => setOpen(e.currentTarget.open)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && ref.current?.open) {
+          e.stopPropagation();
+          close(true);
+        }
+      }}
+    >
+      <summary className={summaryClass} aria-label={open ? closeLabel : undefined}>
+        {label}
+      </summary>
+      <div className="mnav-backdrop" aria-hidden="true" onClick={() => close()} />
       <nav
-        aria-label="Menu"
-        className="absolute left-0 z-20 mt-2 max-h-[calc(100dvh-8rem)] w-[min(20rem,calc(100vw-2.5rem))] overflow-y-auto rounded-card border border-ink/10 bg-page p-3 shadow-lg shadow-ink/10"
+        aria-label={label}
+        className="mnav-panel"
         onClick={(e) => {
-          // Same-page links (a #fragment or the current query) change neither path nor search.
-          if ((e.target as HTMLElement).closest('a') && ref.current) ref.current.open = false;
+          if ((e.target as HTMLElement).closest('a')) close();
         }}
       >
-        {children}
+        <div className="flex min-h-16 items-center border-b border-ink/10 pl-5 pr-16">
+          <span className="font-display text-lg font-bold text-deep">{label}</span>
+        </div>
+        <div className="px-5 py-5">{children}</div>
       </nav>
     </details>
   );

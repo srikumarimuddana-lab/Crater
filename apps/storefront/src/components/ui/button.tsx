@@ -1,16 +1,18 @@
 import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
 
-/** All surfaces are light now: `primary` is the moss fill, `secondary` a moss outline. */
-type Variant = 'primary' | 'secondary';
+/** Pill buttons (Nuda). `light` and `outline-light` sit on the green bands. */
+type Variant = 'primary' | 'secondary' | 'light' | 'outline-light';
 
 const base =
-  'inline-flex min-h-12 items-center justify-center gap-2 rounded-lg px-6 text-base font-medium ' +
+  'inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-base font-semibold ' +
   'transition-colors duration-180 motion-reduce:transition-none focus-ring';
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-moss text-white hover:bg-moss-hover',
-  secondary: 'border border-moss text-moss hover:bg-sage',
+  primary: 'bg-deep text-white hover:bg-deep-hover',
+  secondary: 'border border-ink text-ink hover:bg-cream',
+  light: 'bg-white text-deep hover:bg-mint',
+  'outline-light': 'border border-white/80 text-white hover:bg-white/10',
 };
 
 export function buttonClassName(variant: Variant = 'primary', extra = '') {
@@ -42,14 +44,15 @@ export function Button({ variant = 'primary', className, type = 'button', ...pro
 }
 
 export const arrowLinkClassName =
-  'link-arrow focus-ring inline-flex min-h-11 items-center gap-1.5 font-medium text-moss underline decoration-moss/40 underline-offset-4 hover:decoration-moss';
+  'link-arrow focus-ring inline-flex min-h-11 items-center gap-1.5 font-semibold text-deep underline decoration-deep/40 underline-offset-4 hover:decoration-deep';
 
-type ArrowLinkProps = Omit<ComponentProps<typeof Link>, 'className'> & { className?: string; children: ReactNode };
+type ArrowLinkProps = Omit<ComponentProps<typeof Link>, 'className'> & { className?: string; tone?: 'light' | 'green'; children: ReactNode };
 
 /** Text link with a trailing arrow ("View all products →"). The arrow is decorative and hidden from the accessible name. */
-export function ArrowLink({ className, children, ...props }: ArrowLinkProps) {
+export function ArrowLink({ className, tone = 'light', children, ...props }: ArrowLinkProps) {
+  const cls = tone === 'green' ? arrowLinkClassName.replace('text-deep underline decoration-deep/40 underline-offset-4 hover:decoration-deep', 'text-white underline decoration-white/50 underline-offset-4 hover:decoration-white') : arrowLinkClassName;
   return (
-    <Link className={[arrowLinkClassName, className].filter(Boolean).join(' ')} {...props}>
+    <Link className={[cls, className].filter(Boolean).join(' ')} {...props}>
       <span>{children}</span>
       <span aria-hidden="true" className="arrow">
         →

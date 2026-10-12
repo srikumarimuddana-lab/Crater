@@ -31,7 +31,7 @@ function soft(disabled: boolean) {
 }
 
 const stepperButton =
-  'focus-ring inline-flex size-11 items-center justify-center text-xl leading-none text-ink hover:bg-sage aria-disabled:cursor-not-allowed aria-disabled:text-ink-soft/60';
+  'focus-ring inline-flex size-11 items-center justify-center text-xl leading-none text-ink hover:bg-mint-pale aria-disabled:cursor-not-allowed aria-disabled:text-grey/60';
 
 function messagesFor(s: CartActionState): string[] {
   const out: string[] = [];
@@ -107,7 +107,7 @@ function CartLinesInner({
       <div role="status" aria-live="polite" aria-atomic="true" className={problems.length || announcement ? 'mb-4' : undefined}>
         {announcement ? <p className="sr-only">{announcement}</p> : null}
         {problems.map((text) => (
-          <p key={text} className="text-small mb-2 rounded-lg border border-ink/15 bg-warm px-3 py-2 text-ink">
+          <p key={text} className="text-small mb-2 rounded-lg border border-ink/15 bg-blush px-3 py-2 text-ink">
             {text}
           </p>
         ))}
@@ -116,7 +116,7 @@ function CartLinesInner({
       {lines.length === 0 ? (
         <div className="py-6">
           <p className="font-display text-2xl text-ink">{expired ? recovery.cartExpiredHeading : bag.emptyHeading}</p>
-          <p className="mt-2 text-ink-soft">{expired ? recovery.cartExpiredBody : bag.emptyBody}</p>
+          <p className="mt-2 text-grey">{expired ? recovery.cartExpiredBody : bag.emptyBody}</p>
           <Link href="/#collection" onClick={onContinue} className={buttonClassName('primary', 'mt-6')}>
             {bag.continueShopping}
           </Link>
@@ -161,7 +161,7 @@ function LineItem({
 
   return (
     <li className="grid grid-cols-[4.5rem_1fr_auto] gap-x-4 gap-y-3 py-5" aria-busy={busy || undefined}>
-      <div className="relative aspect-[4/5] overflow-hidden rounded-lg bg-surface">
+      <div className="relative aspect-[4/5] overflow-hidden rounded-lg bg-cream">
         {line.imageUrl ? (
           <Image src={line.imageUrl} alt="" width={160} height={200} unoptimized className="h-full w-full object-cover" />
         ) : null}
@@ -172,8 +172,8 @@ function LineItem({
             {line.title}
           </Link>
         </p>
-        <p className="text-small text-ink-soft">{line.optionLabel || line.variantTitle}</p>
-        <p className="text-small text-ink-soft">
+        <p className="text-small text-grey">{line.optionLabel || line.variantTitle}</p>
+        <p className="text-small text-grey">
           {line.previousUnitPrice ? (
             <>
               <s className="mr-1">
@@ -232,12 +232,12 @@ function LineItem({
             type="submit"
             aria-label={quantityCopy.remove(line.title, line.variantTitle)}
             {...soft(busy)}
-            className="focus-ring text-small inline-flex min-h-11 items-center px-1 font-semibold text-ink underline underline-offset-4 hover:text-moss-hover aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+            className="focus-ring text-small inline-flex min-h-11 items-center px-1 font-semibold text-ink underline underline-offset-4 hover:text-deep-hover aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
           >
             {quantityCopy.removeButton}
           </button>
         </form>
-        {atMax ? <p className="text-small w-full text-ink-soft">{quantityCopy.atMaximum(line.maxQuantity)}</p> : null}
+        {atMax ? <p className="text-small w-full text-grey">{quantityCopy.atMaximum(line.maxQuantity)}</p> : null}
       </div>
     </li>
   );
@@ -265,7 +265,7 @@ export function CartSummary({ cart, checkoutUrl = '/api/checkout' }: { cart: Car
         </div>
         {cart.taxesKnown
           ? cart.taxLines.map((t) => (
-              <div key={t.key} className="text-small flex items-baseline justify-between gap-4 text-ink-soft" data-tax-line={t.key}>
+              <div key={t.key} className="text-small flex items-baseline justify-between gap-4 text-grey" data-tax-line={t.key}>
                 <dt>{taxUi.taxLabel(t.title, t.ratePercent)}</dt>
                 <dd className="tabular-nums">
                   <Price money={t.amount} />
@@ -282,7 +282,7 @@ export function CartSummary({ cart, checkoutUrl = '/api/checkout' }: { cart: Car
           </div>
         ) : null}
       </dl>
-      <p className="text-small mt-1 text-ink-soft">{cart.taxesKnown ? taxUi.shippingNote : `${taxCopy.taxesPending} ${bag.taxShippingNote}`}</p>
+      <p className="text-small mt-1 text-grey">{cart.taxesKnown ? taxUi.shippingNote : `${taxCopy.taxesPending} ${bag.taxShippingNote}`}</p>
       <form
         method="post"
         action={checkoutUrl}

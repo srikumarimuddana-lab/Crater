@@ -23,7 +23,7 @@ const useHydrated = () =>
  * Header bag trigger plus the cart drawer (native modal <dialog>).
  * Before hydration, and on /cart itself, the trigger is a plain link to /cart.
  */
-export function BagControls({ cart, mode }: { cart: CartView | null; mode: CommerceMode }) {
+export function BagControls({ cart, mode, tone = 'light' }: { cart: CartView | null; mode: CommerceMode; tone?: 'light' | 'green' }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const hydrated = useHydrated();
@@ -56,7 +56,8 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
   const close = () => dialogRef.current?.close();
 
   const triggerClass =
-    'focus-ring inline-flex min-h-11 items-center px-2 text-[0.9375rem] font-semibold text-ink underline-offset-[0.45em] hover:underline hover:decoration-1';
+    'focus-ring inline-flex min-h-11 items-center px-2 text-[0.9375rem] font-semibold underline-offset-[0.45em] hover:underline hover:decoration-1 ' +
+    (tone === 'green' ? 'text-white' : 'text-ink');
   // Visible text stays in the accessible name (WCAG 2.5.3); only extra words are visually hidden.
   const triggerInner = (
     <>
@@ -130,7 +131,7 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
               type="button"
               onClick={close}
               aria-label={bag.closeLabel}
-              className="focus-ring inline-flex size-11 items-center justify-center rounded-full text-2xl leading-none hover:bg-sage"
+              className="focus-ring inline-flex size-11 items-center justify-center rounded-full text-2xl leading-none hover:bg-mint-pale"
             >
               <span aria-hidden="true">×</span>
             </button>
@@ -138,14 +139,14 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
 
           <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4">
             {mode === 'stripe-test' ? (
-              <p role="note" className="text-small mb-4 rounded-lg bg-moss-deep px-3 py-2 font-semibold text-white">
+              <p role="note" className="text-small mb-4 rounded-lg bg-deep px-3 py-2 font-semibold text-white">
                 {stripeTestModeBanner}
               </p>
             ) : null}
             {notices.length > 0 ? (
               <div role="status" className="mb-4 space-y-2">
                 {notices.map((text) => (
-                  <p key={text} className="text-small rounded-lg border border-ink/15 bg-warm px-3 py-2">
+                  <p key={text} className="text-small rounded-lg border border-ink/15 bg-blush px-3 py-2">
                     {text}
                   </p>
                 ))}
@@ -160,7 +161,7 @@ export function BagControls({ cart, mode }: { cart: CartView | null; mode: Comme
                 <ProvinceForm provinceCode={cart.provinceCode} />
               </div>
             ) : null}
-            {cart && cart.lines.length > 0 ? <p className="text-small mt-4 text-ink-soft">{bag.sampleNote}</p> : null}
+            {cart && cart.lines.length > 0 ? <p className="text-small mt-4 text-grey">{bag.sampleNote}</p> : null}
           </div>
 
           {cart && cart.lines.length > 0 ? (

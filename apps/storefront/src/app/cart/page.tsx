@@ -4,6 +4,7 @@ import { CartLines, CartSummary } from '@/components/commerce/cart-lines';
 import { PriceChangeNotice } from '@/components/commerce/price-change-notice';
 import { ProvinceForm } from '@/components/commerce/province-form';
 import { PageShell } from '@/components/page-shell';
+import { brand } from '@/lib/content/brand';
 import {
   bag,
   checkoutCancelled,
@@ -12,7 +13,7 @@ import {
 } from '@/lib/content/shop-copy';
 
 export const metadata: Metadata = {
-  title: `${bag.title} — Crater`,
+  title: `${bag.title} — ${brand.name}`,
   robots: { index: false, follow: false },
 };
 
@@ -42,7 +43,7 @@ export default async function CartPage({ searchParams }: Props) {
         </h1>
 
         {errorText ? (
-          <div id="bag-error" role="alert" className="mt-8 rounded-card border border-ink/20 bg-warm px-5 py-4">
+          <div id="bag-error" role="alert" className="mt-8 rounded-card border border-ink/20 bg-blush px-5 py-4">
             {fixtureRefusal ? (
               <>
                 <p className="font-display text-2xl">{fixtureCheckout.heading}</p>
@@ -65,7 +66,7 @@ export default async function CartPage({ searchParams }: Props) {
         </div>
 
         {cancelled && !errorText ? (
-          <div role="status" className="mt-8 rounded-card border border-ink/15 bg-warm px-5 py-4">
+          <div role="status" className="mt-8 rounded-card border border-ink/15 bg-blush px-5 py-4">
             <p className="font-display text-2xl">{checkoutCancelled.heading}</p>
             <p className="mt-2">{checkoutCancelled.body}</p>
           </div>
@@ -77,12 +78,12 @@ export default async function CartPage({ searchParams }: Props) {
           </section>
 
           {cart && hasLines ? (
-            <aside aria-label={bag.summaryLabel} className="h-fit rounded-card bg-surface p-6 lg:sticky lg:top-6">
+            <aside aria-label={bag.summaryLabel} className="h-fit rounded-card bg-cream p-6 lg:sticky lg:top-6">
               <ProvinceForm provinceCode={cart.provinceCode} focusOnMount={needsProvince} describedBy={needsProvince ? 'bag-error' : undefined} />
               <div className="mt-5 border-t border-ink/10 pt-4">
                 <CartSummary cart={cart} />
               </div>
-              <p className="text-small mt-4 text-ink-soft">{bag.sampleNote}</p>
+              <p className="text-small mt-4 text-grey">{bag.sampleNote}</p>
             </aside>
           ) : null}
         </div>

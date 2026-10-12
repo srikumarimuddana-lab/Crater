@@ -5,10 +5,11 @@ import { PageShell } from '@/components/page-shell';
 import { buttonClassName } from '@/components/ui/button';
 import { commerceMode, formatMoney, getCheckoutResult } from '@/lib/commerce';
 import type { Order } from '@/lib/commerce/types';
+import { brand } from '@/lib/content/brand';
 import { confirmation, contactLine } from '@/lib/content/shop-copy';
 
 export const metadata: Metadata = {
-  title: 'Order confirmation — Crater',
+  title: `Order confirmation — ${brand.name}`,
   robots: { index: false, follow: false },
 };
 
@@ -38,7 +39,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
             <p className="mt-6" role="status">
               {confirmation.processing.body}
             </p>
-            <p className="mt-4 text-ink-soft">{contactLine(null)}</p>
+            <p className="mt-4 text-grey">{contactLine(null)}</p>
             <Link href={refreshHref} className={buttonClassName('primary', 'mt-8')}>
               {confirmation.processing.refresh}
             </Link>
@@ -78,10 +79,10 @@ function Paid({ order, mode }: { order: Order; mode: ReturnType<typeof commerceM
       {mode === 'stripe-test' ? <p className="mt-6 font-semibold">{c.testOrderNote}</p> : null}
       {mode === 'fixture' ? <p className="mt-6 font-semibold">{c.fixtureOrderNote}</p> : null}
       <p className="mt-6">
-        <span className="text-eyebrow block text-ink-soft">{c.orderNumberLabel}</span>
+        <span className="text-eyebrow block text-grey">{c.orderNumberLabel}</span>
         <span className="font-display text-3xl">{order.name}</span>
       </p>
-      <p className="text-small mt-1 text-ink-soft">{c.keepNumber}</p>
+      <p className="text-small mt-1 text-grey">{c.keepNumber}</p>
 
       <section aria-labelledby="ordered-items" className="mt-10">
         <h2 id="ordered-items" className="text-3xl">
@@ -101,7 +102,7 @@ function Paid({ order, mode }: { order: Order; mode: ReturnType<typeof commerceM
         <dl className="mt-4 space-y-2">
           {totals.map(([label, value]) => (
             <div key={label} className="flex justify-between gap-4">
-              <dt className="text-ink-soft">{label}</dt>
+              <dt className="text-grey">{label}</dt>
               <dd className="tabular-nums">{value}</dd>
             </div>
           ))}
@@ -112,7 +113,7 @@ function Paid({ order, mode }: { order: Order; mode: ReturnType<typeof commerceM
         </dl>
       </section>
 
-      <p className="mt-8 text-ink-soft">{contactLine(null)}</p>
+      <p className="mt-8 text-grey">{contactLine(null)}</p>
       <Link href="/#collection" className={buttonClassName('primary', 'mt-8')}>
         {c.continueShopping}
       </Link>

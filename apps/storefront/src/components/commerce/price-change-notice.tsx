@@ -30,11 +30,11 @@ export function PriceChangeNotice({ cart, compact = false }: { cart: CartView | 
   if (cart && cart.hasPriceChanges && changed.length > 0) {
     const only = changed.length === 1 ? changed[0] : null;
     return (
-      <div role="status" data-testid="price-change-notice" className="rounded-card border border-ink/20 bg-warm px-4 py-3">
+      <div role="status" data-testid="price-change-notice" className="rounded-card border border-ink/20 bg-blush px-4 py-3">
         <p className={compact ? 'text-small' : undefined}>
           {only && only.previousUnitPrice ? recovery.priceChanged(only.title, only.previousUnitPrice, only.unitPrice) : recovery.priceChangedGeneric}
         </p>
-        <p className="text-small mt-1 text-ink-soft">
+        <p className="text-small mt-1 text-grey">
           {bag.currentSubtotal}: <Price money={cart.subtotal} className="font-semibold text-ink" />
         </p>
         <form action={action} className="mt-2">
@@ -60,7 +60,7 @@ export function PriceChangeNotice({ cart, compact = false }: { cart: CartView | 
         ref={confirmRef}
         role="status"
         tabIndex={-1}
-        className="text-small rounded-card border border-ink/15 bg-warm px-4 py-3 focus:outline-none"
+        className="text-small rounded-card border border-ink/15 bg-blush px-4 py-3 focus:outline-none"
       >
         {recovery.priceChangedAcknowledged}
       </div>
