@@ -1,0 +1,37 @@
+import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { createMemoryRepository, memoryStateOf } from '@/lib/commerce/memory-repository';
+import type { OrderRecord } from '@/lib/commerce/records';
+const { getRepository } = vi.hoisted(() => ({ getRepository: vi.fn() }));
+vi.mock('@/lib/commerce/repository-factory', () => ({ getRepository }));
+import { getFinance, syncFinanceOrders, syncFinanceCosts, postRefund } from '@/lib/finance';
+const order: OrderRecord = { id: 1, number: 1001, checkoutId: 'chk_example', stripeSessionId: 'cs_test_example', email: null, financialStatus: 'PAID', subtotalMinor: 1000, shippingMinor: 100, taxMinor: 55, totalMinor: 1155, reviewFlags: [], processedAt: '2026-10-14T12:00:00.000Z', lines: [], taxLines: [], taxProvince: null, shippingProvince: null, fulfilmentStatus: 'UNFULFILLED', shippingAddress: null, packingInstructions: null, internalNotes: null };
+let repo: ReturnType<typeof createMemoryRepository>;
+beforeEach(() => { repo = createMemoryRepository(); getRepository.mockResolvedValue(repo); });
+describe('durable finance catch-up', () => {
+    it('dry run does not post and replay does not duplicate journals', async () => { memoryStateOf(repo).orders.push(order, { ...order, id: 2, number: 1002, stripeSessionId: 'cs_unknown' }); expect(await syncFinanceOrders({ dryRun: true })).toMatchObject({ posted: 1, unknownMode: 1 }); expect((await (await getFinance()).snapshot('test')).journals).toHaveLength(0); await syncFinanceOrders(); expect(await syncFinanceOrders()).toMatchObject({ posted: 0, existing: 1, unknownMode: 1 }); expect((await (await getFinance()).snapshot('test')).journals).toHaveLength(1); });
+    it('confirmed refund projects financial status without changing stock', async () => { const m = memoryStateOf(repo); m.orders.push(structuredClone(order)); await syncFinanceOrders(); const before = m.products.map(p => p.variants.map(v => v.quantity)); await postRefund({ id: 're_external', paymentId: 'order:1', mode: 'test', currency: 'CAD', amountMinor: 100, status: 'succeeded', occurredAt: order.processedAt }); expect(m.orders[0].financialStatus).toBe('PARTIALLY_REFUNDED'); expect(m.products.map(p => p.variants.map(v => v.quantity))).toEqual(before); });
+    it('posts immutable shipment costs and flags unknown historic costs', async () => { const m = memoryStateOf(repo); m.orders.push({ ...order, fulfilmentStatus: 'FULFILLED' }, { ...order, id: 2, number: 1002, stripeSessionId: 'cs_test_second', fulfilmentStatus: 'FULFILLED' }); m.ext.set('inventory-operations', { shipments: [{ key: 'shipment-0001', orderId: 1 }] }); m.ext.set('shipment-cost:shipment-0001', [{ quantity: 2, unitCostMinor: 150 }]); m.ext.set('shipment-at:shipment-0001', '2026-10-14T13:00:00.000Z'); expect(await syncFinanceCosts()).toMatchObject({ posted: 1, incomplete: 1 }); await syncFinanceCosts(); const s = await (await getFinance()).snapshot('test'); expect(s.journals).toHaveLength(1); expect(s.journals[0].lines[0]).toEqual({ account: 'cost_of_goods', debit: 300, credit: 0 }); expect(s.reconciliation[0].type).toBe('missing_cost_snapshot'); });
+});
+it('posts receipts once in their explicit mode and only physical restocks reverse original costs', async () => {
+    const m = memoryStateOf(repo);
+    m.orders.push({ ...order, fulfilmentStatus: 'FULFILLED' });
+    m.ext.set('inventory-operations', { shipments: [{ key: 'ship-cost', orderId: 1 }], purchases: [{ id: 'purchase-1', lines: [{ variantId: 'variant-1', unitCostMinor: 150 }] }], receipts: [{ key: 'receipt-one', purchaseOrderId: 'purchase-1', mode: 'live', lines: [{ variantId: 'variant-1', quantity: 4 }] }], returns: [{ key: 'return-one', orderId: 1, restock: true }, { key: 'return-two', orderId: 1, restock: true }, { key: 'return-discarded', orderId: 1, restock: false }] });
+    m.ext.set('shipment-cost:ship-cost', [{ quantity: 2, unitCostMinor: 150 }, { quantity: 2, unitCostMinor: 200 }]);
+    m.ext.set('shipment-at:ship-cost', '2026-10-14T13:00:00.000Z');
+    m.ext.set('receipt-at:receipt-one', '2026-10-14T11:00:00.000Z');
+    m.ext.set('return-cost:return-one', [{ quantity: 1, unitCostMinor: 150 }]);
+    m.ext.set('return-at:return-one', '2026-10-14T14:00:00.000Z');
+    m.ext.set('return-cost:return-two', [{ quantity: 1, unitCostMinor: 150 }, { quantity: 1, unitCostMinor: 200 }]);
+    m.ext.set('return-at:return-two', '2026-10-14T15:00:00.000Z');
+    m.ext.set('return-cost:return-discarded', [{ quantity: 1, unitCostMinor: 200 }]);
+    m.ext.set('return-at:return-discarded', '2026-10-14T16:00:00.000Z');
+    expect(await syncFinanceCosts()).toMatchObject({ posted: 4, incomplete: 0 });
+    await syncFinanceCosts();
+    const f = await getFinance(), live = await f.snapshot('live'), test = await f.snapshot('test');
+    expect(live.journals).toHaveLength(1);
+    expect(live.journals[0].lines).toEqual([{ account: 'inventory', debit: 600, credit: 0 }, { account: 'supplier_payable', debit: 0, credit: 600 }]);
+    expect(test.journals).toHaveLength(3);
+    const returns = test.journals.filter(j => j.id.startsWith('cost:return:'));
+    expect(returns.map(j => j.lines[0].debit).sort((a, b) => a - b)).toEqual([150, 350]);
+    expect(test.journals.flatMap(j => j.lines).filter(l => l.account === 'cost_of_goods').reduce((n, l) => n + l.debit - l.credit, 0)).toBe(200);
+});

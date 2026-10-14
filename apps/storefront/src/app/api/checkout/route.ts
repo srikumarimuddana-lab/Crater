@@ -2,6 +2,10 @@ import { getCartId } from '@/lib/commerce/cart-cookie';
 import { methodNotAllowed } from '@/lib/commerce/http';
 import { createCheckoutSession } from '@/lib/commerce';
 import { isStripeCheckoutUrl } from '@/lib/commerce/stripe-client';
+import { cookies } from 'next/headers';
+import { attachCheckoutAttribution } from '@/lib/analytics/repository';
+import { CONSENT_COOKIE, SESSION_COOKIE } from '@/lib/analytics/schema';
+import { logger } from '@/lib/commerce/log';
 
 const NO_STORE = 'no-store';
 
@@ -23,10 +27,15 @@ export async function POST(request: Request) {
   const cartId = await getCartId();
   if (!cartId) return failure('EMPTY_CART');
 
-  const result = await createCheckoutSession(cartId);
+  let discountCode = '';
+  if (Number(request.headers.get('content-length') || 0) > 4096) return failure('CART_INVALID');
+  try { const form = await request.formData(); discountCode = String(form.get('discountCode') ?? '').trim().toUpperCase(); } catch { /* Old no-body callers use no discount. */ }
+  if (discountCode.length > 40) return failure('CART_INVALID');
+  const result = await createCheckoutSession(cartId, { discountCode });
   if (!result.ok) return failure(result.code);
   // Defence in depth: the service already checked, but never redirect anywhere else.
   if (!isStripeCheckoutUrl(result.redirectUrl)) return failure('PAYMENT_PROVIDER_UNAVAILABLE');
+  try { const jar = await cookies(); const session = jar.get(SESSION_COOKIE)?.value; if (jar.get(CONSENT_COOKIE)?.value === 'granted' && session) await attachCheckoutAttribution(result.checkoutId, session); } catch(e) { logger.error('checkout attribution unavailable', e); }
   return redirect(result.redirectUrl);
 }
 

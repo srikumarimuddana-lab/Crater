@@ -2,7 +2,7 @@
  * Cookie access for the sign-in provider. Kept behind a tiny interface so the provider can be unit-tested
  * without Next.js; `nextCookieJar` adapts `next/headers`.
  *
- * Both cookies are HttpOnly, SameSite=Strict, Path=/. With Secure on they carry the `__Host-` prefix (the
+ * Session cookies are HttpOnly, SameSite=Strict, Path=/. With Secure on they carry the `__Host-` prefix (the
  * browser then also refuses a Domain attribute or a non-root path); on plain http (local development) the
  * prefix is dropped because browsers reject `__Host-` cookies that are not Secure.
  */
@@ -12,6 +12,7 @@ export interface CookieJar {
   delete(name: string): void;
 }
 
+/** Pending names remain only to delete cookies from the retired MFA flow. */
 export type CookieNames = { session: string; pending: string };
 
 export const cookieNames = (secure: boolean): CookieNames =>

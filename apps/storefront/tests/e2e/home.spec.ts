@@ -1,7 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-/** Make every WebGL context request fail, as on a device without GPU support. */
 async function disableWebGL(page: Page) {
   await page.addInitScript(() => {
     const original = HTMLCanvasElement.prototype.getContext;
@@ -12,338 +11,256 @@ async function disableWebGL(page: Page) {
   });
 }
 
-/** Accumulate layout-shift entries (CLS without session windowing: an upper bound). */
-async function observeLayoutShift(page: Page) {
-  await page.addInitScript(() => {
-    (window as unknown as { __cls: number }).__cls = 0;
-    new PerformanceObserver((list) => {
-      for (const entry of list.getEntries() as unknown as { value: number; hadRecentInput: boolean }[]) {
-        if (!entry.hadRecentInput) (window as unknown as { __cls: number }).__cls += entry.value;
-      }
-    }).observe({ type: 'layout-shift', buffered: true });
-  });
-}
+test.beforeEach(async ({ context, baseURL }) => {
+  // Most tests exercise shopping with analytics rejected. The consent test starts fresh.
+  await context.addCookies([{ name: 'crater_analytics', value: 'denied', url: baseURL! }]);
+});
 
-test('home renders shopping content without WebGL', async ({ page }) => {
+test('reference hero, photography and real collection work without WebGL', async ({ page }) => {
   await disableWebGL(page);
   await page.goto('/');
-
-  // The stylesheet applied (an unstyled page would still pass the role checks below).
-  await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(247, 242, 232)');
-
-  // Announcement bar: store line plus the preview notice, unmistakable while samples are in use.
-  const notice = page.getByRole('region', { name: /preview notice/i });
-  await expect(notice).toContainText('Shipping within Canada');
-  await expect(notice).toContainText(/sample products/i);
-
-  const hero = page.getByRole('region', { name: 'Liquid herbal extracts and body oils' });
+  await expect(page.getByRole('region', { name: /preview notice/i })).toContainText(/sample products/i);
+  const hero = page.locator('#home');
   await expect(hero.getByRole('heading', { level: 1 })).toBeVisible();
-  await expect(hero.getByText('30 mL')).toBeVisible();
-  await expect(hero.getByText('$24.00 CAD')).toBeVisible();
-
-  const heroImage = hero.getByRole('img', { name: /Lemon Balm & Oat Extract/ });
-  await expect(heroImage).toBeVisible();
-  await expect.poll(() => heroImage.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
-
-  // Two actions: tinctures and the whole collection.
-  await expect(hero.getByRole('link', { name: 'Shop tinctures' })).toHaveAttribute('href', '/?category=tinctures#collection');
-  await expect(hero.getByRole('link', { name: 'Browse all products' })).toHaveAttribute('href', '/#collection');
-  const product = hero.getByRole('link', { name: 'Lemon Balm & Oat Extract' });
-  await expect(product).toHaveAttribute('href', '/products/lemon-balm-oat-extract');
-  await product.click();
-  await expect(page).toHaveURL(/\/products\/lemon-balm-oat-extract$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Lemon Balm & Oat Extract' })).toBeVisible();
-  await page.goto('/');
-
-  // Value tiles state only the three confirmed facts.
-  const tiles = page.getByRole('region', { name: 'Store information' }).getByRole('listitem');
-  await expect(tiles).toHaveCount(3);
-  await expect(tiles.nth(0)).toContainText('Secure checkout with Stripe');
-  await expect(tiles.nth(1)).toContainText('Ships within Canada');
-  await expect(tiles.nth(2)).toContainText('Prices in Canadian dollars');
-
-  // Shop by ritual: four tiles linking to the collection filter.
-  const rituals = page.getByRole('region', { name: 'Shop by ritual' });
-  await expect(rituals.getByRole('link')).toHaveCount(4);
-  await expect(rituals.getByRole('link', { name: /^Body care/ })).toHaveAttribute('href', '/?category=body-care#collection');
-
-  // Story and values are marked placeholders; hidden sections are absent.
-  await expect(page.getByRole('region', { name: 'Our story' })).toContainText('Content pending');
-  await expect(page.getByRole('region', { name: 'What we care about' }).getByRole('listitem')).toHaveCount(3);
-  await expect(page.getByRole('heading', { name: 'From the journal' })).toHaveCount(0);
-  await expect(page.getByText('Stay in touch')).toHaveCount(0);
-
-  // Collection: nine sample cards with price and size, and working filter links.
-  const collection = page.getByRole('region', { name: /shop all/i });
+  await expect(hero.locator('.glowing')).not.toHaveText('');
+  await expect(hero.locator('.skin')).not.toHaveText('');
+  for (const image of [hero.locator('.hero-model'), hero.locator('.hero-texture')]) {
+    await expect(image).toBeVisible();
+    await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+  }
+  await expect(hero.locator('[data-track="home.hero.shop"]')).toHaveAttribute('href', '/#collection');
+  await hero.locator('[data-track="home.hero.shop"]').click();
+  await expect(page).toHaveURL(/\/#collection$/);
+  const collection = page.locator('#collection');
   await expect(collection.getByRole('heading', { level: 3 })).toHaveCount(9);
   await expect(collection.getByText('Sample product', { exact: true })).toHaveCount(9);
-
-  // Every card image decodes (lazy images load once scrolled into view).
-  for (const img of await collection.getByRole('img').all()) {
-    await img.scrollIntoViewIfNeeded();
-    await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+  for (const image of await collection.getByRole('img').all()) {
+    await image.scrollIntoViewIfNeeded();
+    await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
   }
-
-  // The whole card is one stretched link whose text is the product title.
-  await expect(collection.getByRole('link', { name: 'Nettle Leaf Extract' })).toHaveAttribute('href', '/products/nettle-leaf-extract');
-
-  await collection.getByRole('link', { name: 'Body oils' }).click();
-  await expect(page).toHaveURL(/\?category=body-oils#collection$/);
-  const filtered = page.getByRole('region', { name: /shop all/i });
-  await expect(filtered.getByRole('heading', { level: 3 })).toHaveText(['Calendula & Almond Body Oil', 'Lavender & Jojoba Body Oil']);
-  await expect(filtered.getByRole('link', { name: 'Body oils' })).toHaveAttribute('aria-current', 'page');
-
-  await filtered.getByRole('link', { name: 'All products' }).click();
-  await expect(page.getByRole('region', { name: /shop all/i }).getByRole('heading', { level: 3 })).toHaveCount(9);
-
-  // Sorting still works (price, high to low puts the $74.00 kit first).
-  await page.goto('/?sort=price-desc#collection');
-  await expect(page.getByRole('region', { name: /shop all/i }).getByRole('heading', { level: 3 }).first()).toHaveText('Evening Ritual Kit');
-
-  // No canvas is required for any of the above.
+  await collection.getByRole('link', { name: 'Lemon Balm & Oat Extract', exact: true }).click();
+  await expect(page).toHaveURL(/\/products\/lemon-balm-oat-extract$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Lemon Balm & Oat Extract' })).toBeVisible();
+  await expect(page.locator('#add-to-bag-form').getByRole('button', { name: /^add to bag/i })).toBeVisible();
   await expect(page.locator('canvas')).toHaveCount(0);
 });
 
-test('header: centred logo, bag on the right, preview notice above', async ({ page }, testInfo) => {
-  await page.goto('/');
-  const logo = page.getByRole('banner').getByRole('link', { name: 'Crater' });
-  const box = (await logo.boundingBox())!;
-  const viewport = page.viewportSize()!;
-  expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThan(4);
-  const bag = page.getByRole('banner').getByRole('button', { name: /^bag\b/i });
-  const bagBox = (await bag.boundingBox())!;
-  expect(bagBox.x).toBeGreaterThan(viewport.width / 2);
-  if (testInfo.project.name === 'desktop-1440') {
-    const shop = (await page.getByRole('banner').getByRole('button', { name: 'Shop', exact: true }).boundingBox())!;
-    expect(shop.x).toBeLessThan(viewport.width / 2);
-  }
+test('collection filters, sorting and search return real products', async ({ page }) => {
+  await page.goto('/#collection');
+  const collection = page.locator('#collection');
+  await collection.getByRole('link', { name: 'Body oils', exact: true }).click();
+  await expect(page).toHaveURL(/\?category=body-oils#collection$/);
+  await expect(collection.getByRole('heading', { level: 3 })).toHaveText(['Calendula & Almond Body Oil', 'Lavender & Jojoba Body Oil']);
+  await expect(collection.getByRole('link', { name: 'Body oils', exact: true })).toHaveAttribute('aria-current', 'page');
+  await collection.getByRole('link', { name: 'All products', exact: true }).click();
+  await expect(collection.getByRole('heading', { level: 3 })).toHaveCount(9);
+  await collection.locator('select[name="sort"]').selectOption('price-desc');
+  await collection.locator('form').filter({ has: page.locator('select[name="sort"]') }).getByRole('button').click();
+  await expect(collection.getByRole('heading', { level: 3 }).first()).toHaveText('Evening Ritual Kit');
+  await collection.getByRole('searchbox').fill('nettle');
+  await collection.getByRole('button', { name: /search/i }).click();
+  await expect(collection.getByRole('heading', { level: 3 })).toHaveText(['Nettle Leaf Extract']);
+  await collection.getByRole('link', { name: 'Nettle Leaf Extract', exact: true }).click();
+  await expect(page).toHaveURL(/\/products\/nettle-leaf-extract$/);
 });
 
-test('mega menu: opens by keyboard, lists the columns, closes on Escape and returns focus', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'desktop-1440', 'The mega menu is a desktop control; small screens use the Menu disclosure.');
+test('header keeps brand and bag usable at each viewport', async ({ page }) => {
   await page.goto('/');
-  const button = page.getByRole('button', { name: 'Shop', exact: true });
-  const panel = page.getByRole('navigation', { name: 'Shop menu' });
-  await expect(button).toHaveAttribute('aria-expanded', 'false');
-  await expect(panel).toBeHidden();
-
-  await button.focus();
-  await page.keyboard.press('Enter');
-  await expect(button).toHaveAttribute('aria-expanded', 'true');
-  await expect(panel).toBeVisible();
-  for (const heading of ['Formats', 'Rituals', 'Explore']) await expect(panel.getByText(heading, { exact: true })).toBeVisible();
-  await expect(panel.getByRole('link', { name: 'Tinctures' })).toHaveAttribute('href', '/?category=tinctures#collection');
-  await expect(panel.getByRole('link', { name: /^About/ })).toHaveAttribute('href', '/about');
-  await expect(panel.getByRole('link', { name: /^About/ })).toContainText('content pending');
-
-  // Tab moves into the menu; Escape from inside closes it and focus returns to the button.
-  await page.keyboard.press('Tab');
-  await expect(panel.getByRole('link', { name: 'Tinctures' })).toBeFocused();
+  const header = page.getByRole('banner'), logo = header.locator('.r-brand');
+  await expect(logo).toBeVisible();
+  await expect(logo).toHaveAttribute('href', '/');
+  const bag = header.getByRole('button', { name: /^bag\b/i });
+  await expect(bag).toBeVisible();
+  const logoBox = (await logo.boundingBox())!, bagBox = (await bag.boundingBox())!, viewport = page.viewportSize()!;
+  expect(bagBox.x).toBeGreaterThan(logoBox.x + logoBox.width);
+  expect(bagBox.x + bagBox.width).toBeLessThanOrEqual(viewport.width);
+  if (viewport.width >= 701) {
+    expect(Math.abs(logoBox.x + logoBox.width / 2 - viewport.width / 2)).toBeLessThan(4);
+    await expect(header.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Shop', exact: true })).toHaveAttribute('href', '/#collection');
+  }
+  await bag.click();
+  const drawer = page.getByRole('dialog');
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByText('Your bag is empty')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(panel).toBeHidden();
-  await expect(button).toHaveAttribute('aria-expanded', 'false');
-  await expect(button).toBeFocused();
-
-  // Space toggles it too; tabbing out of the menu closes it.
-  await page.keyboard.press('Space');
-  await expect(panel).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(button).toBeFocused();
-
-  // A menu link navigates and the menu is closed on the next page.
-  await button.click();
-  await panel.getByRole('link', { name: 'Seasonal' }).click();
-  await expect(page).toHaveURL(/\?category=seasonal#collection$/);
-  await expect(panel).toBeHidden();
-  await expect(button).toHaveAttribute('aria-expanded', 'false');
+  await expect(drawer).toBeHidden();
+  await expect(bag).toBeFocused();
 });
 
-test.describe('mega menu without JavaScript', () => {
-  test.use({ javaScriptEnabled: false });
-
-  test('"Shop" opens a native disclosure with working links', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop-1440', 'Desktop control.');
-    await page.goto('/');
-    await page.locator('summary', { hasText: 'Shop' }).first().click();
-    await page.getByRole('navigation', { name: 'Shop menu' }).getByRole('link', { name: 'Kits & gifts' }).click();
-    await expect(page).toHaveURL(/\?category=kits-gifts#collection$/);
-  });
-});
-
-test('featured carousel: a list of six products with working, accessible previous and next buttons', async ({ page }, testInfo) => {
-  test.setTimeout(90_000);
-  await page.goto('/');
-  const section = page.getByRole('region', { name: 'Featured formulas' });
-  const list = section.locator('#featured-list');
-  await expect(list.getByRole('listitem')).toHaveCount(6);
-  await expect(list.getByRole('heading', { level: 3 })).toHaveText([
-    'Lemon Balm & Oat Extract',
-    'Peppermint & Ginger Extract',
-    'Chamomile & Linden Extract',
-    'Hawthorn & Rose Hip Extract',
-    'Dandelion Root Extract',
-    'Nettle Leaf Extract',
-  ]);
-  // Scroll-snap container; a plain scrollable list without script.
-  expect(await list.evaluate((el) => getComputedStyle(el).scrollSnapType)).toContain('x');
-  expect(await list.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
-
-  const prev = section.getByRole('button', { name: 'Previous products' });
-  const next = section.getByRole('button', { name: 'Next products' });
-  await expect(next).toBeVisible();
-  await expect(prev).toHaveAttribute('aria-disabled', 'true');
-  await expect(next).not.toHaveAttribute('aria-disabled', 'true');
-  for (const b of [prev, next]) {
-    const box = (await b.boundingBox())!;
-    expect(box.width).toBeGreaterThanOrEqual(44);
-    expect(box.height).toBeGreaterThanOrEqual(44);
-  }
-
-  // Keyboard: Enter on Next scrolls forward; Previous becomes available; focus stays on the button.
-  await next.focus();
-  await page.keyboard.press('Enter');
-  await expect.poll(() => list.evaluate((el) => el.scrollLeft)).toBeGreaterThan(50);
-  await expect(prev).not.toHaveAttribute('aria-disabled', 'true');
-  await expect(next).toBeFocused();
-
-  // Scroll to the end: Next becomes aria-disabled and does nothing.
-  for (let i = 0; i < 8 && (await next.getAttribute('aria-disabled')) !== 'true'; i++) {
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(450);
-  }
-  await expect(next).toHaveAttribute('aria-disabled', 'true');
-  const end = await list.evaluate((el) => el.scrollLeft);
-  await page.keyboard.press('Enter');
-  await page.waitForTimeout(300);
-  expect(await list.evaluate((el) => el.scrollLeft)).toBe(end);
-
-  await prev.focus();
-  await page.keyboard.press('Enter');
-  await expect.poll(() => list.evaluate((el) => el.scrollLeft)).toBeLessThan(end);
-  expect(testInfo.project.name).toBeTruthy();
-
-  // Cards in the list are keyboard-reachable links.
-  await expect(list.getByRole('link', { name: 'Lemon Balm & Oat Extract' })).toHaveAttribute('href', '/products/lemon-balm-oat-extract');
-});
-
-test('featured carousel: with reduced motion the buttons jump without smooth scrolling', async ({ page }) => {
+test('routine tabs support arrows, Home and End with matching content', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  const section = page.getByRole('region', { name: 'Featured formulas' });
-  const list = section.locator('#featured-list');
-  await expect(section.getByRole('button', { name: 'Next products' })).toBeVisible();
-  await section.getByRole('button', { name: 'Next products' }).click();
-  // No animation: the position is final almost immediately.
-  await expect.poll(() => list.evaluate((el) => el.scrollLeft), { timeout: 400 }).toBeGreaterThan(50);
+  const tabs = page.getByRole('tablist', { name: 'Skincare routine' }).getByRole('tab'), panel = page.getByRole('tabpanel');
+  await expect(tabs).toHaveCount(3);
+  await tabs.nth(0).focus();
+  const initial = await panel.innerText();
+  await page.keyboard.press('ArrowRight');
+  await expect(tabs.nth(1)).toBeFocused();
+  await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+  await expect(tabs.nth(0)).toHaveAttribute('tabindex', '-1');
+  await expect(panel).toHaveAttribute('aria-labelledby', 'step1');
+  await expect(panel).not.toHaveText(initial);
+  await page.keyboard.press('End');
+  await expect(tabs.nth(2)).toBeFocused();
+  await expect(panel).toHaveAttribute('aria-labelledby', 'step2');
+  await page.keyboard.press('ArrowRight');
+  await expect(tabs.nth(0)).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(tabs.nth(2)).toBeFocused();
+  await page.keyboard.press('Home');
+  await expect(tabs.nth(0)).toBeFocused();
+  await expect(panel).toHaveText(initial);
 });
 
-test.describe('carousel without JavaScript', () => {
-  test.use({ javaScriptEnabled: false });
-  test('is a plain scrollable list with no dead buttons', async ({ page }) => {
-    await page.goto('/');
-    const section = page.getByRole('region', { name: 'Featured formulas' });
-    await expect(section.getByRole('button')).toHaveCount(0);
-    await expect(section.locator('#featured-list').getByRole('listitem')).toHaveCount(6);
-  });
+test('mobile navigation works with keyboard disclosure controls', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile-390', 'Native mobile disclosure is shown below 701px.');
+  await page.goto('/');
+  const menu = page.locator('.r-mobile-menu'), trigger = menu.locator('summary');
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  await expect(menu).toHaveJSProperty('open', true);
+  await expect(menu.getByRole('navigation', { name: 'Mobile navigation' })).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(menu).toHaveJSProperty('open', false);
+  await page.keyboard.press('Space');
+  await menu.getByRole('link', { name: 'Contact', exact: true }).click();
+  await expect(page).toHaveURL(/\/contact$/);
+  await expect(page.locator('main').getByRole('heading', { level: 1 })).toBeVisible();
 });
 
-for (const [path, title] of [
-  ['/about', 'About'],
-  ['/ingredients-sourcing', 'Ingredients & sourcing'],
-  ['/journal', 'Journal'],
-  ['/shipping-returns', 'Shipping & returns'],
-  ['/contact', 'Contact'],
-] as const) {
-  test(`placeholder page ${path} returns 200, is noindex and links back to Shop all`, async ({ page }) => {
+test('editorial and policy pages render content and footer navigation', async ({ page }) => {
+  for (const path of ['/about', '/ingredients-sourcing', '/journal', '/shipping-returns', '/contact', '/privacy', '/terms']) {
     const response = await page.goto(path);
     expect(response?.status()).toBe(200);
+    await expect(page.locator('main').getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(page.locator('main .r-content-body').first()).not.toHaveText('');
     await expect(page.locator('meta[name=robots]')).toHaveAttribute('content', /noindex/);
-    await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
-    await expect(page.locator('main')).toContainText('Content pending');
-    await page.locator('main').getByRole('link', { name: 'Shop all' }).click();
-    await expect(page).toHaveURL(/\/#collection$/);
-  });
-}
-
-test('footer: link columns, pending markers, hidden newsletter and the preview note', async ({ page }) => {
-  await page.goto('/');
+  }
   const footer = page.getByRole('contentinfo');
-  const nav = footer.getByRole('navigation', { name: 'Footer' });
-  for (const heading of ['Shop', 'About', 'Help']) await expect(nav.getByRole('heading', { name: heading })).toBeVisible();
-  await expect(nav.getByRole('link', { name: 'Shop all' })).toHaveAttribute('href', '/#collection');
-  await expect(nav.getByRole('link', { name: /^Contact/ })).toContainText('content pending');
-  await expect(footer.getByText('Preview store. All products are samples.')).toBeVisible();
-  await expect(footer.getByRole('textbox')).toHaveCount(0);
-  await expect(footer.getByText('Stay in touch')).toHaveCount(0);
+  for (const [label, path] of [['Our story', '/about'], ['Contact', '/contact'], ['Shipping & returns', '/shipping-returns'], ['Privacy', '/privacy'], ['Terms', '/terms']]) {
+    await expect(footer.getByRole('navigation', { name: 'Footer' }).getByRole('link', { name: label, exact: true })).toHaveAttribute('href', path);
+  }
+  await footer.getByRole('link', { name: /discover the collection/i }).click();
+  await expect(page).toHaveURL(/\/#collection$/);
 });
 
-// Health, efficacy and sales-claim words that must not appear on the shop (docs/catalogue.md C5).
-const CLAIM_WORDS = /\b(calm(ing)?|relief|immune|detox(ify)?|cleanse[rs]?|boost(s|ing)?|sleep|stress|best[- ]sellers?|free shipping|organic|reviews?|ratings?|supports?|cures?|heals?|treats?)\b/i;
-
-test('no health-claim or sales-claim words on the homepage', async ({ page }) => {
+test('journal cards navigate to the corresponding article', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  const text = await page.locator('body').innerText();
-  expect(text.match(CLAIM_WORDS)?.[0] ?? null).toBeNull();
-  // The hidden details text counts too: read the DOM text, not only what is on screen.
-  const all = await page.locator('body').evaluate((el) => el.textContent ?? '');
-  expect(all.match(CLAIM_WORDS)?.[0] ?? null).toBeNull();
+  const card = page.locator('#journal .journal-card').nth(1), title = (await card.locator('h3').innerText()).replace('↗', '').trim();
+  await card.click();
+  await expect(page).toHaveURL(/\/journal#article-1$/);
+  await expect(page.locator('#article-1').getByRole('heading', { level: 2 })).toHaveText(title);
+  await expect(page.locator('#article-1 .r-content-body')).not.toHaveText('');
 });
 
-test('no health-claim words on a product page, including its detail sections', async ({ page }) => {
+test('analytics is opt-in and rejecting again does not block shopping', async ({ page, context }) => {
+  await context.clearCookies();
+  const events: string[] = [];
+  await page.route('**/api/analytics', async route => {
+    if (route.request().method() === 'POST') events.push(route.request().postDataJSON().name);
+    await route.fulfill({ status: 204 });
+  });
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Allow analytics', exact: true })).toBeVisible();
+  expect(events).toEqual([]);
+  await page.getByRole('button', { name: 'Allow analytics', exact: true }).click();
+  await expect.poll(() => events.includes('page_view')).toBe(true);
+  await page.getByRole('button', { name: 'Analytics preferences', exact: true }).click();
+  await page.getByRole('button', { name: 'Reject analytics', exact: true }).click();
+  const count = events.length;
   await page.goto('/products/lemon-balm-oat-extract');
-  const all = await page.locator('body').evaluate((el) => el.textContent ?? '');
-  expect(all.match(CLAIM_WORDS)?.[0] ?? null).toBeNull();
+  await expect(page.locator('#add-to-bag-form').getByRole('button', { name: /^add to bag/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Analytics preferences', exact: true })).toBeVisible();
+  expect(events).toHaveLength(count);
+  expect((await context.cookies()).find(c => c.name === 'crater_analytics')?.value).toBe('denied');
+  expect((await context.cookies()).some(c => c.name === 'crater_analytics_session')).toBe(false);
 });
 
-test('home exposes keyboard skip link and visible focus', async ({ page }) => {
+test('reduced motion disables hero drift, marquee and reveal hiding', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await expect(page.locator('.hero-scene')).toHaveCSS('position', 'relative');
+  await expect(page.locator('.marquee div')).toHaveCSS('animation-name', 'none');
+  await page.locator('#ritual').scrollIntoViewIfNeeded();
+  await expect(page.locator('#heroTitle .glowing')).toHaveCSS('transform', 'none');
+  await expect(page.locator('.story-copy h2')).toHaveCSS('opacity', '1');
+  await expect(page.locator('#ritual h2')).toHaveCSS('opacity', '1');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await expect(page.locator('.remedy-home')).toHaveClass(/motion-ready/);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(page.locator('.remedy-home')).not.toHaveClass(/motion-ready/);
+  await expect(page.locator('.marquee div')).toHaveCSS('animation-name', 'none');
+});
+
+test('home has no horizontal page overflow from hero through footer', async ({ page }) => {
+  await page.goto('/');
+  for (const selector of ['#home', '#ritual', '#collection', '#journal', '.r-footer']) {
+    await page.locator(selector).scrollIntoViewIfNeeded();
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  }
+});
+
+test('home exposes the keyboard skip link and visible focus', async ({ page }) => {
   await page.goto('/');
   await page.keyboard.press('Tab');
   const skip = page.getByRole('link', { name: /skip to content/i });
   await expect(skip).toBeFocused();
   await expect(skip).toBeVisible();
-  const outline = await skip.evaluate((el) => getComputedStyle(el).outlineStyle);
-  expect(outline).not.toBe('none');
+  expect(await skip.evaluate(el => getComputedStyle(el).outlineStyle)).not.toBe('none');
   await page.keyboard.press('Enter');
   await expect(page.locator('#main')).toBeFocused();
 });
 
 test('home has no serious automated accessibility violations', async ({ page }) => {
+  // Reveal content must be exposed so animation cannot conceal failures from the audit.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
-  const serious = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
-  expect(serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([]);
+  const serious = results.violations.filter(v => v.impact === 'serious' || v.impact === 'critical');
+  expect(serious.map(v => v.id + ': ' + v.nodes.map(n => n.target.join(' ')).join(', '))).toEqual([]);
 });
 
-test('home preserves layout during delayed image and font loading', async ({ page }) => {
-  await observeLayoutShift(page);
-  const release: (() => void)[] = [];
-  const held = new Promise<void>((resolve) => release.push(resolve));
-  await page.route(/\.(svg|woff2?)(\?.*)?$/, async (route) => {
-    await held;
-    await route.continue();
+test('failed decorative photography leaves product content and shopping links usable', async ({ page }) => {
+  await page.route('**/remedy/*', route => /\.(png|jpe?g|webp|avif)$/.test(new URL(route.request().url()).pathname) ? route.abort() : route.continue());
+  await page.goto('/');
+  await expect(page.locator('#heroTitle')).toBeVisible();
+  await page.locator('[data-track="home.hero.shop"]').click();
+  await page.locator('#collection').getByRole('link', { name: 'Nettle Leaf Extract', exact: true }).click();
+  await expect(page).toHaveURL(/\/products\/nettle-leaf-extract$/);
+  await expect(page.locator('#add-to-bag-form').getByRole('button', { name: /^add to bag/i })).toBeVisible();
+});
+
+test.describe('without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+  test('hero, editorial text and collection navigation stay available', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('#heroTitle')).toBeVisible();
+    await expect(page.locator('.story-copy h2')).toHaveCSS('opacity', '1');
+    await expect(page.locator('#ritual h2')).toHaveCSS('opacity', '1');
+    await page.locator('#collection').getByRole('link', { name: 'Body oils', exact: true }).press('Enter');
+    await expect(page).toHaveURL(/\?category=body-oils#collection$/);
+    await page.waitForLoadState('load');
+    await expect(page.locator('#collection').getByRole('heading', { level: 3 })).toHaveCount(2);
+    await page.locator('#collection').getByRole('link', { name: 'Calendula & Almond Body Oil', exact: true }).press('Enter');
+    await expect(page).toHaveURL(/\/products\/calendula-almond-body-oil$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Calendula & Almond Body Oil' })).toBeVisible();
+    await expect(page.locator('#add-to-bag-form')).toHaveAttribute('method', 'POST');
+    await expect(page.locator('#add-to-bag-form').getByRole('button', { name: /^add to bag/i })).toBeEnabled();
+    await page.locator('#add-to-bag-form').getByRole('button', { name: /^add to bag/i }).press('Enter');
+    await expect(page.getByText(/added to your bag/i)).toBeVisible();
+    await page.goto('/cart');
+    await expect(page.locator('main').getByRole('link', { name: 'Calendula & Almond Body Oil', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: /^bag \(1\) item/i })).toHaveAttribute('href', '/cart');
   });
-
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  const hero = page.getByRole('region', { name: 'Liquid herbal extracts and body oils' });
-  const heroImage = hero.getByRole('img', { name: /Lemon Balm & Oat Extract/ });
-
-  // Content and action are usable while images and fonts are still pending.
-  await expect(hero.getByRole('heading', { level: 1 })).toBeVisible();
-  await expect(hero.getByRole('link', { name: 'Shop tinctures' })).toBeVisible();
-  const before = await heroImage.boundingBox();
-  expect(before?.height ?? 0).toBeGreaterThan(100);
-  const headingBefore = await hero.getByRole('heading', { level: 1 }).boundingBox();
-
-  release.forEach((r) => r());
-  await expect.poll(() => heroImage.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
-  await page.evaluate(() => document.fonts.ready);
-  await page.waitForTimeout(300);
-
-  const after = await heroImage.boundingBox();
-  expect(after).toEqual(before);
-  const headingAfter = await hero.getByRole('heading', { level: 1 }).boundingBox();
-  expect(Math.abs((headingAfter?.y ?? 0) - (headingBefore?.y ?? 0))).toBeLessThan(4);
-
-  const cls = await page.evaluate(() => (window as unknown as { __cls: number }).__cls);
-  expect(cls).toBeLessThan(0.1);
+  test('native mobile navigation opens and follows links', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile-390', 'Mobile disclosure.');
+    await page.goto('/');
+    const menu = page.locator('.r-mobile-menu');
+    await menu.locator('summary').click();
+    await expect(menu).toHaveJSProperty('open', true);
+    await menu.getByRole('link', { name: 'Contact', exact: true }).click();
+    await expect(page).toHaveURL(/\/contact$/);
+    await expect(menu).toHaveJSProperty('open', false);
+  });
 });

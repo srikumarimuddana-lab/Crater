@@ -40,7 +40,7 @@ export async function makeEnv(kind: RepoKind) {
   const clock = Object.assign(h.clock, { advance(ms: number) { h.clock.now = new Date(h.clock.now.getTime() + ms); } });
   const admin = adminRepositoryFor(h.repo);
   const jar = fakeJar();
-  const auth = createAuth({ repo: admin, config: { secretKey: SECRET_KEY, secureCookies: false }, cookies: async () => jar, now: () => h.clock.now });
+  const auth = createAuth({ repo: admin, config: { secureCookies: false }, cookies: async () => jar, now: () => h.clock.now });
   return { h, admin, jar, auth, clock, kind };
 }
 export type Env = Awaited<ReturnType<typeof makeEnv>>;
@@ -57,21 +57,18 @@ export async function addStaff(env: Env, role: StaffRole, email = `${role.toLowe
 export const codeFor = (env: Env, secretBase32: string, offsetSteps = 0) =>
   totpAt(base32Decode(secretBase32) as Buffer, env.clock.now.getTime() + offsetSteps * 30_000);
 
-export async function signInFully(env: Env, email: string, secretBase32: string) {
-  const a = await env.auth.signIn({ email, password: PASSWORD, ip: '203.0.113.5' });
-  if (!a.ok) throw new Error(`sign-in failed: ${a.code}`);
-  const b = await env.auth.verifySecondFactor({ code: codeFor(env, secretBase32), ip: '203.0.113.5' });
-  if (!b.ok) throw new Error(`mfa failed: ${b.code}`);
+export async function signInFully(env: Env, email: string) {
+  const result = await env.auth.signIn({ email, password: PASSWORD, ip: '203.0.113.5' });
+  if (!result.ok) throw new Error(`sign-in failed: ${result.code}`);
 }
 
-export function sessionFor(staff: { id: number; email: string; role: StaffRole }, opts: { steppedUp?: boolean } = {}): AdminSession {
+export function sessionFor(staff: { id: number; email: string; role: StaffRole }): AdminSession {
   return {
     staff: toStaffUser({
       ...staff, name: staff.role, status: 'ACTIVE', passwordHash: null, totpSecretEnc: null, mfaEnrolledAt: null,
       lastTotpStep: null, authSubject: null, createdAt: '2026-01-01T00:00:00.000Z', lastSignInAt: null,
     }),
     capabilities: capabilitiesFor(staff.role),
-    steppedUp: opts.steppedUp ?? true,
     expiresAt: '2099-01-01T00:00:00.000Z',
   };
 }

@@ -27,7 +27,7 @@ test('J1.3 / J2.1 a card opens its product page with title, price and packshot i
   expect(html).toContain('/products/lemon-balm-oat-extract/packshot.svg');
 
   await page.goto('/');
-  await page.getByRole('region', { name: /shop all/i }).getByRole('link', { name: 'Peppermint & Ginger Extract' }).click();
+  await page.locator('#collection').getByRole('link', { name: 'Peppermint & Ginger Extract', exact: true }).click();
   await expect(page).toHaveURL(/\/products\/peppermint-ginger-extract$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Peppermint & Ginger Extract' })).toBeVisible();
   await expect(page.getByText('Sample product', { exact: true })).toBeVisible();
@@ -182,7 +182,7 @@ test('J3.6 /cart: update, remove and the empty state', async ({ page }) => {
   await page.keyboard.press('Escape');
 
   await page.goto('/cart');
-  await expect(page.getByRole('heading', { level: 1, name: /your bag/i })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Shopping bag', exact: true })).toBeVisible();
   await page.getByRole('button', { name: /increase quantity of peppermint/i }).click();
   await expect(main.getByText('$44.00 CAD').first()).toBeVisible();
   await expect(main.getByRole('link', { name: 'Peppermint & Ginger Extract' })).toHaveAttribute('href', '/products/peppermint-ginger-extract');
@@ -484,27 +484,35 @@ test.describe('mobile menu', () => {
     test.skip(testInfo.project.name !== 'mobile-390', 'The Menu disclosure is a small-screen control.');
   });
 
-  const menu = (page: Page) => page.locator('details', { has: page.locator('summary', { hasText: 'Menu' }) });
+  const menu = (page: Page) => page.locator('.r-mobile-menu');
 
-  test('lists the same columns as the mega menu, and closes after following a link or same-page link', async ({ page }) => {
+  test('lists reference navigation and closes after following a route or same-page link', async ({ page }) => {
     await page.goto('/products/lemon-balm-oat-extract');
     await expect(bagButton(page)).toBeVisible(); // hydrated
     await menu(page).locator('summary').click();
     await expect(menu(page)).toHaveJSProperty('open', true);
-    for (const heading of ['Formats', 'Rituals', 'Explore']) await expect(menu(page).getByText(heading, { exact: true })).toBeVisible();
-    await menu(page).getByRole('link', { name: 'Shop all' }).click();
+    const links = menu(page).getByRole('navigation', { name: 'Mobile navigation' }).getByRole('link');
+    await expect(links).toHaveText(['Shop', 'Our story', 'Journal', 'Contact']);
+    for (const [label, href] of [['Shop', '/#collection'], ['Our story', '/about'], ['Journal', '/journal'], ['Contact', '/contact']]) {
+      await expect(menu(page).getByRole('link', { name: label, exact: true })).toHaveAttribute('href', href);
+    }
+    await menu(page).getByRole('link', { name: 'Shop', exact: true }).click();
     await expect(page).toHaveURL(/\/#collection$/);
     await expect(menu(page)).toHaveJSProperty('open', false);
 
-    // A link that only changes the query on the same page.
+    // An anchor to the current page must still close the disclosure.
     await menu(page).locator('summary').click();
-    await menu(page).getByRole('link', { name: 'Body oils' }).click();
-    await expect(page).toHaveURL(/\?category=body-oils/);
+    await menu(page).getByRole('link', { name: 'Shop', exact: true }).click();
+    await expect(page).toHaveURL(/\/#collection$/);
     await expect(menu(page)).toHaveJSProperty('open', false);
 
-    // Back and Forward do not restore an open menu.
+    await menu(page).locator('summary').click();
+    await menu(page).getByRole('link', { name: 'Our story', exact: true }).click();
+    await expect(page).toHaveURL(/\/about$/);
+    // History navigation does not restore an open menu.
     await menu(page).locator('summary').click();
     await page.goBack();
+    await expect(page).toHaveURL(/\/#collection$/);
     await expect(menu(page)).toHaveJSProperty('open', false);
   });
 
@@ -515,8 +523,9 @@ test.describe('mobile menu', () => {
       await page.goto('/products/lemon-balm-oat-extract');
       await menu(page).locator('summary').click();
       await expect(menu(page)).toHaveJSProperty('open', true);
-      await menu(page).getByRole('link', { name: 'Body oils' }).click();
-      await expect(page).toHaveURL(/\?category=body-oils/);
+      await menu(page).getByRole('link', { name: 'Shop', exact: true }).click();
+      await expect(page).toHaveURL(/\/#collection$/);
+      await expect(page.locator('#collection').getByRole('link', { name: 'Lemon Balm & Oat Extract', exact: true })).toBeVisible();
       await expect(menu(page)).toHaveJSProperty('open', false);
     });
   });

@@ -29,9 +29,9 @@ test.describe('settings page', () => {
     if (await nav.isVisible()) await expect(nav.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
   });
 
-  test('the overview shows the store time zone', async ({ page }) => {
+  test('the overview labels its reporting time zone', async ({ page }) => {
     await page.goto('/admin');
-    await expect(page.getByText('Store time zone: America/Regina')).toBeVisible();
+    await expect(page.getByText(/Reporting time zone: UTC/)).toBeVisible();
   });
 });
 

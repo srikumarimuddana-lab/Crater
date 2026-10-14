@@ -14,6 +14,8 @@ export const ALL_CAPABILITIES: readonly Capability[] = [
   'overview:read', 'orders:read', 'orders:read_prices', 'orders:fulfil', 'orders:internal_notes',
   'products:read', 'products:write', 'products:publish', 'inventory:read', 'inventory:adjust',
   'events:read', 'audit:read', 'staff:read', 'staff:manage',
+  'finance:read', 'finance:close', 'finance:reopen', 'payments:read', 'payments:refund', 'analytics:read',
+  'content:read', 'content:write', 'content:publish', 'customers:read', 'customers:write', 'communications:manage',
 ];
 
 export const ROLE_CAPABILITIES: Readonly<Record<StaffRole, readonly Capability[]>> = {
@@ -21,10 +23,12 @@ export const ROLE_CAPABILITIES: Readonly<Record<StaffRole, readonly Capability[]
   ADMIN: [
     'overview:read', 'orders:read', 'orders:read_prices', 'orders:fulfil', 'orders:internal_notes',
     'products:read', 'products:write', 'products:publish', 'inventory:read', 'inventory:adjust', 'events:read',
+    'payments:read', 'payments:refund', 'analytics:read', 'content:read', 'content:write', 'content:publish',
+    'customers:read', 'customers:write', 'communications:manage',
   ],
   FULFILMENT: ['orders:read', 'orders:fulfil', 'inventory:read', 'inventory:adjust'],
-  BOOKKEEPER: ['overview:read', 'orders:read', 'orders:read_prices', 'products:read', 'inventory:read', 'audit:read'],
-  SUPPORT: ['overview:read', 'orders:read', 'orders:read_prices', 'products:read', 'inventory:read'],
+  BOOKKEEPER: ['overview:read', 'orders:read', 'orders:read_prices', 'products:read', 'inventory:read', 'audit:read', 'finance:read', 'finance:close', 'payments:read', 'analytics:read'],
+  SUPPORT: ['overview:read', 'orders:read', 'orders:read_prices', 'products:read', 'inventory:read', 'customers:read', 'customers:write'],
 };
 
 export function capabilitiesFor(role: string): Capability[] {

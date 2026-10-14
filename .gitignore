@@ -1,11 +1,13 @@
 node_modules/
 .next/
 .next-integration/
+.next-*/
 out/
 dist/
 coverage/
 playwright-report/
 test-results/
+test-results-*/
 .vercel/
 .env
 .env.*

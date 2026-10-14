@@ -1,6 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { publishImages } from '@/lib/media';
+import { getRepository } from '@/lib/commerce/repository-factory';
 import { getAdmin, requireAdmin, type ProductStatus, type ProductUpdateInput } from '@/lib/admin';
 import { CHECK_LABEL, gidFrom } from '@/components/admin/format';
 import { echo, errorsToState, failed, runAction, text } from '../_lib/results';
@@ -77,7 +79,9 @@ export async function setStatusAction(_prev: FormState, fd: FormData): Promise<F
   if (!id || !['DRAFT', 'ACTIVE', 'ARCHIVED'].includes(status)) return failed('Choose a status.', echo(fd));
   const out = await runAction(async () => {
     await requireAdmin('products:publish');
-    return (await getAdmin()).products.setStatus({ id, status, expectedUpdatedAt: text(fd, 'expectedUpdatedAt') || undefined });
+    const result = await (await getAdmin()).products.setStatus({ id, status, expectedUpdatedAt: text(fd, 'expectedUpdatedAt') || undefined });
+    if (status === 'ACTIVE' && !result.userErrors.length && result.data && (await getRepository()).kind === 'memory') await publishImages(result.data.images.map(i => i.url));
+    return result;
   }, echo(fd));
   if ('state' in out) return out.state;
   const { userErrors } = out.result;

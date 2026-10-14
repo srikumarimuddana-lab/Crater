@@ -1,14 +1,11 @@
 import { AdminConfigError } from './errors';
-import { base32Decode } from './auth/totp';
 import { passwordPolicyProblem } from './auth/password';
 import type { StaffRole } from './types';
 
-export type DevStaff = { email: string; name: string; password: string; role: StaffRole; totpSecret: string };
+export type DevStaff = { email: string; name: string; password: string; role: StaffRole };
 
 export type AdminConfig = {
   provider: 'builtin' | 'supabase';
-  /** 32-byte AES-256-GCM key for TOTP secrets at rest. */
-  secretKey: Buffer;
   /** IANA timezone for "today" and sales by day. */
   timezone: string;
   ownerEmail: string | null;
@@ -71,10 +68,8 @@ export function parseDevStaff(raw: string | undefined, database: 'memory' | 'pos
     if (!ROLES.includes(o.role as StaffRole)) throw new AdminConfigError(`ADMIN_DEV_STAFF[${i}]: invalid role.`);
     const problem = passwordPolicyProblem(o.password, email);
     if (problem) throw new AdminConfigError(`ADMIN_DEV_STAFF[${i}]: ${problem}`);
-    const secret = typeof o.totpSecret === 'string' ? base32Decode(o.totpSecret) : null;
-    if (!secret || secret.length < 10) throw new AdminConfigError(`ADMIN_DEV_STAFF[${i}]: totpSecret must be base32 (at least 80 bits).`);
     const name = typeof o.name === 'string' && o.name.trim() ? o.name.trim().slice(0, 120) : email.split('@')[0];
-    return { email, name, password: o.password as string, role: o.role as StaffRole, totpSecret: (o.totpSecret as string).replace(/[\s-]/g, '').toUpperCase() };
+    return { email, name, password: o.password as string, role: o.role as StaffRole };
   });
 }
 
@@ -101,7 +96,6 @@ export function readAdminConfig(env: Env = process.env): AdminConfig {
   if (!validTimezone(timezone)) throw new AdminConfigError(`TIMEZONE "${timezone.slice(0, 60)}" is not a valid IANA timezone.`);
   return {
     provider,
-    secretKey: parseSecretKey(env.ADMIN_SECRET_KEY),
     timezone,
     ownerEmail: normaliseEmail(env.ADMIN_OWNER_EMAIL),
     devStaff: parseDevStaff(env.ADMIN_DEV_STAFF, dbName),

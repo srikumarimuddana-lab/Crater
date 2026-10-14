@@ -1,11 +1,6 @@
 # Admin and catalogue pivot: architect's plan
 
-> **2026-10-14 scope update:** The owner requested the complete ecommerce platform
-> and password-only access without MFA. The new
-> [platform specification](../superpowers/specs/2026-10-14-complete-commerce-platform-design.md)
-> records the expanded requirements and proposed architecture for review. This
-> older document remains a record of the currently implemented Slice 1; its TOTP
-> design is not the target for the new work. No auth behavior changes in the spec PR.
+> **2026-10-14 implementation update:** This is the historical Slice 1 plan. Password-only access, the expanded admin modules and reference design are implemented in the new change. Its TOTP proposal is superseded. See the [platform guide](../commerce-platform.md) and [verification record](../superpowers/verification/2026-10-14-commerce.md) for current behavior and limits.
 
 Status: approved direction, 2026-10-09. Inputs: `requirements.md` (BA), `ux.md` (UI engineer),
 and the owner's answers:

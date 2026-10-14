@@ -6,6 +6,8 @@ import { ActionForm, Field, Submit } from '@/components/admin/form';
 import { Icon } from '@/components/admin/icons';
 import { ProductStatusBadge } from '@/components/admin/status';
 import { Card, Notice, PageHeader, StatusBadge } from '@/components/admin/ui';
+import { variantAction, productImagesAction } from '../../../_actions/operations';
+import { getMediaRepository } from '@/lib/media';
 import { saveProductAction, setStatusAction } from '../../../_actions/products';
 import { gate } from '../../../_lib/gate';
 
@@ -19,6 +21,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const p = gid ? await (await getAdmin()).products.get(gid) : null;
   if (!p) notFound();
 
+  const media = (await (await getMediaRepository()).list()).filter(m => !m.archived);
   const canWrite = g.can('products:write');
   const canPublish = g.can('products:publish');
   const showCost = fieldAccess(g.session.staff.role).productCost;
@@ -74,7 +77,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                     {showCost ? <Field name={`variants.${i}.cost`} label={`Cost, ${v.price.currencyCode}`} inputMode="decimal" defaultValue={v.cost?.amount ?? ''} autoComplete="off" hint="Required to publish (you can save a draft without it). What one unit costs you to make or buy. Visible to owners, admins and bookkeepers." /> : null}
                     <Field name={`variants.${i}.lowStockThreshold`} label="Low-stock threshold" inputMode="numeric" defaultValue={String(v.lowStockThreshold)} required autoComplete="off" />
                     <p className="a-muted">
-                      Available {v.available} · Committed {v.committed} · On hand {v.onHand}. Change stock on the Inventory page.
+                      Available {v.available} · Checkout holds {v.reserved} · Committed {v.committed} · On hand {v.onHand}. Change stock on the Inventory page.
                     </p>
                   </fieldset>
                 ))}
@@ -130,7 +133,9 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               </ActionForm>
             </Card>
           ) : null}
+          {canWrite ? <Card title="Add variant"><ActionForm action={variantAction}><input type="hidden" name="productId" value={slug}/><input type="hidden" name="expectedUpdatedAt" value={p.updatedAt}/><Field name="sku" label="Unique SKU"/><Field name="title" label="Size / variant name"/><Field name="priceMinor" label="Price, CAD cents"/><Field name="costMinor" label="Unit cost, CAD cents"/><Submit>Add variant with zero stock</Submit></ActionForm></Card> : null}
           <Card title="Images" id="images">
+            {canWrite ? <ActionForm action={productImagesAction}><input type="hidden" name="productId" value={slug}/><input type="hidden" name="expectedUpdatedAt" value={p.updatedAt}/><Field name="images" label="Uploaded image IDs in display order" as="textarea" defaultValue={p.images.filter(i=>i.url.startsWith('/api/media/')).map(i=>i.url.replace('/api/media/','')).join('\n')} hint="One ID per line. Upload and edit alt text in Media. Saving replaces the gallery."/><Submit>Save gallery</Submit><details><summary>Available images</summary>{media.map(m=><p key={m.id}>{m.name} · {m.alt}<br/><code>{m.id}</code></p>)}</details></ActionForm> : null}
             {p.images.length === 0 ? (
               <p className="a-muted">No images.</p>
             ) : (

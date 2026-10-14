@@ -1,5 +1,7 @@
 # Admin UX contract (draft for review)
 
+> Historical design draft. The 2026-10-14 owner instruction requires password-only access without MFA and supersedes the MFA/step-up proposals below. See the [current platform guide](../commerce-platform.md) for implemented workflows and limits.
+
 Status: designer draft, aligned with `docs/admin/requirements.md` (BA) after cross-review (section 9). Patterns are general (Polaris-like admins, Stripe Dashboard, ledger tools); no copied UI or icons. All names, accounts, reasons and thresholds are placeholders, not business data. **[owner]** marks an owner decision. Ledger and tax text is **not tax, legal or accounting advice**.
 
 ## 1. Principles and brand relation

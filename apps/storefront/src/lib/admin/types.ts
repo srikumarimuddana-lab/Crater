@@ -30,7 +30,11 @@ export type Capability =
   | 'events:read'
   | 'audit:read'
   | 'staff:read'
-  | 'staff:manage';
+  | 'staff:manage'
+  | 'finance:read' | 'finance:close' | 'finance:reopen'
+  | 'payments:read' | 'payments:refund' | 'analytics:read'
+  | 'content:read' | 'content:write' | 'content:publish'
+  | 'customers:read' | 'customers:write' | 'communications:manage';
 
 export type StaffUser = {
   id: ID; // gid://crater/StaffUser/<n>
@@ -38,7 +42,6 @@ export type StaffUser = {
   name: string;
   role: StaffRole;
   status: 'ACTIVE' | 'DISABLED';
-  mfaEnrolled: boolean;
   /** Supabase migration: maps to auth.users.id once that provider is enabled. */
   authSubject: string | null;
   createdAt: DateTime;
@@ -48,31 +51,20 @@ export type StaffUser = {
 export type AdminSession = {
   staff: StaffUser;
   capabilities: Capability[];
-  /** True when a fresh second factor was verified within the step-up window. */
-  steppedUp: boolean;
   expiresAt: DateTime;
 };
 
 export type SignInResult =
-  | { ok: true; next: 'MFA_REQUIRED' | 'MFA_ENROL' }
+  | { ok: true; next: 'AUTHENTICATED' }
   | { ok: false; code: 'INVALID_CREDENTIALS' | 'RATE_LIMITED' | 'DISABLED' };
 
-export type SecondFactorResult =
-  | { ok: true }
-  | { ok: false; code: 'INVALID_CODE' | 'RATE_LIMITED' | 'NO_PENDING_SIGN_IN' };
-
 /**
- * Pluggable sign-in. `builtin` stores credentials in Postgres (scrypt + TOTP);
+ * Pluggable sign-in. `builtin` stores credentials in Postgres (scrypt passwords);
  * a Supabase Auth implementation can replace it later without touching screens.
  * Implementations read and write the session cookie themselves (server-only).
  */
 export interface AdminAuthProvider {
   signIn(args: { email: string; password: string; ip: string }): Promise<SignInResult>;
-  /** Completes a pending sign-in, or performs step-up for an existing session. */
-  verifySecondFactor(args: { code: string; ip: string }): Promise<SecondFactorResult>;
-  /** First sign-in: returns the otpauth URI and secret to show once, then verify a code. */
-  beginMfaEnrolment(): Promise<{ otpauthUri: string; secret: string } | null>;
-  confirmMfaEnrolment(args: { code: string }): Promise<SecondFactorResult>;
   getSession(): Promise<AdminSession | null>;
   signOut(): Promise<void>;
 }
@@ -197,7 +189,8 @@ export type AdminVariant = {
   cost: MoneyV2 | null;
   available: number; // sellable now (storefront quantityAvailable)
   committed: number; // in paid, unfulfilled orders
-  onHand: number; // available + committed
+  reserved: number; // active unpaid checkout holds
+  onHand: number; // available + reserved + committed
   lowStockThreshold: number;
   /** Open (not completed, not expired) carts that contain this variant. */
   openCartCount: number;
@@ -262,7 +255,7 @@ export type InventoryMovement = {
 
 /** Service result shape for admin mutations: field errors like Storefront userErrors. */
 export type AdminUserError = {
-  code: 'INVALID' | 'NOT_FOUND' | 'CONFLICT' | 'FORBIDDEN' | 'PUBLISH_BLOCKED' | 'STEP_UP_REQUIRED';
+  code: 'INVALID' | 'NOT_FOUND' | 'CONFLICT' | 'FORBIDDEN' | 'PUBLISH_BLOCKED';
   field: string[] | null;
   message: string;
 };

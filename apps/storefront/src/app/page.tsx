@@ -1,19 +1,11 @@
 import Link from 'next/link';
 import { ProductCard } from '@/components/commerce/product-card';
-import {
-  FeaturedCarousel,
-  Hero,
-  JournalTeaser,
-  RitualTiles,
-  StoryBlock,
-  ValueTiles,
-  ValuesRows,
-  type RitualTileData,
-} from '@/components/home-sections';
+import { RemedyHero, RemedyStory, RemedyJournal } from '@/components/remedy-home';
+import { getPageContent } from '@/lib/content/cms';
 import { PageShell } from '@/components/page-shell';
 import { getStorefront } from '@/lib/commerce';
 import type { Collection, Product, ProductsQueryArgs } from '@/lib/commerce/types';
-import { browse, home, productPage } from '@/lib/content/shop-copy';
+import { browse } from '@/lib/content/shop-copy';
 
 type SortKey = keyof typeof browse.sortOptions;
 const SORTS: Record<SortKey, Pick<ProductsQueryArgs, 'sortKey' | 'reverse'>> = {
@@ -28,48 +20,33 @@ type HomeProps = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-const categoryOf = (href: string) => new URLSearchParams(href.split('#')[0].split('?')[1] ?? '').get('category') ?? undefined;
 
 export default async function Home({ searchParams }: HomeProps) {
-  const { category, sort } = await searchParams;
+  const { category, sort, preview, q, after } = await searchParams;
+  const c = await getPageContent('home', preview);
   const activeSort: SortKey = isSort(sort) ? sort : 'featured';
   const storefront = getStorefront();
 
-  let all: Product[] = [];
   let categories: Collection[] = [];
   let shown: Product[] = [];
   let activeCategory: string | undefined;
   let loadFailed = false;
+  let nextCursor: string | null = null;
+  const query = typeof q === 'string' ? q.trim().slice(0,100) : undefined;
   try {
-    [all, categories] = await Promise.all([storefront.products({ first: 50 }).then((c) => c.nodes), storefront.collections()]);
+    categories = await storefront.collections();
     activeCategory = categories.find((c) => c.handle === category)?.handle;
-    shown = (await storefront.products({ first: 50, collection: activeCategory, ...SORTS[activeSort] })).nodes;
+    const connection = await storefront.products({ first: 24, query, after: typeof after === 'string' ? after : undefined, collection: activeCategory, ...SORTS[activeSort] });
+    shown = connection.nodes;
+    nextCursor = connection.pageInfo.hasNextPage ? connection.pageInfo.endCursor : null;
   } catch {
     loadFailed = true;
   }
 
-  const hero = all.find((p) => p.handle === home.hero.productHandle) ?? all[0];
-  const byHandle = new Map(all.map((p) => [p.handle, p]));
-  const featured = home.featured.productHandles.map((h) => byHandle.get(h)).filter((p): p is Product => Boolean(p));
-
-  // Ritual tiles borrow the first product of each collection as a stand-in image until photography exists.
-  const ritualTiles: RitualTileData[] = await Promise.all(
-    home.shopByRitual.tiles.map(async (tile) => {
-      const handle = categoryOf(tile.href);
-      let image: Product['featuredImage'] = null;
-      if (handle && !loadFailed) {
-        try {
-          image = (await storefront.products({ first: 1, collection: handle })).nodes[0]?.featuredImage ?? null;
-        } catch {
-          // The tile still works as a text link.
-        }
-      }
-      return { label: tile.label, description: tile.description, href: tile.href, image };
-    }),
-  );
-
-  const hrefFor = (handle: string | undefined) => {
+  const hrefFor = (handle: string | undefined, cursor?: string | null) => {
     const q = new URLSearchParams();
+    if (query) q.set('q',query);
+    if (cursor) q.set('after',cursor);
     if (handle) q.set('category', handle);
     if (activeSort !== 'featured') q.set('sort', activeSort);
     const qs = q.toString();
@@ -77,27 +54,25 @@ export default async function Home({ searchParams }: HomeProps) {
   };
 
   return (
-    <PageShell>
-      {hero && hero.variants[0] ? <Hero product={hero} /> : null}
-      <ValueTiles />
-      <FeaturedCarousel products={featured} />
-      <RitualTiles tiles={ritualTiles} />
-      <StoryBlock />
-      <ValuesRows />
-      <JournalTeaser />
+    <PageShell preview={preview}>
+      <div className="remedy-home">
+      <RemedyHero c={c} />
+      <RemedyStory c={c} />
 
         <section id="collection" aria-labelledby="collection-title" className="page-gutter border-t border-espresso/15 py-12 md:py-16 lg:py-20">
           <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
             <div>
               <h2 id="collection-title" className="!text-[clamp(1.75rem,1.3rem+1.6vw,2.5rem)]">
-                {productPage.shopAll}
+                {c.collectionTitle}
               </h2>
+              <p className="mt-2 text-walnut">{c.collectionText}</p>
               <p className="text-small mt-1 text-walnut" aria-live="polite">
                 {loadFailed ? browse.listLoadError : browse.count(shown.length)}
               </p>
             </div>
 
-            <form method="get" action="/" className="flex items-center gap-2">
+            <form method="get" action="/#collection" className="flex items-center gap-2">
+              {query ? <input type="hidden" name="q" value={query} /> : null}
               {activeCategory ? <input type="hidden" name="category" value={activeCategory} /> : null}
               <label htmlFor="sort" className="text-small text-walnut">
                 {browse.sortLabel}
@@ -123,6 +98,7 @@ export default async function Home({ searchParams }: HomeProps) {
             </form>
           </div>
 
+<form action="/#collection" method="get" className="r-search"><label htmlFor="product-search">Find your ritual</label><input id="product-search" name="q" type="search" placeholder="Search products" defaultValue={typeof q === 'string' ? q : ''} maxLength={100} /><button type="submit">Search ↗</button></form>
           <nav aria-label="Filter products" className="mt-6 border-b border-espresso/15">
             <ul className="-mx-5 flex gap-x-6 overflow-x-auto px-5 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
               {[{ handle: undefined, title: 'All products' }, ...categories].map(({ handle, title }) => {
@@ -156,7 +132,10 @@ export default async function Home({ searchParams }: HomeProps) {
               ))}
             </ul>
           )}
+          <div className="mt-10 flex gap-6">{after ? <Link className="r-pill" href={hrefFor(activeCategory)}>Back to first page</Link> : null}{nextCursor ? <Link className="r-pill" href={hrefFor(activeCategory,nextCursor)}>More products ↗</Link> : null}</div>
         </section>
+      <RemedyJournal c={c} />
+      </div>
     </PageShell>
   );
 }

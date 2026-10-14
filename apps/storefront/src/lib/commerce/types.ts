@@ -274,7 +274,7 @@ export type CartMutationPayload = {
 // Checkout and orders (Crater additions; Shopify hosts these itself)
 
 export type CheckoutSessionResult =
-  | { ok: true; redirectUrl: string }
+  | { ok: true; checkoutId: string; redirectUrl: string }
   | {
       ok: false;
       /** PRICE_CHANGED: a line's price changed since the shopper saw it; they must review it first. */
@@ -304,6 +304,8 @@ export type Order = {
   financialStatus: OrderFinancialStatus;
   currencyCode: CurrencyCode;
   subtotalPrice: MoneyV2;
+  totalDiscounts?: MoneyV2;
+  discountCode?: string | null;
   totalShippingPrice: MoneyV2;
   totalTax: MoneyV2;
   totalPrice: MoneyV2;

@@ -1,6 +1,6 @@
 # Crater complete ecommerce platform: design specification
 
-**Date:** 2026-10-14 · **Status:** proposed specification for owner review; implementation pending.
+**Date:** 2026-10-14 · **Status:** implementation authorized by “fix it completely”; see the delivery verification record and platform guide for implemented scope and remaining environment checks.
 
 **Repository baseline:** `4d73678fa0c253bac810aea4c5a26585e8c502db` on `main`.
 
@@ -459,9 +459,8 @@ charge a real card, purchase a sender/storage plan, or send a real campaign.
 
 ## Review boundary
 
-The owner approved the reference-driven redesign and added the platform requirements
-on 2026-10-14. This document makes the expanded architecture and proposed defaults
-reviewable. It has not yet been approved as the written specification. Product code,
-production data, provider settings, and the existing hosted preview are unchanged
-by this specification PR. After spec review, create the per-package implementation
-plans and execute them against the acceptance scenarios above.
+This specification records the initial proposal and baseline gap audit. The owner subsequently instructed “fix it completely”, authorizing implementation. The detailed proposed capabilities above are not a blanket completion claim: the implementation guide and verification record below identify actual coverage and remaining limits.
+
+## Implementation record — 2026-10-14
+
+The owner subsequently instructed implementation. The earlier proposal/approval notes above describe the specification stage only. See [platform guide](../../commerce-platform.md) and [verification record](../verification/2026-10-14-commerce.md) for the actual delivered behavior and explicit limits. PostgreSQL-backed media was selected to avoid requiring a separate storage account; interactive focal-point editing and large-scale campaign storage are not included.

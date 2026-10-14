@@ -5,6 +5,7 @@ import { getAdmin, requireAdmin } from '@/lib/admin';
 import { gidFrom } from '@/components/admin/format';
 import { echo, errorsToState, failed, runAction, text } from '../_lib/results';
 import type { FormState } from '@/components/admin/form-state';
+import { attemptCommerceEffects } from '@/lib/operations/commerce';
 
 export async function markFulfilledAction(_prev: FormState, fd: FormData): Promise<FormState> {
   const values = echo(fd);
@@ -17,6 +18,7 @@ export async function markFulfilledAction(_prev: FormState, fd: FormData): Promi
   }, values);
   if ('state' in out) return out.state;
   if (out.result.userErrors.length) return errorsToState(out.result.userErrors, values);
+  await attemptCommerceEffects();
   revalidatePath(`/admin/orders/${slug}`);
   return { status: 'success', errors: [], message: 'Marked as fulfilled. The order timeline has the details.' };
 }

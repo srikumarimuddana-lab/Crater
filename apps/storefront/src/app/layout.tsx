@@ -1,29 +1,20 @@
 import type { Metadata, Viewport } from 'next';
-import { Bodoni_Moda, Manrope } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
+import './remedy.css';
 
-const display = Bodoni_Moda({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-bodoni',
-  style: ['normal', 'italic'],
-});
-
-const body = Manrope({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-manrope',
-});
+const display = localFont({ src: '../../public/remedy/cabinet.woff2', display: 'swap', variable: '--font-bodoni', weight: '900' });
+const body = localFont({ src: '../../public/remedy/public-sans.woff2', display: 'swap', variable: '--font-manrope', weight: '700' });
 
 export const metadata: Metadata = {
-  title: 'Crater — Herbal extracts preview',
-  description: 'Preview storefront with sample products. Not a live shop; nothing can be purchased.',
+  title: 'Craters Remedy — Your daily ritual',
+  description: 'Thoughtful care. Beautifully simple. Discover your everyday ritual with Craters Remedy.',
   // Fixture preview: keep it out of search indexes until verified content replaces it.
   robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0E2417',
+  themeColor: '#2f8751',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

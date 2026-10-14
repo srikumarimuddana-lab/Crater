@@ -1,9 +1,4 @@
-import { PendingPage, pendingMetadata } from '@/components/pending-page';
-
-const TITLE = 'Journal';
-
-export const metadata = pendingMetadata(TITLE);
-
-export default function Page() {
-  return <PendingPage title={TITLE} />;
-}
+import { ContentPage } from '@/components/content-page';
+import { getPageContent, getPublishedContent } from '@/lib/content/cms';
+export async function generateMetadata() { const c=await getPublishedContent('journal'); return {title:`${c.seoTitle} — Craters Remedy`,description:c.seoDescription}; }
+export default async function Journal({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) { const {preview}=await searchParams; const c=await getPageContent('home',preview); return <ContentPage contentKey="journal" preview={preview}>{[0,1,2].map(i=><article className="r-journal-article" id={`article-${i}`} key={i}><img src={c[`article${i}Image`]} alt={c[`article${i}Title`]} loading="lazy" /><div><h2>{c[`article${i}Title`]}</h2><div className="r-content-body">{c[`article${i}Body`].split('\n\n').map((p,j)=><p key={j}>{p}</p>)}</div></div></article>)}</ContentPage>; }

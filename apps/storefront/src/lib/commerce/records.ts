@@ -90,7 +90,20 @@ export type CheckoutLineSnapshot = {
   sku: string;
   quantity: number;
   unitMinor: number;
+  /** Catalog unit price before a checkout discount, retained for historical display. */
+  originalUnitMinor?: number;
 };
+
+export type StockReservationRecord = {
+  checkoutId: string;
+  variantId: ID;
+  quantity: number;
+  expiresAt: string;
+  status: 'active' | 'released' | 'consumed';
+};
+export type ReserveCheckoutOutcome =
+  | { kind: 'reserved' | 'reused'; checkout: CheckoutRecord }
+  | { kind: 'stock_unavailable' | 'cart_changed' };
 
 export type CheckoutRecord = {
   id: string;
@@ -100,7 +113,14 @@ export type CheckoutRecord = {
   status: CheckoutStatus;
   stripeSessionId: string | null;
   fingerprint: string;
+  /** Null/absent only for pre-reservation snapshots. Holds expire independently of callbacks. */
+  reservationExpiresAt?: string | null;
+  /** Frozen shipping charge, represented as a taxable Stripe line item. Absent for legacy snapshots. */
+  shippingMinor?: number;
+  shippingName?: string | null;
   subtotalMinor: number;
+  discountMinor?: number;
+  discountCode?: string | null;
   buyerEmail: string | null;
   lines: CheckoutLineSnapshot[];
   /** Ship-to province the tax was computed for. Null only for snapshots made before migration 0005. */
@@ -134,6 +154,8 @@ export type OrderRecord = {
   email: string | null;
   financialStatus: OrderStatus;
   subtotalMinor: number;
+  discountMinor?: number;
+  discountCode?: string | null;
   shippingMinor: number;
   taxMinor: number;
   totalMinor: number;
@@ -178,6 +200,8 @@ export type CompleteCheckoutOutcome =
   | { kind: 'session_mismatch' };
 
 export type RecordStatusInput = {
+  /** Signed provider session that owns the checkout; prevents cross-session release. */
+  sessionId: string;
   eventId: string;
   eventType: string;
   checkoutId: string;
@@ -240,6 +264,9 @@ export interface CommerceRepository {
   // Checkouts and orders.
   findReusableCheckout(cartId: ID, fingerprint: string, notBefore: Date): Promise<CheckoutRecord | null>;
   createCheckout(checkout: CheckoutRecord): Promise<void>;
+  /** Atomically reuses a snapshot or validates the cart and reserves tracked stock under row locks. */
+  reserveCheckout(checkout: CheckoutRecord, expectedCartUpdatedAt: string, now: Date): Promise<ReserveCheckoutOutcome>;
+  reservedQuantities(now: Date): Promise<Map<ID, number>>;
   getCheckout(id: string): Promise<CheckoutRecord | null>;
   getCheckoutBySessionId(sessionId: string): Promise<CheckoutRecord | null>;
   attachSession(checkoutId: string, sessionId: string, now: string): Promise<boolean>;

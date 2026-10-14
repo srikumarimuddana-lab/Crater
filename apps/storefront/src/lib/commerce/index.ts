@@ -40,8 +40,13 @@ export function commerceMode(): CommerceMode {
   return commerceModeFrom(process.env);
 }
 
-export async function createCheckoutSession(cartId: ID): Promise<CheckoutSessionResult> {
-  return (await getServices()).checkout.createCheckoutSession(cartId);
+export async function createCheckoutSession(cartId: ID, options?: { discountCode?: string }): Promise<CheckoutSessionResult> {
+  return (await getServices()).checkout.createCheckoutSession(cartId, options);
+}
+
+/** Server-priced quote for display before redirect; payment always recalculates it. */
+export async function getCheckoutQuote(cartId: ID, options?: { discountCode?: string }) {
+  return (await getServices()).checkout.getCheckoutQuote(cartId, options);
 }
 
 /** For the success page. Validates the session id; only ever returns the order tied to that session. */

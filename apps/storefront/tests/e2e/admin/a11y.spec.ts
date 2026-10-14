@@ -10,6 +10,22 @@ for (const [name, url] of [
   ['products', '/admin/products'],
   ['event log', '/admin/events'],
   ['staff', '/admin/staff'],
+  ['content', '/admin/content'],
+  ['media', '/admin/media'],
+  ['payments', '/admin/payments'],
+  ['finance', '/admin/finance'],
+  ['customers', '/admin/customers'],
+  ['inbox', '/admin/inbox'],
+  ['templates', '/admin/templates'],
+  ['campaigns', '/admin/campaigns'],
+  ['integrations', '/admin/integrations'],
+  ['analytics', '/admin/analytics'],
+  ['suppliers', '/admin/suppliers'],
+  ['purchasing', '/admin/purchasing'],
+  ['shipments', '/admin/shipments'],
+  ['returns', '/admin/returns'],
+  ['collections', '/admin/collections'],
+  ['shipping and discounts', '/admin/settings/shipping'],
 ] as const) {
   test(`${name} has no serious accessibility violations`, async ({ page }) => {
     await page.goto(url);
@@ -31,7 +47,7 @@ test('adjust dialog and login have no serious accessibility violations', async (
   await expect(page.getByRole('dialog')).toBeVisible();
   expect(await serious(page)).toEqual([]);
 
-  const anon = await (await browser.newContext({ baseURL })).newPage();
+  const anon = await (await browser.newContext({ baseURL, storageState: { cookies: [], origins: [] } })).newPage();
   await anon.goto('/admin/login');
   expect(await serious(anon)).toEqual([]);
   await anon.context().close();

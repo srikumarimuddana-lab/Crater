@@ -1,8 +1,10 @@
+import { quantitiesByVariant, snapshotMatchesCart } from './reservations';
 import type { Pool, PoolClient, PoolConfig } from 'pg';
 import { numericId } from './ids';
 import type {
   CartRecord,
   CheckoutRecord,
+  ReserveCheckoutOutcome,
   PostalAddressRecord,
   CollectionRecord,
   CommerceRepository,
@@ -84,6 +86,8 @@ export const toOrderRecord = (o: Row, lines: Row[]): OrderRecord => ({
   email: (o.email as string | null) ?? null,
   financialStatus: o.financial_status as OrderRecord['financialStatus'],
   subtotalMinor: num(o.subtotal_minor),
+  discountMinor: num(o.discount_minor ?? 0),
+  discountCode: (o.discount_code as string | null) ?? null,
   shippingMinor: num(o.shipping_minor),
   taxMinor: num(o.tax_minor),
   totalMinor: num(o.total_minor),
@@ -103,10 +107,14 @@ export const toOrderRecord = (o: Row, lines: Row[]): OrderRecord => ({
     sku: String(l.sku),
     quantity: num(l.quantity),
     unitMinor: num(l.unit_minor),
+    originalUnitMinor: l.original_unit_minor == null ? undefined : num(l.original_unit_minor),
   })),
 });
 
-const POOL_OF = new WeakMap<object, Pool>();
+// Repository singletons survive development module reloads; their backing registry must too.
+const registryKey = Symbol.for('crater.commerce.pool-registry');
+const registryHost = globalThis as unknown as Record<symbol, WeakMap<object, Pool> | undefined>;
+const POOL_OF = registryHost[registryKey] ??= new WeakMap<object, Pool>();
 
 /** The pool behind a Postgres commerce repository (admin Postgres repository only). */
 export function pgPoolOf(repo: CommerceRepository): Pool {
@@ -164,7 +172,12 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
     status: r.status as CheckoutRecord['status'],
     stripeSessionId: (r.stripe_session_id as string | null) ?? null,
     fingerprint: String(r.fingerprint),
+    reservationExpiresAt: isoOrNull(r.reservation_expires_at),
     subtotalMinor: num(r.subtotal_minor),
+    shippingMinor: r.shipping_minor == null ? undefined : num(r.shipping_minor),
+    shippingName: (r.shipping_name as string | null) ?? null,
+    discountMinor: num(r.discount_minor ?? 0),
+    discountCode: (r.discount_code as string | null) ?? null,
     buyerEmail: (r.buyer_email as string | null) ?? null,
     lines: r.lines as CheckoutRecord['lines'],
     province: (r.tax_province as CheckoutRecord['province'] | null) ?? null,
@@ -188,6 +201,14 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
         [cart.id, l.n, numericId(l.variantId, 'ProductVariant'), l.quantity, json(l.attributes), position, l.priceAtAddMinor],
       );
     }
+  }
+
+  async function insertCheckout(client: Pick<Pool, 'query'>, row: CheckoutRecord) {
+    await client.query(
+      `insert into commerce.checkouts (id, cart_id, cart_ref, status, stripe_session_id, fingerprint, subtotal_minor, buyer_email, lines, created_at, updated_at, tax_province, tax_lines, reservation_expires_at, shipping_minor, shipping_name, discount_minor, discount_code)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13::jsonb,$14,$15,$16,$17,$18)`,
+      [row.id, row.cartId, row.cartRef, row.status, row.stripeSessionId, row.fingerprint, row.subtotalMinor, row.buyerEmail, json(row.lines), row.createdAt, row.updatedAt, row.province, json(row.taxLines), row.reservationExpiresAt ?? null, row.shippingMinor ?? null, row.shippingName ?? null, row.discountMinor ?? 0, row.discountCode ?? null],
+    );
   }
 
   const repo: CommerceRepository = {
@@ -281,12 +302,39 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
       );
       return rows[0] ? toCheckout(rows[0]) : null;
     },
-    async createCheckout(c) {
-      await pool.query(
-        `insert into commerce.checkouts (id, cart_id, cart_ref, status, stripe_session_id, fingerprint, subtotal_minor, buyer_email, lines, created_at, updated_at, tax_province, tax_lines)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13::jsonb)`,
-        [c.id, c.cartId, c.cartRef, c.status, c.stripeSessionId, c.fingerprint, c.subtotalMinor, c.buyerEmail, json(c.lines), c.createdAt, c.updatedAt, c.province, json(c.taxLines)],
-      );
+    async createCheckout(checkout) { await insertCheckout(pool, checkout); },
+    async reserveCheckout(checkout, expectedCartUpdatedAt, now) {
+      return tx(async (client): Promise<ReserveCheckoutOutcome> => {
+        // Cart -> checkout -> ascending variants is also the payment conversion lock order.
+        const carts = (await client.query('select * from commerce.carts where id = $1 for update', [checkout.cartId])).rows as Row[];
+        if (!carts[0]) return { kind: 'cart_changed' };
+        const cartLines = (await client.query('select * from commerce.cart_lines where cart_id = $1 order by position', [checkout.cartId])).rows as Row[];
+        if (!snapshotMatchesCart(checkout, toCart(carts[0], cartLines), expectedCartUpdatedAt)) return { kind: 'cart_changed' };
+        const reusable = (await client.query("select * from commerce.checkouts where cart_id = $1 and fingerprint = $2 and status in ('created','session_created') and reservation_expires_at > $3 order by created_at desc limit 1", [checkout.cartId, checkout.fingerprint, now])).rows as Row[];
+        if (reusable[0]) return { kind: 'reused', checkout: toCheckout(reusable[0]) };
+        if (!checkout.reservationExpiresAt || new Date(checkout.reservationExpiresAt) <= now) throw new Error('Reservation expiry is required.');
+        const requested = quantitiesByVariant(checkout.lines);
+        const ids = [...requested.keys()].map(id => numericId(id, 'ProductVariant')).filter((id): id is number => id !== null).sort((a,b) => a-b);
+        const variants = (await client.query("select v.id, v.inventory_quantity, v.price_minor, p.status from commerce.variants v join commerce.products p on p.id = v.product_id where v.id = any($1::int[]) order by v.id for update of v", [ids])).rows as Row[];
+        const held = (await client.query("select variant_id, sum(quantity)::int as quantity from commerce.stock_reservations where variant_id = any($1::int[]) and status = 'active' and expires_at > $2 group by variant_id", [ids, now])).rows as Row[];
+        for (const [id, quantity] of requested) {
+          const numeric = numericId(id, 'ProductVariant');
+          const variant = variants.find(row => num(row.id) === numeric);
+          if (!variant || variant.status !== 'ACTIVE' || checkout.lines.some(line => line.variantId === id && (line.originalUnitMinor ?? line.unitMinor) !== num(variant.price_minor))) return { kind: 'cart_changed' };
+          const reserved = num(held.find(row => num(row.variant_id) === numeric)?.quantity ?? 0);
+          if (variant.inventory_quantity !== null && num(variant.inventory_quantity) - reserved < quantity) return { kind: 'stock_unavailable' };
+        }
+        await insertCheckout(client, checkout);
+        for (const [id, quantity] of requested) {
+          const numeric = numericId(id, 'ProductVariant');
+          if (variants.find(row => num(row.id) === numeric)?.inventory_quantity !== null) await client.query('insert into commerce.stock_reservations(checkout_id, variant_id, quantity, expires_at) values ($1,$2,$3,$4)', [checkout.id, numeric, quantity, checkout.reservationExpiresAt]);
+        }
+        return { kind: 'reserved', checkout };
+      });
+    },
+    async reservedQuantities(now) {
+      const rows = await q("select variant_id, sum(quantity)::int as quantity from commerce.stock_reservations where status = 'active' and expires_at > $1 group by variant_id", [now]);
+      return new Map(rows.map(row => [gidOf('ProductVariant', row.variant_id), num(row.quantity)]));
     },
     async getCheckout(id) {
       const rows = await q('select * from commerce.checkouts where id = $1', [id]);
@@ -318,6 +366,10 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
         );
         if (ins.rowCount === 0) return { kind: 'duplicate_event' };
 
+        // Follow reservation creation's lock order so a changed-cart checkout cannot
+        // deadlock a simultaneous paid callback when completing that same cart.
+        const parent = (await c.query('select cart_id from commerce.checkouts where id = $1', [input.checkoutId])).rows[0];
+        if (parent) await c.query('select id from commerce.carts where id = $1 for update', [parent.cart_id]);
         // 2. Lock the checkout row: serializes different events for the same session.
         const rows = (await c.query('select * from commerce.checkouts where id = $1 for update', [input.checkoutId])).rows as Row[];
         if (!rows[0]) throw new RollbackOutcome({ kind: 'unknown_checkout' });
@@ -335,16 +387,24 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
         const movements = new Map<number, { sku: string; before: number }>();
         const locked = (await c.query('select id, inventory_quantity from commerce.variants where id = any($1::int[]) order by id for update', [ids])).rows as Row[];
         for (const r of locked) stock.set(num(r.id), r.inventory_quantity === null ? null : num(r.inventory_quantity));
-        for (const line of checkout.lines) {
-          const n = numericId(line.variantId, 'ProductVariant');
+        const otherHolds = (await c.query("select variant_id, sum(quantity)::int as quantity from commerce.stock_reservations where variant_id = any($1::int[]) and checkout_id <> $2 and status = 'active' and expires_at > $3 group by variant_id", [ids, checkout.id, input.now])).rows as Row[];
+        const timely = !checkout.reservationExpiresAt || (new Date(checkout.reservationExpiresAt) > new Date(input.now) && !['expired', 'payment_failed'].includes(checkout.status));
+        if (!timely) flags.push('RESERVATION_EXPIRED');
+        for (const [variantId, requested] of quantitiesByVariant(checkout.lines)) {
+          const n = numericId(variantId, 'ProductVariant');
           const have = n === null ? undefined : stock.get(n);
-          if (have === undefined || have === null) continue;
-          if (!movements.has(n as number)) movements.set(n as number, { sku: line.sku, before: have });
-          if (have < line.quantity) flags.push('INVENTORY_SHORT');
-          const left = Math.max(have - line.quantity, 0);
+          if (have === undefined) { flags.push('INVENTORY_SHORT'); continue; }
+          if (have === null) continue;
+          const reserved = num(otherHolds.find(row => num(row.variant_id) === n)?.quantity ?? 0);
+          const available = Math.max(0, have - reserved);
+          const consumed = Math.min(available, requested);
+          if (consumed < requested) flags.push('INVENTORY_SHORT');
+          movements.set(n as number, { sku: checkout.lines.find(line => line.variantId === variantId)!.sku, before: have });
+          const left = have - consumed;
           stock.set(n as number, left);
           await c.query('update commerce.variants set inventory_quantity = $2 where id = $1', [n, left]);
         }
+        await c.query("update commerce.stock_reservations set status = 'consumed' where checkout_id = $1", [checkout.id]);
 
         // 5. Sequential order number from the counter row (rolls back with the transaction).
         const counter = (await c.query("update commerce.counters set value = value + 1 where name = 'order_number' returning value")).rows as Row[];
@@ -352,18 +412,18 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
         const created = (
           await c.query(
             `insert into commerce.orders
-               (order_number, checkout_id, stripe_session_id, email, financial_status, subtotal_minor, shipping_minor, tax_minor, total_minor, review_flags, processed_at, shipping_address, tax_lines, tax_province, shipping_province)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13::jsonb,$14,$15) returning id`,
+               (order_number, checkout_id, stripe_session_id, email, financial_status, subtotal_minor, shipping_minor, tax_minor, total_minor, review_flags, processed_at, shipping_address, tax_lines, tax_province, shipping_province, discount_minor, discount_code)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13::jsonb,$14,$15,$16,$17) returning id`,
             [orderNumber, checkout.id, input.sessionId, input.email, input.financialStatus, checkout.subtotalMinor,
               input.shippingMinor, input.taxMinor, input.totalMinor, [...new Set(flags)], input.now,
-              input.shippingAddress ? json(input.shippingAddress) : null, json(input.taxLines), checkout.province, input.shippingAddress?.province || null],
+              input.shippingAddress ? json(input.shippingAddress) : null, json(input.taxLines), checkout.province, input.shippingAddress?.province || null, checkout.discountMinor ?? 0, checkout.discountCode ?? null],
           )
         ).rows as Row[];
         for (const [position, l] of checkout.lines.entries()) {
           await c.query(
-            `insert into commerce.order_lines (order_id, position, variant_id, title, variant_title, sku, quantity, unit_minor)
-             values ($1,$2,$3,$4,$5,$6,$7,$8)`,
-            [created[0].id, position, l.variantId, l.title, l.variantTitle, l.sku, l.quantity, l.unitMinor],
+            `insert into commerce.order_lines (order_id, position, variant_id, title, variant_title, sku, quantity, unit_minor, original_unit_minor)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+            [created[0].id, position, l.variantId, l.title, l.variantTitle, l.sku, l.quantity, l.unitMinor, l.originalUnitMinor ?? null],
           );
         }
 
@@ -397,10 +457,13 @@ export function createPostgresRepository(pool: Pool): CommerceRepository {
         );
         if (ins.rowCount === 0) return 'duplicate_event' as const;
         const res = await c.query(
-          `update commerce.checkouts set status = $2, updated_at = $3
-            where id = $1 and status in ('created','session_created','awaiting_payment')`,
-          [input.checkoutId, input.status, input.now],
+          `update commerce.checkouts set status = $2, updated_at = $3, stripe_session_id = coalesce(stripe_session_id, $4)
+            where id = $1 and (stripe_session_id is null or stripe_session_id = $4) and status in ('created','session_created','awaiting_payment')`,
+          [input.checkoutId, input.status, input.now, input.sessionId],
         );
+        if ((res.rowCount ?? 0) > 0 && (input.status === 'expired' || input.status === 'payment_failed')) {
+          await c.query("update commerce.stock_reservations set status = 'released' where checkout_id = $1 and status = 'active'", [input.checkoutId]);
+        }
         return (res.rowCount ?? 0) > 0 ? ('updated' as const) : ('ignored' as const);
       });
     },

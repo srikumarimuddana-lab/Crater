@@ -1,6 +1,6 @@
 import 'server-only';
 import { cache } from 'react';
-import { getStorefront } from '@/lib/commerce';
+import { getStorefront, getCheckoutQuote } from '@/lib/commerce';
 import { getCartId } from '@/lib/commerce/cart-cookie';
 import type { Cart } from '@/lib/commerce/types';
 import { MAX_LINE_QUANTITY, type CartView } from '@/components/commerce/cart-types';
@@ -43,7 +43,10 @@ export const loadCart = cache(async (): Promise<LoadedCart> => {
   if (!id) return { cart: null, expired: false };
   try {
     const cart = await getStorefront().cart({ id });
-    return cart ? { cart: toCartView(cart), expired: false } : { cart: null, expired: true };
+    if (!cart) return { cart: null, expired: true };
+    const view = toCartView(cart);
+    if (cart.buyerIdentity.provinceCode && cart.lines.nodes.length) { const priced = await getCheckoutQuote(id); if (priced.ok) view.checkoutQuote = priced.quote; }
+    return { cart: view, expired: false };
   } catch {
     // A backend failure must not break every page header. No ids are logged.
     return { cart: null, expired: false };

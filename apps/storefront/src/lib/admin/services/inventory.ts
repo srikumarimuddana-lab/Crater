@@ -27,10 +27,11 @@ export function inventoryService(ctx: Ctx) {
   return {
     async levels(query: InventoryQuery = {}): Promise<InventoryLevel[]> {
       await readAs(ctx, 'inventory:read');
-      const [products, committed, carts] = await Promise.all([
+      const [products, committed, carts, reserved] = await Promise.all([
         commerce.listProducts({ includeInactive: true }),
         admin.committedByVariant(),
         commerce.openCartCounts(new Date(ctx.clock().getTime() - CART_TTL_MS)),
+        commerce.reservedQuantities(ctx.clock()),
       ]);
       const text = (query.query ?? '').trim().toLowerCase().slice(0, 100);
       const out: InventoryLevel[] = [];
@@ -40,7 +41,9 @@ export function inventoryService(ctx: Ctx) {
           if (text && !p.title.toLowerCase().includes(text) && !v.sku.toLowerCase().includes(text)) continue;
           const tracked = v.quantity !== null;
           const c = committed.get(v.id) ?? 0;
-          const low = tracked && (v.quantity as number) <= v.lowStockThreshold;
+          const held = reserved.get(v.id) ?? 0;
+          const available = tracked ? Math.max(0, (v.quantity as number) - held) : null;
+          const low = tracked && (available as number) <= v.lowStockThreshold;
           if (query.onlyLow && !low) continue;
           out.push({
             variantId: v.id,
@@ -51,8 +54,9 @@ export function inventoryService(ctx: Ctx) {
             variantTitle: v.title,
             sku: v.sku,
             tracked,
-            available: v.quantity,
+            available,
             committed: c,
+            reserved: held,
             onHand: tracked ? (v.quantity as number) + c : null,
             lowStockThreshold: v.lowStockThreshold,
             low,
@@ -107,7 +111,7 @@ export function inventoryService(ctx: Ctx) {
           case 'untracked':
             return fail(userError('INVALID', ['variantId'], 'Stock is not tracked for this variant.'));
           case 'below_zero':
-            return fail(userError('INVALID', ['delta'], `Stock cannot go below 0: only ${r.available} available.`));
+            return fail(userError('INVALID', ['delta'], `Stock cannot consume checkout holds or go below 0: only ${r.available} available.`));
           default:
             return ok(toMovement(r.movement));
         }

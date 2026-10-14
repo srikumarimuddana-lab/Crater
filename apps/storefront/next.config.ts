@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   // Separate build output for the integration suite (Postgres + fake Stripe), so it never clobbers `.next`.
   distDir: process.env.NEXT_DIST_DIR || '.next',
   poweredByHeader: false,
+  experimental: { serverActions: { bodySizeLimit: '11mb' } },
 };
 
 export default nextConfig;

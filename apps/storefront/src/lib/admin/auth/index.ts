@@ -6,7 +6,7 @@ import { createBuiltinAuth } from './builtin';
 import { nextCookieJar } from './cookies';
 import { createSupabaseAuth } from './supabase';
 
-export { createBuiltinAuth, SESSION_IDLE_MS, SESSION_ABSOLUTE_MS, STEP_UP_WINDOW_MS } from './builtin';
+export { createBuiltinAuth, SESSION_IDLE_MS, SESSION_ABSOLUTE_MS } from './builtin';
 
 const KEY = Symbol.for('crater.admin.auth');
 type Holder = { auth?: AdminAuthProvider; config?: AdminConfig };
@@ -15,7 +15,7 @@ const holder = (): Holder => {
   return (g[KEY] ??= {});
 };
 
-/** Validated admin configuration. Throws AdminConfigError (admin refuses to start) on a missing or weak ADMIN_SECRET_KEY. */
+/** Validated admin configuration. Throws AdminConfigError (admin refuses to start) on invalid provider, timezone or development staff configuration. */
 export function getAdminConfig(): AdminConfig {
   const h = holder();
   return (h.config ??= readAdminConfig(process.env));

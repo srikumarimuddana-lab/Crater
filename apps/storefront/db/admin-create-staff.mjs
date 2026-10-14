@@ -6,8 +6,7 @@
 //
 // Roles: ADMIN, FULFILMENT, BOOKKEEPER, SUPPORT. The Owner is created with `npm run admin:create-owner`; this script
 // refuses OWNER. The password is read from stdin only (never an argument or env var, so it stays out of shell history
-// and process listings), 12+ characters. It refuses an email that already exists, writes an audit row, and enrols MFA at
-// the first sign-in, exactly like the Owner. Connection: DIRECT_DATABASE_URL if set, else DATABASE_URL.
+// and process listings), 12+ characters. It refuses an email that already exists, writes an audit row, and uses the password for sign-in. Connection: DIRECT_DATABASE_URL if set, else DATABASE_URL.
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
@@ -33,7 +32,7 @@ export function parseStaffArgs(argv) {
 /** @param {import('pg').Pool} pool */
 export async function createStaff(pool, { role, email, name, password }) {
   const wanted = String(role ?? '').trim().toUpperCase();
-  if (wanted === 'OWNER') throw new Error('Refusing to create an Owner here. Use `npm run admin:create-owner` (there is exactly one Owner).');
+  if (wanted === 'OWNER') throw new Error('Refusing to create an Owner here. Use `npm run admin:create-owner` (first Owner only), or invite another through the Staff screen.');
   if (!STAFF_ROLES.includes(wanted)) throw new Error(`--role must be one of ${STAFF_ROLES.join(', ')}.`);
   const address = String(email ?? '').trim().toLowerCase();
   if (!EMAIL.test(address) || address.length > 254) throw new Error('--email is missing or not a valid email address.');
@@ -75,7 +74,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     pool = new pg.Pool(poolConfig(process.env, { direct: true }));
     const password = await readPassword(process.stdin, process.stderr, 'Staff password');
     await createStaff(pool, { ...args, password });
-    console.log('[admin:create-staff] Staff user created. They sign in at /admin/login and enrol an authenticator app at first sign-in.');
+    console.log('[admin:create-staff] Staff user created. They sign in at /admin/login with the password just set.');
   } catch (error) {
     console.error('[admin:create-staff] failed:', error instanceof Error ? error.message : error);
     process.exitCode = 1;

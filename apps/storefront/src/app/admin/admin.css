@@ -778,3 +778,32 @@
     display: none;
   }
 }
+/* Remedy identity shared with the customer storefront. */
+[data-admin] { --a-canvas:#f7f8f3; --a-surface:#fff; --a-sunken:#edf3ec; --a-line:#182c2021; --a-control:#809487; --a-text:#242924; --a-muted:#5d6d62; --a-forest:#23683e; --a-forest-hover:#23683e; --a-parchment:#e6f3e7; font-family:Arial,Helvetica,sans-serif; }
+[data-admin] .a-sidebar { background:#182c20; color:#e5f6e8; border:0; }
+[data-admin] .a-sidebar a { color:#e5f6e8; }
+[data-admin] .a-sidebar .a-brand { font-family:var(--font-display); font-size:30px; letter-spacing:-1px; line-height:1.1; padding:30px 22px; color:#caffdd; }
+[data-admin] .a-sidebar a[aria-current="page"] { background:#caffdd; color:#182c20; border-radius:12px; }
+[data-admin] .a-sidebar .a-navgroup-label { color:#a3bda8; }
+[data-admin] h1.a-title { font-size:clamp(32px,3.2vw,48px); line-height:1.1; letter-spacing:-.03em; font-weight:900; }
+[data-admin] h2 { font-size:17px; font-weight:600; }
+[data-admin] .a-topbar { background:#ffffffed; backdrop-filter:blur(12px); }
+[data-admin] .a-card { border-radius:18px; box-shadow:0 4px 20px #182c2003; }
+[data-admin] .a-btn { border-radius:28px; padding:10px 20px; transition:background .2s,box-shadow .2s; }
+[data-admin] .a-btn.is-primary { background:#2b7d4a; color:#fff; border-color:#2b7d4a; }
+[data-admin] .a-btn:hover { box-shadow:0 3px 14px #182c2012; }
+[data-admin] .a-field input,[data-admin] .a-field select,[data-admin] .a-field textarea { border-radius:9px; background:#fbfcfa; }
+[data-admin] .a-content-grid,[data-admin] .a-report-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:20px; margin-top:24px; }
+[data-admin] .a-content-editor { display:grid; grid-template-columns:minmax(0,2fr) minmax(250px,1fr); gap:24px; }
+[data-admin] .a-content-editor .a-card { margin-bottom:24px; }
+[data-admin] .a-content-editor form>p { margin:14px 0 8px; }
+[data-admin] .a-media-field { display:grid; grid-template-columns:1fr 120px; gap:15px; align-items:center; }
+[data-admin] .a-media-field img { height:90px; width:120px; object-fit:cover; border-radius:8px; }
+[data-admin] .a-chart { max-width:100%; height:auto; }
+@media(max-width:800px) { [data-admin] .a-content-editor { grid-template-columns:1fr; } }
+@media(prefers-reduced-motion:reduce) { [data-admin] .a-btn { transition:none; } }
+[data-admin] .a-sidebar .a-navgroup h2 { color:#abc5b0; }
+
+[data-admin] .a-topbar { flex-wrap:wrap; }
+[data-admin] .a-main details > summary { min-height:44px; padding:10px 0; }
+[data-admin] .a-authcard a { display:inline-flex; align-items:center; min-height:44px; }
