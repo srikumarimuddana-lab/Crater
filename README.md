@@ -12,6 +12,13 @@ fulfilment, products, inventory, event log). Next: admin Slice 2 (payments,
 refunds, ledger), Stripe test keys and Supabase, then Phases 3–6; see
 `docs/implementation-plan.md` and `docs/admin/plan.md`.
 
+**Expanded scope (2026-10-14, specification awaiting review):** the
+[complete ecommerce platform specification](docs/superpowers/specs/2026-10-14-complete-commerce-platform-design.md)
+records the owner's reference design, editable media/page content, password-only
+admin access, Stripe/Twilio/Resend integrations, CRM, inventory, ledger, and
+sales/click analytics. It includes the current-code gap audit and end-to-end
+acceptance scenarios. These additional features are not implemented by the spec PR.
+
 ## Included
 
 - **9 skills:** coordination, visual direction, Next.js, 3D, scroll motion,
