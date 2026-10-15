@@ -1,8 +1,10 @@
+import { HOME_SECTION_KEYS, DEFAULT_SECTION_ORDER, validImagePosition, validSectionOrder, validImageSource } from './presentation';
+import { JOURNAL_STORIES } from './journal-model';
 export type Content = Record<string, string>;
 export type ContentField = {
     key: string;
     label: string;
-    type: 'text' | 'textarea' | 'image' | 'url';
+    type: 'text' | 'textarea' | 'image' | 'url' | 'toggle' | 'position' | 'email';
     value: string;
 };
 const field = (key: string, label: string, value: string, type: ContentField['type'] = 'text'): ContentField => ({ key, label, value, type });
@@ -16,7 +18,7 @@ export const contentSchemas: Record<string, {
             field('logo', 'Logo image (optional)', '', 'image'), field('announcement', 'Announcement', 'A daily ritual. A little more you.'),
             field('shopLabel', 'Shop navigation', 'Shop'), field('storyLabel', 'Story navigation', 'Our story'), field('journalLabel', 'Journal navigation', 'Journal'),
             field('footerTitle', 'Footer heading', 'A daily ritual.\nA little more you.', 'textarea'), field('footerText', 'Footer introduction', 'Considered care for everyday rituals.', 'textarea'),
-            field('supportEmail', 'Support email', ''), field('instagram', 'Instagram URL', '', 'url'),
+            field('supportEmail', 'Support email', '', 'email'), field('instagram', 'Instagram URL', '', 'url'),
             field('newsletterTitle', 'Newsletter heading', 'A little care in your inbox.'), field('newsletterText', 'Newsletter description', 'Stories, new arrivals and everyday inspiration. Subscribe to email updates.', 'textarea'),
             field('newsletterImage', 'Newsletter background', '/remedy/footer.jpg', 'image'),
         ] },
@@ -62,6 +64,53 @@ for (const [key, title, heading, body] of pages)
     contentSchemas[key] = { title, path: `/${key}`, fields: [field('title', 'Heading', heading), field('intro', 'Introduction', '', 'textarea'), field('body', 'Page text (paragraphs separated by blank lines)', body, 'textarea'), field('image', 'Page image', key === 'about' ? '/remedy/story.jpg' : '', 'image'), field('imageAlt', 'Image description', title), field('seoTitle', 'Search title', title), field('seoDescription', 'Search description', body)] };
 for (const [key, title, path] of [['cart', 'Shopping bag', '/cart'], ['checkout-success', 'Order confirmation', '/checkout/success'], ['admin', 'Admin help', '/admin']] as const)
     contentSchemas[key] = { title, path, fields: [field('title', 'Heading', title), field('body', 'Help text', '', 'textarea'), field('image', 'Supporting image', '', 'image'), field('imageAlt', 'Image description', '')] };
+// New fields default safely for documents saved before this page-completion pass.
+contentSchemas.global.fields.push(
+  field('seoTitle','Default browser/search title','Craters Remedy — Your daily ritual'),
+  field('seoDescription','Default search description','Thoughtful care. Beautifully simple. Discover your everyday ritual with Craters Remedy.','textarea'),
+  field('newsletterEyebrow','Newsletter eyebrow','Keep in touch'),
+  field('newsletterPlaceholder','Newsletter email placeholder','Your email address'),field('newsletterButton','Newsletter button','Subscribe'),
+  field('footerShopLabel','Footer shopping button','Discover the collection'),
+  field('contactLabel','Contact navigation','Contact'), field('shippingLabel','Shipping navigation','Shipping & returns'),
+  field('privacyLabel','Privacy navigation','Privacy'), field('termsLabel','Terms navigation','Terms'),
+  field('instagramLabel','Instagram link','Instagram'), field('backToTopLabel','Back to top link','Back to top'),
+);
+contentSchemas.home.fields.push(
+  field('seoTitle','Homepage search title','Craters Remedy — Your daily ritual'),
+  field('seoDescription','Homepage search description','Considered care for everyday rituals. Explore the Craters Remedy collection.','textarea'),
+  field('storyButton','Story button','Our story'), field('scrollLabel','Hero scroll hint','Scroll to discover'),
+  field('detailAlt','Detail image description','Skincare texture detail'),
+  field('ritualEyebrow','Ritual eyebrow','Less rush. More ritual.'),
+  field('featureLink','Feature destination','/journal','url'), field('featureLinkLabel','Feature link description','Read the daily ritual guide'),
+  field('kineticFirst','Large moving text first line','Everyday'), field('kineticSecond','Large moving text second line','Rituals'),
+  field('searchLabel','Search label','Find your ritual'), field('searchPlaceholder','Search placeholder','Search products'),
+  field('searchButton','Search button','Search'), field('allProductsLabel','All products filter','All products'),
+  field('moreProductsLabel','Pagination button','More products'), field('firstPageLabel','First page button','Back to first page'),
+  field('journalEyebrow','Journal eyebrow','The everyday journal'), field('journalButton','Journal button','Explore the journal'),
+  field('articleCategory','Journal card category','Ritual / Everyday care'),
+  field('sectionOrder','Sections after the hero (all eight names, separated by commas)',DEFAULT_SECTION_ORDER),
+  ...HOME_SECTION_KEYS.filter(key=>key!=='collection').map(key=>field(`${key}Visible`, `Show ${key} section`, 'true', 'toggle')),
+  ...['Morning','Evening','Any time'].map((label,i)=>field(`moment${i}Label`,`Moment ${i+1} label`,label)),
+  ...[1,2,3,4].map(i=>field(`social${i}Alt`,`Community image ${i} description`,`Everyday ritual inspiration ${i}`)),
+);
+contentSchemas.journal.fields.push(field('readLabel','Read story button','Read article'),field('backLabel','Return to journal button','Back to journal'),field('relatedTitle','Related stories heading','More everyday inspiration'));
+for (const story of JOURNAL_STORIES) {
+  const legacy = Object.fromEntries(contentSchemas.home.fields.map(f=>[f.key,f.value]));
+  const i=story.legacyIndex;
+  contentSchemas[story.key] = {title:`Journal: ${legacy[`article${i}Title`]}`,path:`/journal/${story.slug}`,fields:[
+    field('title','Article title',legacy[`article${i}Title`]),
+    field('intro','Article introduction','', 'textarea'),
+    field('body','Article text (paragraphs separated by blank lines)',legacy[`article${i}Body`],'textarea'),
+    field('image','Article cover image',legacy[`article${i}Image`],'image'), field('imageAlt','Cover description',legacy[`article${i}Title`]),
+    field('author','Author display','Craters Remedy'), field('category','Article category','Everyday rituals'),
+    field('seoTitle','Search title',legacy[`article${i}Title`]), field('seoDescription','Search description',legacy[`article${i}Body`].slice(0,160)),
+  ]};
+}
+for (const schema of Object.values(contentSchemas)) {
+  for (const image of schema.fields.filter(f=>f.type==='image')) {
+    schema.fields.push(field(`${image.key}Position`,`${image.label} focal point`,'50 50','position'));
+  }
+}
 export function defaultsFor(key: string): Content {
     const schema = contentSchemas[key];
     if (!schema)
@@ -82,7 +131,7 @@ export function safeLink(value: string): boolean {
     }
 }
 export function safeImage(value: string): boolean {
-    return value === '' || /^\/remedy\/[a-zA-Z0-9_-]+\.(png|jpg|webp|avif)$/.test(value) || /^\/api\/media\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value);
+    return validImageSource(value);
 }
 export function validateContent(key: string, input: unknown): Content {
     const schema = contentSchemas[key];
@@ -100,7 +149,16 @@ export function validateContent(key: string, input: unknown): Content {
             throw new Error(`${f.label} must be a local path or HTTPS URL.`);
         if (f.type === 'image' && !safeImage(value))
             throw new Error(`${f.label} must be selected from the media library.`);
+        if (f.type === 'toggle' && !['true','false'].includes(value)) throw new Error(`${f.label} must be shown or hidden.`);
+        if (f.type === 'position' && !validImagePosition(value)) throw new Error(`${f.label} must contain two percentages from 0 to 100.`);
+        if (f.type === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) throw new Error('Enter a valid support email.');
+        if (key === 'home' && f.key === 'sectionOrder' && !validSectionOrder(value)) throw new Error('List every section once: ' + DEFAULT_SECTION_ORDER);
         output[f.key] = value.trim();
     }
     return output;
+}
+
+/** Only schema-declared image fields can make private media public. */
+export function contentImageIds(key:string,data:Content):string[] {
+  return [...new Set((contentSchemas[key]?.fields??[]).filter(field=>field.type==='image').map(field=>data[field.key]).filter((url):url is string=>typeof url==='string'&&/^\/api\/media\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(url)).map(url=>url.split('/').pop()!))];
 }

@@ -28,3 +28,10 @@ export async function publishImages(urls: string[]) {
     const ids = urls.filter(u => /^\/api\/media\/[0-9a-f-]{36}$/.test(u)).map(u => u.split('/').pop()!);
     await (await getMediaRepository()).publish(ids);
 }
+
+export async function updateMediaDetails(id:string,name:string,alt:string,expected:{name:string;alt:string}) {
+    await requireAdmin('products:write');
+    const cleanName=name.trim(),cleanAlt=alt.trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id) || !cleanName || cleanName.length>160 || cleanAlt.length>500 || /[\u0000-\u001f]/.test(cleanName+cleanAlt)) throw new Error('Enter a name under 160 characters and a description under 500 characters.');
+    await (await getMediaRepository()).updateDetails(id,{name:cleanName,alt:cleanAlt},expected);
+}

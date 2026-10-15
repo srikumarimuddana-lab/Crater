@@ -87,3 +87,15 @@ h2,h3 { font-family:Arial,Helvetica,sans-serif; font-weight:500; }
 .remedy-home .routine-tabs button { color:#606a62; }
 .remedy-home .routine-tabs button.active,.remedy-home .moment span { color:#23683e; }
 .remedy-home .kinetic { color:#607f70; }
+/* Structured CMS content preserves editorial line breaks without HTML injection. */
+.r-home-section { display:contents; }
+.remedy-home .hero-copy p,.remedy-home .story h2,.remedy-home .routine h2,.r-footer-top h2,.r-content-body p { white-space:pre-line; }
+.r-draft-notice { margin:24px 6%; padding:16px 20px; border:1px solid #809487; background:#edf3ec; border-radius:12px; }
+.r-article-byline { margin-top:24px; font-size:14px; color:#606a62; }
+.r-related-stories { margin-top:70px; padding-top:35px; border-top:1px solid #182c2021; display:grid; gap:20px; }
+.r-related-stories h2 { font-size:clamp(28px,4vw,42px); }
+.r-related-stories a,.r-footer-support a { text-underline-offset:5px; }
+.r-journal-article > a { display:block; }
+.r-journal-article p { margin-bottom:24px; }
+.r-footer-support { padding-bottom:24px; }
+.r-content-hero img { min-width:0; }

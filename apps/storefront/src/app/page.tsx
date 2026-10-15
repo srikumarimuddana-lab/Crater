@@ -1,11 +1,17 @@
 import Link from 'next/link';
 import { ProductCard } from '@/components/commerce/product-card';
-import { RemedyHero, RemedyStory, RemedyJournal } from '@/components/remedy-home';
+import { RemedyHero, RemedyStory, RemedyFeature, RemedyMoments, RemedyWhy, RemedyJournal, RemedyCommunity } from '@/components/remedy-home';
+import { Routine } from '@/components/remedy-motion';
+import { homeSections } from '@/lib/content/cms/presentation';
+import { getJournalArticles } from '@/lib/content/cms/journal';
+import { getPageMetadata } from '@/lib/content/cms/metadata';
 import { getPageContent } from '@/lib/content/cms';
 import { PageShell } from '@/components/page-shell';
 import { getStorefront } from '@/lib/commerce';
 import type { Collection, Product, ProductsQueryArgs } from '@/lib/commerce/types';
 import { browse } from '@/lib/content/shop-copy';
+
+export async function generateMetadata() { return getPageMetadata('home'); }
 
 type SortKey = keyof typeof browse.sortOptions;
 const SORTS: Record<SortKey, Pick<ProductsQueryArgs, 'sortKey' | 'reverse'>> = {
@@ -23,7 +29,7 @@ type HomeProps = {
 
 export default async function Home({ searchParams }: HomeProps) {
   const { category, sort, preview, q, after } = await searchParams;
-  const c = await getPageContent('home', preview);
+  const [c, articles] = await Promise.all([getPageContent('home', preview), getJournalArticles(preview)]);
   const activeSort: SortKey = isSort(sort) ? sort : 'featured';
   const storefront = getStorefront();
 
@@ -53,12 +59,7 @@ export default async function Home({ searchParams }: HomeProps) {
     return `/${qs ? `?${qs}` : ''}#collection`;
   };
 
-  return (
-    <PageShell preview={preview}>
-      <div className="remedy-home">
-      <RemedyHero c={c} />
-      <RemedyStory c={c} />
-
+  const collection = (
         <section id="collection" aria-labelledby="collection-title" className="page-gutter border-t border-espresso/15 py-12 md:py-16 lg:py-20">
           <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
             <div>
@@ -98,10 +99,10 @@ export default async function Home({ searchParams }: HomeProps) {
             </form>
           </div>
 
-<form action="/#collection" method="get" className="r-search"><label htmlFor="product-search">Find your ritual</label><input id="product-search" name="q" type="search" placeholder="Search products" defaultValue={typeof q === 'string' ? q : ''} maxLength={100} /><button type="submit">Search ↗</button></form>
+<form action="/#collection" method="get" className="r-search"><label htmlFor="product-search">{c.searchLabel}</label><input id="product-search" name="q" type="search" placeholder={c.searchPlaceholder} defaultValue={typeof q === 'string' ? q : ''} maxLength={100} /><button type="submit">{c.searchButton} ↗</button></form>
           <nav aria-label="Filter products" className="mt-6 border-b border-espresso/15">
             <ul className="-mx-5 flex gap-x-6 overflow-x-auto px-5 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
-              {[{ handle: undefined, title: 'All products' }, ...categories].map(({ handle, title }) => {
+              {[{ handle: undefined, title: c.allProductsLabel }, ...categories].map(({ handle, title }) => {
                 const current = handle === activeCategory;
                 return (
                   <li key={title}>
@@ -132,10 +133,12 @@ export default async function Home({ searchParams }: HomeProps) {
               ))}
             </ul>
           )}
-          <div className="mt-10 flex gap-6">{after ? <Link className="r-pill" href={hrefFor(activeCategory)}>Back to first page</Link> : null}{nextCursor ? <Link className="r-pill" href={hrefFor(activeCategory,nextCursor)}>More products ↗</Link> : null}</div>
+          <div className="mt-10 flex gap-6">{after ? <Link className="r-pill" href={hrefFor(activeCategory)}>{c.firstPageLabel}</Link> : null}{nextCursor ? <Link className="r-pill" href={hrefFor(activeCategory,nextCursor)}>{c.moreProductsLabel} ↗</Link> : null}</div>
         </section>
-      <RemedyJournal c={c} />
-      </div>
-    </PageShell>
   );
+  const sections = {
+    story:<RemedyStory c={c}/>,ritual:<Routine c={c}/>,feature:<RemedyFeature c={c}/>,collection,
+    moments:<RemedyMoments c={c}/>,why:<RemedyWhy c={c}/>,journal:<RemedyJournal c={c} articles={articles}/>,community:<RemedyCommunity c={c}/>,
+  };
+  return <PageShell preview={preview}><div className="remedy-home"><RemedyHero c={c}/>{homeSections(c).map(key=><div key={key} className="r-home-section" data-section={key}>{sections[key]}</div>)}</div></PageShell>;
 }

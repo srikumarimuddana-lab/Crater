@@ -28,4 +28,23 @@ describe.skipIf(!url)('CMS PostgreSQL publication',()=>{
   expect((await cms.read('about')).published).toBeNull();
   expect((await cms.read('about')).version).toBe(1);
  });
+ it('edits media metadata with compare-and-set while retaining immutable published bytes',async()=>{
+  const media=createPostgresMediaRepository(pool);
+  const asset=await media.create({name:'Before',alt:'Old description',mime:'image/webp',width:1,height:1,content:Buffer.from('stable bytes')});
+  await media.publish([asset.id]);
+  await media.updateDetails(asset.id,{name:'After',alt:'New description'},{name:'Before',alt:'Old description'});
+  const updated=await media.get(asset.id);
+  expect(updated).toMatchObject({name:'After',alt:'New description',published:true});
+  expect(Buffer.from(updated!.content)).toEqual(Buffer.from('stable bytes'));
+  await expect(media.updateDetails(asset.id,{name:'Stale',alt:''},{name:'Before',alt:'Old description'})).rejects.toThrow(/changed/);
+ });
+
+ it('does not treat a media path written in body copy as an image reference',async()=>{
+  const cms=createPostgresCmsRepository(pool),media=createPostgresMediaRepository(pool);
+  const asset=await media.create({name:'Unselected private image',alt:'Private',mime:'image/webp',width:1,height:1,content:Buffer.from('private bytes')});
+  await cms.save('contact',0,{...defaultsFor('contact'),image:'',body:`/api/media/${asset.id}`},'editor');
+  await cms.publish('contact',1,'editor');
+  expect((await media.get(asset.id))?.published).toBe(false);
+ });
+
 });

@@ -8,8 +8,8 @@ This implementation extends the existing Next.js/Postgres application. The store
 | --- | --- |
 | Storefront | Collection filters, server search and pagination, product/variant selection, persistent bag, province tax, server-priced discount/shipping quote and hosted Stripe checkout |
 | Staff | Password-only login, invitations, expiring single-use password reset, role/status management, session revocation and final-Owner protection; no MFA |
-| Content | `/admin/content`: structured page fields, private drafts, authenticated preview, optimistic version conflicts, publish, revision restore; Owner-only policy publication |
-| Photography | `/admin/media`: validated upload, metadata stripping and bounded WebP derivative, reusable gallery selection, private preview and immutable published assets |
+| Content | `/admin/content`: structured page fields, home section order/visibility, independent journal article pages, private drafts, authenticated preview, optimistic version conflicts, publish, revision restore; Owner-only policy publication |
+| Photography | `/admin/media`: validated upload, metadata stripping and bounded WebP derivative, reusable gallery selection, immediate editor preview, per-page focal positions, editable names/descriptions with stale-edit protection, private preview and immutable published assets |
 | Catalog | Products/variants, collections, publish checks, image galleries, new-product CSV import and CSV export |
 | Orders | Order book, payment/review flags, notes, packing slips, partial shipments, tracking and separate physical returns/restocking |
 | Inventory | Available/held/committed quantities, stock movement journal, suppliers, purchase orders, explicit test/live receipts and cost snapshots |
@@ -45,7 +45,7 @@ Images are stored as validated WebP bytes in private PostgreSQL tables, capped a
 - Deployment/provider credentials, verified senders, DNS, a persistent staging database and live activation are environment setup, not provisioned by this code change.
 - Communications uses a transaction-locked state document and finance serializes per payment mode. This is intended for a modest single-store workload; normalize/partition before large campaigns or long histories.
 - CSV import creates new products, one product/variant per row; it is not a bulk update or a multi-variant export round-trip importer.
-- Media editing supports upload/replacement, accessible descriptions and page/gallery selection. It does not include an interactive focal-point/crop editor or video library.
+- Media editing supports upload/replacement, editable descriptions/names, page/gallery selection and focal-position sliders with a live crop preview. Cropping changes presentation while preserving original optimized bytes; destructive image editing and video are not included.
 - Unsupported Stripe adjustments/disputes and missing historical cost snapshots appear as reconciliation review items. Bank statement matching and supplier payment settlement remain manual.
 - Privacy/terms defaults require the owner's business-specific content. SEO remains noindex until the owner prepares and activates the production store.
 - Payment mismatch/review flags require investigation before fulfilment. The application does not automatically repair an inconsistent historical payment snapshot.
@@ -53,3 +53,13 @@ Images are stored as validated WebP bytes in private PostgreSQL tables, capped a
 ## Verification
 
 Run `npm run typecheck`, `npm run lint`, `npm run test:unit`, `npm run build`, and `npm run test:e2e`. Native PostgreSQL tests require a throwaway `TEST_DATABASE_URL` whose name includes `test`; `npm run test:integration:pg` provisions a temporary cluster when Postgres binaries exist. Tests never require real payments or messages. The delivery verification record is in `docs/superpowers/verification/2026-10-14-commerce.md`.
+
+## Complete page editing
+
+Use Website → Pages & content in the admin. Homepage fields include editorial labels, search/filter/pagination copy and the eight sections after the hero. `sectionOrder` lists `story,ritual,feature,collection,moments,why,journal,community` exactly once; optional sections can be hidden while the shopping collection remains available. Each image selector previews the chosen private image immediately and provides horizontal/vertical focal sliders. Native form submission also saves the sliders without JavaScript.
+
+Journal stories have separate editors and canonical `/journal/<slug>` pages. Existing homepage story copy remains the fallback until that story is independently published, so this upgrade does not silently replace edits. Home cards and the journal listing use the current published article title/image. Draft article preview requires an editor session; titles/descriptions in public metadata always use published values. Old `/journal#article-N` links still reach listing entries. Stable article routes are not editable slugs.
+
+The media library can edit image names/descriptions without changing immutable image bytes. Page-specific accessible descriptions remain editable in page fields. A stale metadata edit is rejected. Publishing scans only schema-declared image fields; writing an image URL as ordinary body text never publishes that asset.
+
+Global branding, support email, footer/navigation text, newsletter labels and default SEO are connected to the storefront. System errors, consent meaning and financial status labels stay code-owned. Detailed page-completion evidence: [verification record](superpowers/verification/2026-10-15-page-completion.md).
