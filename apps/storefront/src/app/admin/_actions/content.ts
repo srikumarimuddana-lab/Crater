@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache';
 import type { FormState } from '@/components/admin/form-state';
 import { contentSchemas } from '@/lib/content/cms/schema';
 import { getCmsRepository, publishContent, saveDraft } from '@/lib/content/cms';
-import { getMediaRepository, uploadImage } from '@/lib/media';
+import { getMediaRepository, uploadImage, updateMediaDetails } from '@/lib/media';
 import { requireAdmin } from '@/lib/admin';
 const error = (e: unknown): FormState => ({ status: 'error', errors: [], message: e instanceof Error ? e.message : 'The change could not be saved.' });
 export async function saveContentAction(_prev: FormState, fd: FormData): Promise<FormState> {
@@ -12,7 +12,13 @@ export async function saveContentAction(_prev: FormState, fd: FormData): Promise
         const schema = contentSchemas[key];
         if (!schema)
             throw new Error('Unknown page.');
-        const data = Object.fromEntries(schema.fields.map(f => [f.key, String(fd.get(f.key) ?? '')]));
+        const data = Object.fromEntries(schema.fields.map(f => {
+            if (f.type==='position') {
+                const x=fd.get(`${f.key}X`),y=fd.get(`${f.key}Y`);
+                if (x!==null || y!==null) return [f.key,`${String(x??'')} ${String(y??'')}`];
+            }
+            return [f.key,String(fd.get(f.key)??f.value)];
+        }));
         await saveDraft(key, Number(fd.get('version')), data);
         revalidatePath(`/admin/content/${key}`);
         return { status: 'success', errors: [], message: 'Draft saved. Preview it, then publish when ready.' };
@@ -74,4 +80,12 @@ export async function archiveMediaAction(_prev: FormState, fd: FormData): Promis
     catch (e) {
         return error(e);
     }
+}
+
+export async function updateMediaDetailsAction(_prev:FormState,fd:FormData):Promise<FormState> {
+    try {
+        await updateMediaDetails(String(fd.get('id')??''),String(fd.get('name')??''),String(fd.get('alt')??''),{name:String(fd.get('expectedName')??''),alt:String(fd.get('expectedAlt')??'')});
+        revalidatePath('/admin/media');
+        return {status:'success',errors:[],message:'Image details saved. Page-specific descriptions can be edited in each page.'};
+    } catch(e) { return error(e); }
 }

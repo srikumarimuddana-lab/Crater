@@ -7,6 +7,9 @@ import { Icon } from './icons';
 
 type Ctx = { state: FormState; formId: string };
 const FormCtx = createContext<Ctx>({ state: IDLE, formId: '' });
+/** Submitted values returned by a failed action, shared by custom editor controls. */
+export function useFormValues() { return useContext(FormCtx).state.values; }
+
 const fieldId = (formId: string, name: string) => `${formId}${name.replace(/[^A-Za-z0-9]+/g, '-')}`;
 
 /**

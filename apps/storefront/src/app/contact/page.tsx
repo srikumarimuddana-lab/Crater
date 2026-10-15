@@ -1,5 +1,5 @@
 import { ContentPage } from '@/components/content-page';
-import { getPublishedContent } from '@/lib/content/cms';
+import { getPageMetadata } from '@/lib/content/cms/metadata';
 import { ContactForm } from '@/components/contact-form';
-export async function generateMetadata() { const c=await getPublishedContent('contact'); return {title:`${c.seoTitle} — Craters Remedy`,description:c.seoDescription}; }
+export async function generateMetadata() { return getPageMetadata('contact'); }
 export default async function Page({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) { const {preview}=await searchParams;return <ContentPage contentKey="contact" preview={preview}><ContactForm /></ContentPage>; }

@@ -1,0 +1,27 @@
+import { afterEach,expect,it,vi } from 'vitest';
+const {effects}=vi.hoisted(()=>({effects:[] as Array<()=>void|(()=>void)>}));
+vi.mock('react',async original=>({...await original<typeof import('react')>(),useEffect:(effect:()=>void|(()=>void))=>{effects.push(effect);}}));
+import { RemedyMotion } from '@/components/remedy-motion';
+afterEach(()=>{effects.length=0;vi.unstubAllGlobals();});
+it('observes reveal elements inserted after hydration and disconnects on unmount',()=>{
+  const observed:unknown[]=[];let mutate:(()=>void)|undefined;let mutationsDisconnected=false;
+  const node=()=>({classList:{add:vi.fn(),contains:()=>false}});
+  const first=node(),later=node();const nodes=[first];const classes=new Set<string>();
+  const root={querySelectorAll:(selector:string)=>selector==='.reveal'?nodes:[],classList:{add:(name:string)=>classes.add(name),remove:(name:string)=>classes.delete(name)}};
+  vi.stubGlobal('document',{querySelector:()=>root});
+  vi.stubGlobal('window',{addEventListener:vi.fn(),removeEventListener:vi.fn()});
+  const listeners=new Set<()=>void>();const media={matches:false,addEventListener:(_name:string,fn:()=>void)=>listeners.add(fn),removeEventListener:(_name:string,fn:()=>void)=>listeners.delete(fn)};
+  vi.stubGlobal('matchMedia',()=>media);
+  vi.stubGlobal('requestAnimationFrame',()=>1);vi.stubGlobal('cancelAnimationFrame',vi.fn());
+  vi.stubGlobal('IntersectionObserver',class {observe(target:unknown){observed.push(target);}unobserve(){}disconnect(){}});
+  vi.stubGlobal('MutationObserver',class {constructor(callback:()=>void){mutate=callback;}observe(){}disconnect(){mutationsDisconnected=true;}});
+  RemedyMotion();const cleanup=effects[0]() as ()=>void;
+  expect(observed).toContain(first);
+  nodes.push(later);
+  expect(mutate).toBeDefined();mutate!();
+  expect(observed).toContain(later);
+  media.matches=true;listeners.forEach(fn=>fn());expect(classes.has('motion-ready')).toBe(false);
+  const reduced=node();nodes.push(reduced);mutate!();expect(observed).not.toContain(reduced);
+  media.matches=false;listeners.forEach(fn=>fn());expect(observed).toContain(reduced);
+  cleanup();expect(listeners.size).toBe(0);expect(mutationsDisconnected).toBe(true);expect(classes.has('motion-ready')).toBe(false);
+});

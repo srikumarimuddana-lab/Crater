@@ -1,5 +1,7 @@
 # Crater storefront implementation plan
 
+> Historical foundation document. The owner's later Remedy reference design, password-only access and complete platform scope supersede older cinematic/MFA and delivery-phase proposals. Use [the platform guide](commerce-platform.md) and the latest `superpowers` implementation/verification records for current behavior.
+
 **Goal:** Build a premium skincare preview, then connect verified commerce data
 and complete a working purchase journey.
 

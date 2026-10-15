@@ -7,6 +7,8 @@ reference design and a repository development kit.
 
 See the [platform guide](docs/commerce-platform.md) for workflows, setup and practical limits, and the [verification record](docs/superpowers/verification/2026-10-14-commerce.md) for checks and remaining staging requirements. The [design specification](docs/superpowers/specs/2026-10-14-complete-commerce-platform-design.md) preserves the original scope and baseline audit.
 
+The page-completion follow-up adds home section controls, image focal previews, independent journal pages and broader copy/SEO editing. See its [verification record](docs/superpowers/verification/2026-10-15-page-completion.md).
+
 ## Included
 
 - **9 skills:** coordination, visual direction, Next.js, 3D, scroll motion,

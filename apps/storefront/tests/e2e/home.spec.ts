@@ -149,9 +149,9 @@ test('journal cards navigate to the corresponding article', async ({ page }) => 
   await page.goto('/');
   const card = page.locator('#journal .journal-card').nth(1), title = (await card.locator('h3').innerText()).replace('↗', '').trim();
   await card.click();
-  await expect(page).toHaveURL(/\/journal#article-1$/);
-  await expect(page.locator('#article-1').getByRole('heading', { level: 2 })).toHaveText(title);
-  await expect(page.locator('#article-1 .r-content-body')).not.toHaveText('');
+  await expect(page).toHaveURL(/\/journal\/a-routine-that-feels-like-you$/);
+  await expect(page.locator('main').getByRole('heading', { level: 1 })).toHaveText(title);
+  await expect(page.locator('main .r-content-body')).not.toHaveText('');
 });
 
 test('analytics is opt-in and rejecting again does not block shopping', async ({ page, context }) => {

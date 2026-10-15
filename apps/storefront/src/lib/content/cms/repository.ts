@@ -1,5 +1,5 @@
 import type { Pool } from 'pg';
-import type { Content } from './schema';
+import { contentImageIds, type Content } from './schema';
 export type ContentDocument = {
     key: string;
     version: number;
@@ -20,7 +20,7 @@ export interface CmsRepository {
     history(key: string): Promise<Revision[]>;
 }
 const empty = (key: string): ContentDocument => ({ key, version: 0, draft: null, published: null });
-export function createMemoryCmsRepository(publishMedia?: (data: Content) => Promise<void>): CmsRepository {
+export function createMemoryCmsRepository(publishMedia?: (data: Content, key:string) => Promise<void>): CmsRepository {
     const docs = new Map<string, ContentDocument>();
     const versions = new Map<string, Revision[]>();
     let pending: Promise<unknown> = Promise.resolve();
@@ -33,7 +33,7 @@ export function createMemoryCmsRepository(publishMedia?: (data: Content) => Prom
             if (!next)
                 throw new Error('Save a draft first.');
             if (action === 'publish' && publishMedia)
-                await publishMedia(next);
+                await publishMedia(next,key);
             const version = doc.version + 1;
             docs.set(key, { ...doc, version, draft: structuredClone(next), published: action === 'publish' ? structuredClone(next) : doc.published });
             versions.set(key, [{ version, data: structuredClone(next), actor, action, at: new Date().toISOString() }, ...(versions.get(key) ?? [])]);
@@ -57,7 +57,7 @@ export function createPostgresCmsRepository(pool: Pool): CmsRepository {
                 throw new Error('Save a draft first.');
             const version = expected + 1;
             if (action === 'publish') {
-                const ids = Object.values(data as Content).filter(v => v.startsWith('/api/media/')).map(v => v.split('/').pop());
+                const ids = contentImageIds(key,data as Content);
                 if (ids.length) {
                     const available = await client.query('select id from admin.media_assets where id=any($1::uuid[]) and archived=false for update', [ids]);
                     if (available.rows.length !== new Set(ids).size)

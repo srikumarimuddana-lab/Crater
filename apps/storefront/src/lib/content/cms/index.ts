@@ -3,7 +3,7 @@ import { getRepository } from '@/lib/commerce/repository-factory';
 import { pgPoolOf } from '@/lib/commerce/postgres-repository';
 import { requireAdmin } from '@/lib/admin';
 import { createMemoryCmsRepository, createPostgresCmsRepository, type CmsRepository } from './repository';
-import { defaultsFor, validateContent, type Content } from './schema';
+import { defaultsFor, validateContent, contentImageIds, type Content } from './schema';
 import { getMediaRepository } from '@/lib/media';
 const KEY = Symbol.for('crater.cms');
 export async function getCmsRepository(): Promise<CmsRepository> {
@@ -14,7 +14,7 @@ export async function getCmsRepository(): Promise<CmsRepository> {
     }>;
     if (!g[KEY] || g[KEY].for !== commerce) {
         const media = await getMediaRepository();
-        g[KEY] = { for: commerce, repo: commerce.kind === 'postgres' ? createPostgresCmsRepository(pgPoolOf(commerce)) : createMemoryCmsRepository(data => media.publish(Object.values(data).filter(v => v.startsWith('/api/media/')).map(v => v.split('/').pop()!))) };
+        g[KEY] = { for: commerce, repo: commerce.kind === 'postgres' ? createPostgresCmsRepository(pgPoolOf(commerce)) : createMemoryCmsRepository((data,key) => media.publish(contentImageIds(key,data))) };
     }
     return g[KEY].repo;
 }

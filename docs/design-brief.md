@@ -1,5 +1,7 @@
 # Crater: cinematic skincare storefront
 
+> Historical foundation document. The owner's later Remedy reference design, password-only access and complete platform scope supersede older cinematic/MFA and delivery-phase proposals. Use [the platform guide](commerce-platform.md) and the latest `superpowers` implementation/verification records for current behavior.
+
 ## Intent and assumptions
 
 The requested outcome is a premium cosmetics/skincare ecommerce experience with

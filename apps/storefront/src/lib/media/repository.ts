@@ -22,6 +22,7 @@ export interface MediaRepository {
     }) | null>;
     publish(ids: string[]): Promise<void>;
     archive(id: string): Promise<void>;
+    updateDetails(id: string, data: Pick<Media, 'name' | 'alt'>, expected: Pick<Media, 'name' | 'alt'>): Promise<void>;
 }
 function metadataOf({ id, name, alt, mime, width, height, published, archived, createdAt }: Media): Media {
   return { id, name, alt, mime, width, height, published, archived, createdAt };
@@ -37,6 +38,11 @@ export function createMemoryMediaRepository(): MediaRepository {
         async publish(ids) { if (ids.some(id => !assets.has(id) || assets.get(id)!.archived))
             throw new Error('A selected image is unavailable.'); for (const id of ids)
             assets.get(id)!.published = true; },
+        async updateDetails(id, data, expected) {
+            const asset=assets.get(id);
+            if (!asset || asset.archived || asset.name!==expected.name || asset.alt!==expected.alt) throw new Error('This image changed or is unavailable. Reload before editing.');
+            Object.assign(asset,data);
+        },
         async archive(id) { const a = assets.get(id); if (!a)
             throw new Error('Image not found.'); if (a.published)
             throw new Error('Published images are retained so existing pages continue to work.'); a.archived = true; },
@@ -64,6 +70,10 @@ export function createPostgresMediaRepository(pool: Pool): MediaRepository {
         finally {
             c.release();
         } },
+        async updateDetails(id, data, expected) {
+            const result=await pool.query('update admin.media_assets set name=$2,alt=$3 where id=$1 and archived=false and name=$4 and alt=$5 returning id', [id,data.name,data.alt,expected.name,expected.alt]);
+            if (!result.rowCount) throw new Error('This image changed or is unavailable. Reload before editing.');
+        },
         async archive(id) { const result = await pool.query('update admin.media_assets set archived=true where id=$1 and published=false returning id', [id]); if (!result.rowCount)
             throw new Error('Published images are retained; only unused uploads can be archived.'); },
     };

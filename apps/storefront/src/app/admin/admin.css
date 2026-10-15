@@ -807,3 +807,10 @@
 [data-admin] .a-topbar { flex-wrap:wrap; }
 [data-admin] .a-main details > summary { min-height:44px; padding:10px 0; }
 [data-admin] .a-authcard a { display:inline-flex; align-items:center; min-height:44px; }
+[data-admin] .a-image-editor { padding:18px; border:1px solid var(--a-line); border-radius:12px; margin:16px 0; min-width:0; }
+[data-admin] .a-image-editor legend { padding:0 8px; font-weight:600; }
+[data-admin] .a-image-editor .a-media-field { grid-template-columns:minmax(0,1fr) 200px; }
+[data-admin] .a-image-editor .a-media-field img { width:200px; height:150px; object-fit:cover; }
+[data-admin] .a-focal-controls { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:12px; }
+[data-admin] .a-focal-controls input { min-height:44px; width:100%; }
+@media(max-width:700px) { [data-admin] .a-image-editor .a-media-field,[data-admin] .a-focal-controls { grid-template-columns:minmax(0,1fr); } }

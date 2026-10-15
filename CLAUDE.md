@@ -1,11 +1,14 @@
 # Crater
 
-Build a premium cosmetics/skincare ecommerce storefront with an editorial identity,
-one cinematic 3D product story, and a clear purchase journey. This repository
-contains the development toolkit, the specifications, and the storefront in
-`apps/storefront` (Phases 1–2 complete: herbal shop UI and own commerce backend
-with Stripe Checkout; admin Slice 1 at `/admin` with built-in staff sign-in; all on
-marked sample data). Admin plan: `docs/admin/plan.md`.
+The current app is the Craters Remedy storefront and operations platform in
+`apps/storefront`: Next.js/React/TypeScript, Postgres, Stripe, Resend and Twilio.
+Storefront and admin follow the owner-selected Remedy reference with lightweight
+React-safe motion. Password-only staff access, editable pages/media, orders, CRM,
+inventory/purchasing, ledger and analytics are implemented; real catalog and live
+provider activation remain environment/owner inputs. Read `docs/commerce-platform.md`
+and the latest records in `docs/superpowers/verification/` for current scope.
+Earlier cinematic 3D and MFA proposals are historical and do not override the
+owner's later reference-design and no-MFA decisions.
 
 ## Start here
 
@@ -20,14 +23,14 @@ marked sample data). Admin plan: `docs/admin/plan.md`.
 
 ## Project contracts
 
-- Planned app location: `apps/storefront`. Stack: Next.js App Router, TypeScript,
-  Tailwind, Three.js/React Three Fiber/Drei, GSAP, and Crater's own commerce
+- App location: `apps/storefront`. Stack: Next.js App Router, TypeScript,
+  Tailwind, lifecycle-safe React motion, and Crater's own commerce
   backend (Shopify-Storefront-API-shaped, Postgres) with Stripe hosted Checkout.
 - Render text, price, accessible controls, and a responsive product image before
   loading WebGL. Keep the purchase journey functional with motion disabled and
   while the 3D asset fails or loads.
-- Use native scrolling by default. GSAP owns the cinematic timeline; React/CSS
-  own ordinary interface state. Avoid competing animation owners.
+- Use native scrolling, bounded requestAnimationFrame updates and IntersectionObserver
+  reveals. React/CSS own ordinary interface state. Avoid competing animation owners.
 - Preserve keyboard access, reduced motion, mobile document flow, and readable
   product content. Keep essential content outside the canvas.
 - Use server-side variant IDs and authoritative totals; Stripe takes payment from
