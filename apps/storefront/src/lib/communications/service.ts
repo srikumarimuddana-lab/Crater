@@ -1,11 +1,11 @@
 import 'server-only';
-import { randomUUID } from 'node:crypto';
+import { randomUUID,createHash } from 'node:crypto';
 import { clean, findCustomer, marketingAllowed, normalizeEmail, validatePhone } from '@/lib/crm/service';
 import type { Channel, DeliveryEvent, Mode, Notification, OperationsState, OperationsStore, Template } from '@/lib/operations/types';
-export type EnqueueNotificationInput={eventKey:string;channel:Channel;recipient:string;templateKey:string;variables:Record<string,string>;mode:Mode;customerId?:string;marketing?:boolean;orderId?:string};
+export type EnqueueNotificationInput={eventKey:string;channel:Channel;recipient:string;templateKey:string;variables:Record<string,string>;mode:Mode;customerId?:string;marketing?:boolean;orderId?:string;source?:Notification['source']};
 export class SendFailure extends Error { constructor(message:string,readonly outcome:'retry'|'failed'|'unknown'){super(message);} }
 export type Sender=(job:Notification)=>Promise<{providerId:string}>;
-const VARIABLES=new Set(['name','order','total','tracking','message','link','unsubscribe','amount','carrier']);
+const VARIABLES=new Set(['name','order','total','tracking','message','link','unsubscribe','amount','carrier','service','appointment_time','timezone','booking_reference','manage_link']);
 export function interpolate(template:string,values:Record<string,string>):string {
   return template.replace(/{{\s*([a-zA-Z_]+)\s*}}/g,(_,key:string)=>{if(!VARIABLES.has(key))throw new Error(`Unsupported template variable: ${key}`);return values[key]??'';});
 }
@@ -28,8 +28,9 @@ function enqueue(s:OperationsState,input:EnqueueNotificationInput,at:string,over
   const key=`${input.mode}:${input.eventKey}:${input.channel}`;const prior=s.jobs.find(j=>j.key===key);if(prior)return prior;
   const t=override??s.templates.find(t=>t.key===input.templateKey&&t.channel===input.channel);if(!t)throw new Error('Template not found.');
   if(input.customerId)findCustomer(s,input.customerId);
-  const j:Notification={id:randomUUID(),key,eventKey:input.eventKey,channel:input.channel,recipient,templateKey:t.key,templateVersion:t.version,subject:interpolate(t.subject,input.variables),body:interpolate(t.body,input.variables),mode:input.mode,customerId:input.customerId,orderId:input.orderId,marketing:input.marketing??false,status:'pending',attempts:0,nextAttemptAt:at,leaseUntil:null,leaseToken:null,providerId:null,error:null,createdAt:at,updatedAt:at,history:[]};
-  const reason=suppressionReason(s,j);if(reason){j.status='suppressed';j.error=reason;}j.history.push({at,status:j.status,detail:reason??'Queued'});s.jobs.push(j);return j;
+  const j:Notification={id:randomUUID(),key,eventKey:input.eventKey,channel:input.channel,recipient,templateKey:t.key,templateVersion:t.version,subject:interpolate(t.subject,input.variables),body:interpolate(t.body,input.variables),mode:input.mode,customerId:input.customerId,orderId:input.orderId,source:input.source,marketing:input.marketing??false,status:'pending',attempts:0,nextAttemptAt:at,leaseUntil:null,leaseToken:null,providerId:null,error:null,createdAt:at,updatedAt:at,history:[]};
+  const privacyBlocked=input.source?.emailHash&&input.source.createdAt&&s.interactionPrivacy?.some(p=>p.emailHash===input.source!.emailHash&&input.source!.createdAt!<=p.at);if(privacyBlocked){if(input.source?.emailHash===createHash('sha256').update(j.recipient).digest('hex'))j.recipient='[removed]';j.body='[removed]';j.subject='Appointment notification removed';}
+  const reason=privacyBlocked?'Source contact was anonymized.':suppressionReason(s,j);if(reason){j.status='suppressed';j.error=reason;}j.history.push({at,status:j.status,detail:reason??'Queued'});s.jobs.push(j);return j;
 }
 function applyReceipt(s:OperationsState,event:DeliveryEvent):void {
   const j=s.jobs.find(j=>j.providerId===event.providerId);if(!j)return;
@@ -37,7 +38,7 @@ function applyReceipt(s:OperationsState,event:DeliveryEvent):void {
   if(j.status!=='delivered'&&j.status!=='failed'&&j.status!=='suppressed'){j.status=event.status;j.updatedAt=event.at;j.history.push({at:event.at,status:event.status,detail:'Provider callback'});}
   if(event.suppression&&!s.suppressions.some(v=>v.channel===j.channel&&v.recipient===j.recipient))s.suppressions.push({channel:j.channel,recipient:j.recipient,reason:event.suppression,at:event.at});
 }
-export function createCommunications(store:OperationsStore,now=()=>new Date()) {
+export function createCommunications(store:OperationsStore,now=()=>new Date(),options:{beforeSend?:(job:Notification)=>Promise<{send:boolean;reason?:string}>}={}) {
   return {
     enqueueNotification(input:EnqueueNotificationInput){return store.mutate(s=>enqueue(s,input,now().toISOString()));},
     async saveTemplate(input:{key:string;channel:Channel;subject:string;body:string;expectedVersion:number},actor='system'){
@@ -57,6 +58,10 @@ export function createCommunications(store:OperationsStore,now=()=>new Date()) {
           j.status='processing';j.attempts++;j.leaseToken=randomUUID();j.leaseUntil=new Date(now().getTime()+60000).toISOString();j.updatedAt=at;j.history.push({at,status:'processing',detail:`Attempt ${j.attempts}`});return j;
         });
         if(!job)break;if('suppressed' in job)continue;
+        if(options.beforeSend){
+          try{const guard=await options.beforeSend(job);if(!guard.send){await store.mutate(s=>{const j=s.jobs.find(j=>j.id===job.id&&j.leaseToken===job.leaseToken);if(j){j.status='suppressed';j.error=guard.reason??'Source is no longer current.';j.leaseUntil=null;j.leaseToken=null;j.history.push({at:now().toISOString(),status:'suppressed',detail:j.error});}});continue;}}
+          catch{await store.mutate(s=>{const j=s.jobs.find(j=>j.id===job.id&&j.leaseToken===job.leaseToken);if(j){j.status='pending';j.nextAttemptAt=new Date(now().getTime()+60000).toISOString();j.leaseToken=null;j.leaseUntil=null;j.error='Source check unavailable; nothing sent.';}});continue;}
+        }
         let result:{providerId:string}|undefined;let failure:SendFailure|undefined;
         try{result=await send(job);}catch(e){failure=e instanceof SendFailure?e:new SendFailure('Provider outcome is unknown. Reconcile before retrying.','unknown');}
         await store.mutate(s=>{const j=s.jobs.find(j=>j.id===job.id);if(!j||j.leaseToken!==job.leaseToken)return;

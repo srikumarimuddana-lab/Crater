@@ -2,7 +2,7 @@
 export const CLIENT_EVENTS = ['page_view', 'product_view', 'collection_view', 'cta_click', 'add_to_cart'] as const;
 export type ClientEventName = typeof CLIENT_EVENTS[number];
 export type EventName = ClientEventName | 'begin_checkout' | 'purchase';
-export const CLICK_IDS = ['home.hero.shop', 'home.hero.story', 'home.ritual.shop', 'home.journal.read', 'nav.shop', 'nav.about', 'nav.cart', 'product.add_to_cart', 'cart.checkout', 'footer.contact', 'footer.newsletter'] as const;
+export const CLICK_IDS = ['home.hero.shop', 'home.hero.story', 'home.ritual.shop', 'home.journal.read', 'nav.shop', 'nav.about', 'nav.cart', 'product.add_to_cart', 'cart.checkout', 'footer.contact', 'footer.newsletter','chat.open','booking.start'] as const;
 export type ClickId = typeof CLICK_IDS[number];
 export type Device = 'mobile' | 'tablet' | 'desktop';
 export type Source = 'direct' | 'search' | 'social' | 'email' | 'referral' | 'internal';
@@ -10,7 +10,7 @@ export type Mode = 'fixture' | 'stripe-test' | 'stripe-live';
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const CONSENT_COOKIE = 'crater_analytics';
 export const SESSION_COOKIE = 'crater_analytics_session';
-const STATIC_PATHS = new Set(['/', '/about', '/cart', '/checkout/success', '/contact', '/journal', '/shipping-returns', '/ingredients-sourcing', '/privacy', '/terms', '/collections']);
+const STATIC_PATHS = new Set(['/chat', '/book', '/', '/about', '/cart', '/checkout/success', '/contact', '/journal', '/shipping-returns', '/ingredients-sourcing', '/privacy', '/terms', '/collections']);
 /** Dynamic resources are grouped, preventing user-chosen slugs becoming personal data. */
 export function analyticsPath(path: string): string | null {
   if (path.includes('?') || path.includes('#') || path.length > 200) return null;

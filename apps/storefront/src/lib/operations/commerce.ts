@@ -1,4 +1,5 @@
 import 'server-only';
+import {runInteractionMaintenance} from '@/lib/public-interactions/maintenance';
 import { syncFinanceOrders, syncFinanceCosts, reconcileStripe } from '@/lib/finance';
 import { reconcileOrderCommunications } from './reconcile';
 import { syncAnalyticsPurchases, runAnalyticsRetention } from '@/lib/analytics/repository';
@@ -21,5 +22,6 @@ export async function runCommerceMaintenance() {
   const config = readConfig(); let provider:unknown = { skipped: true };
   if (stripeUsable(config)) { provider = await reconcileStripe(config.mode === 'stripe-live' ? 'live' : 'test'); await reconcileCommerceEffects(); }
   await runAnalyticsRetention();
-  return { ...recovered, provider };
+  const interactions=await runInteractionMaintenance();
+  return { ...recovered, provider, interactions };
 }

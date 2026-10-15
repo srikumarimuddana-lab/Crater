@@ -34,6 +34,7 @@ export default defineConfig({
       COMMERCE_DB: 'memory',
       SITE_URL: baseURL,
       ADMIN_COOKIE_SECURE: 'false',
+      BOOKING_TOKEN_ENCRYPTION_KEY: '11'.repeat(32), // test-only fixture key; never a deployment credential
       ADMIN_DEV_STAFF: JSON.stringify(allTestStaff()),
     },
   },
