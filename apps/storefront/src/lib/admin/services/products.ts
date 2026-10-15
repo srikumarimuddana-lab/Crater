@@ -16,7 +16,7 @@ import { auditDraft, cleanText, fail, mutateAs, ok, readAs, userError, type Ctx 
 export const MAX_PRICE_MINOR = 10_000_000;
 const STATUSES: ProductStatus[] = ['DRAFT', 'ACTIVE', 'ARCHIVED'];
 
-export function shapeProduct(p: ProductRecord, s: AdminSession, committed: Map<ID, number>, carts: Map<ID, number>): AdminProduct {
+export function shapeProduct(p: ProductRecord, s: AdminSession, committed: Map<ID, number>, carts: Map<ID, number>, reserved: Map<ID, number> = new Map()): AdminProduct {
   const showCost = fieldAccess(s.staff.role).productCost;
   return {
     id: p.id,
@@ -29,7 +29,9 @@ export function shapeProduct(p: ProductRecord, s: AdminSession, committed: Map<I
     details: { benefits: [...p.details.benefits], ingredients: [...p.details.ingredients], howToUse: p.details.howToUse, precautions: p.details.precautions },
     images: p.images.map((i) => ({ url: i.url, altText: i.altText })),
     variants: p.variants.map((v): AdminVariant => {
-      const available = v.quantity ?? 0; // untracked stock cannot be expressed in AdminVariant; see InventoryLevel.tracked
+      const rawQuantity = v.quantity ?? 0;
+      const held = reserved.get(v.id) ?? 0;
+      const available = Math.max(0, rawQuantity - held); // untracked stock cannot be expressed in AdminVariant; see InventoryLevel.tracked
       const c = committed.get(v.id) ?? 0;
       return {
         id: v.id,
@@ -39,7 +41,8 @@ export function shapeProduct(p: ProductRecord, s: AdminSession, committed: Map<I
         cost: showCost && v.costMinor !== null ? toMoney(v.costMinor) : null,
         available,
         committed: c,
-        onHand: available + c,
+        reserved: held,
+        onHand: rawQuantity + c,
         lowStockThreshold: v.lowStockThreshold,
         openCartCount: carts.get(v.id) ?? 0,
       };
@@ -66,6 +69,7 @@ export function productsService(ctx: Ctx) {
   const counts = async () => ({
     committed: await admin.committedByVariant(),
     carts: await commerce.openCartCounts(new Date(ctx.clock().getTime() - CART_TTL_MS)),
+    reserved: await commerce.reservedQuantities(ctx.clock()),
   });
   const find = async (id: ID) => {
     const n = gidTail(id, 'Product');
@@ -74,12 +78,13 @@ export function productsService(ctx: Ctx) {
 
   async function view(p: ProductRecord, s: AdminSession): Promise<AdminProduct> {
     const c = await counts();
-    return shapeProduct(p, s, c.committed, c.carts);
+    return shapeProduct(p, s, c.committed, c.carts, c.reserved);
   }
 
   return {
     async list(query: AdminProductsQuery = {}): Promise<AdminProductSummary[]> {
       await readAs(ctx, 'products:read');
+      const held = await commerce.reservedQuantities(ctx.clock());
       const text = (query.query ?? '').trim().toLowerCase().slice(0, 100);
       return (await commerce.listProducts({ includeInactive: true }))
         .filter((p) => (!query.status || p.status === query.status) && (!text || p.title.toLowerCase().includes(text) || p.variants.some((v) => v.sku.toLowerCase().includes(text))))
@@ -94,7 +99,7 @@ export function productsService(ctx: Ctx) {
             status: p.status,
             sample: p.sample,
             variantCount: p.variants.length,
-            available: p.variants.reduce((n, v) => n + (v.quantity ?? 0), 0),
+            available: p.variants.reduce((n, v) => n + Math.max(0, (v.quantity ?? 0) - (held.get(v.id) ?? 0)), 0),
             priceFrom: prices.length ? toMoney(Math.min(...prices)) : null,
             priceTo: prices.length ? toMoney(Math.max(...prices)) : null,
             publishable: publishChecks(p).every((c) => c.passed),

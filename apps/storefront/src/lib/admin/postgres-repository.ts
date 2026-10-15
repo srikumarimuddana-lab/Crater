@@ -354,6 +354,12 @@ export function createPostgresAdminRepository(commerce: CommerceRepository): Adm
         }
         const status = rows[0].financial_status as 'PAID' | 'PARTIALLY_REFUNDED' | 'PENDING' | 'REFUNDED' | 'VOIDED';
         if (status !== 'PAID' && status !== 'PARTIALLY_REFUNDED') return { kind: 'not_fulfillable', financialStatus: status };
+        const ordered = (await c.query('select variant_id, quantity from commerce.order_lines where order_id=$1', [orderId])).rows as { variant_id: string; quantity: number }[];
+        const previous = (await c.query('select lines from commerce.shipments where order_id=$1', [orderId])).rows.flatMap(r => r.lines as { variantId: string; quantity: number }[]);
+        const remaining = ordered.map(l => ({ variantId: l.variant_id, quantity: l.quantity - previous.filter(x => x.variantId === l.variant_id).reduce((n,x) => n+x.quantity,0) })).filter(l => l.quantity > 0);
+        const costs = (await c.query('select id, cost_minor from commerce.variants where id=any($1::int[]) order by id for share', [remaining.map(l => Number(l.variantId.split('/').at(-1)))])).rows;
+        const snapshot = remaining.map(l => ({ ...l, unitCostMinor: costs.find(v => Number(v.id) === Number(l.variantId.split('/').at(-1)))?.cost_minor ?? null }));
+        await c.query('insert into commerce.shipments(request_key,order_id,lines,carrier,tracking_number,staff_id,created_at,cost_snapshot) values($1,$2,$3,$4,$5,$6,$7,$8)', [`full-fulfilment-${orderId}`,orderId,JSON.stringify(remaining),carrier,trackingNumber,staffId,at,JSON.stringify(snapshot)]);
         await c.query('insert into commerce.order_fulfilments (order_id, carrier, tracking_number, fulfilled_at, staff_id) values ($1,$2,$3,$4,$5)', [
           orderId, carrier, trackingNumber, at, staffId,
         ]);
@@ -391,8 +397,13 @@ export function createPostgresAdminRepository(commerce: CommerceRepository): Adm
 
     async committedByVariant() {
       const rows = await q(
-        `select ol.variant_id, sum(ol.quantity)::int as n
+        `select ol.variant_id, sum(greatest(0,ol.quantity-coalesce(sh.shipped,0)))::int as n
            from commerce.order_lines ol join commerce.orders o on o.id = ol.order_id
+           left join lateral (
+             select sum((line->>'quantity')::int)::int as shipped from commerce.shipments s,
+               lateral jsonb_array_elements(s.lines) line
+             where s.order_id=o.id and line->>'variantId'=ol.variant_id
+           ) sh on true
           where o.fulfilment_status = 'UNFULFILLED' and o.financial_status in ('PAID', 'PARTIALLY_REFUNDED')
           group by ol.variant_id`,
       );
@@ -420,6 +431,12 @@ export function createPostgresAdminRepository(commerce: CommerceRepository): Adm
         if (status === 'ACTIVE') {
           const checks = gate(before);
           if (checks.some((x) => !x.passed)) return { kind: 'blocked', checks };
+          const mediaIds = before.images.filter(i => /^\/api\/media\/[a-f0-9-]{36}$/.test(i.url)).map(i => i.url.split('/').at(-1));
+          if (mediaIds.length) {
+            const assets = await c.query('select id from admin.media_assets where id=any($1::uuid[]) and archived=false order by id for update', [mediaIds]);
+            if (assets.rowCount !== new Set(mediaIds).size) throw new Error('A selected product image is unavailable.');
+            await c.query('update admin.media_assets set published=true where id=any($1::uuid[])', [mediaIds]);
+          }
         }
         const updatedAt = new Date(Math.max(new Date(now).getTime(), new Date(before.updatedAt).getTime() + 1)).toISOString();
         const after: ProductRecord = { ...before, status, updatedAt };
@@ -440,7 +457,8 @@ export function createPostgresAdminRepository(commerce: CommerceRepository): Adm
         if (rows[0].inventory_quantity === null) return { kind: 'untracked' };
         const have = num(rows[0].inventory_quantity);
         const next = have + delta;
-        if (next < 0) return { kind: 'below_zero', available: have };
+        const held = Number((await c.query("select coalesce(sum(quantity),0)::int as n from commerce.stock_reservations where variant_id=$1 and status='active' and expires_at>$2", [variantId,at])).rows[0].n);
+        if (next < held) return { kind: 'below_zero', available: Math.max(0,have-held) };
         await c.query('update commerce.variants set inventory_quantity = $2 where id = $1', [variantId, next]);
         const m = (
           await c.query(

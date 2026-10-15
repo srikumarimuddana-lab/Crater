@@ -63,6 +63,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
   return (
     <>
       <PageHeader title="Inventory" />
+      <p className="a-muted">Available excludes active checkout holds and paid unshipped commitments. On hand includes all three quantities.</p>
       <Tabs
         label="Inventory views"
         items={[
@@ -108,6 +109,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
                 <th scope="col" className="a-num">
                   Committed
                 </th>
+                <th scope="col" className="a-num">Checkout holds</th>
                 <SortTh label="On hand" field="onhand" sort={sort} dir={dir} hrefFor={hrefFor} align="num" />
                 <th scope="col" className="a-num">
                   Low-stock at
@@ -133,6 +135,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
                   <td>{l.sku}</td>
                   <td className="a-num">{l.tracked ? l.available : 'Not tracked'}</td>
                   <td className="a-num">{l.tracked ? l.committed : null}</td>
+                  <td className="a-num">{l.tracked ? l.reserved : null}</td>
                   <td className="a-num">{l.tracked ? l.onHand : null}</td>
                   <td className="a-num">{l.tracked ? l.lowStockThreshold : null}</td>
                   <td>{stockBadge(l)}</td>

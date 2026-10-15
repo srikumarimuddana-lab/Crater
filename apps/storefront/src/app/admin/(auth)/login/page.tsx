@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { AdminConfigError, getAdminSession } from '@/lib/admin';
 import { ActionForm, Field, Submit } from '@/components/admin/form';
@@ -31,11 +32,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           </Notice>
         </div>
       ) : null}
+      {one(sp.passwordChanged) ? <Notice tone="success" role="status">Password saved. Sign in with your new password.</Notice> : null}
       <ActionForm action={signInAction} label="Sign in" errorTitle="We could not sign you in">
         <Field name="email" label="Email" type="email" autoComplete="username" inputMode="email" required />
         <Field name="password" label="Password" type="password" autoComplete="current-password" required />
         <Submit pendingText="Signing in…">Continue</Submit>
       </ActionForm>
+      <p><Link href="/admin/forgot-password">Forgot your password?</Link></p>
     </div>
   );
 }

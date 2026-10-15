@@ -45,9 +45,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           </>
         }
         actions={
-          <Link className="a-btn" href={`/admin/orders/${slug}/packing-slip`}>
-            Packing slip
-          </Link>
+          <><Link className="a-btn" href={`/admin/orders/${slug}/packing-slip`}>Packing slip</Link>
+          {g.can('payments:read') ? <Link className="a-btn" href={`/admin/payments/${slug}`}>Payment & refunds</Link> : null}
+          {canFulfil ? <Link className="a-btn" href={`/admin/shipments?order=${slug}`}>Ship items</Link> : null}</>
         }
       />
       {taxFlags.length ? (

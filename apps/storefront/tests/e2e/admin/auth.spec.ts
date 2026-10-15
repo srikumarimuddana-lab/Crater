@@ -33,7 +33,7 @@ test('the login form validates empty fields inline', async ({ page }) => {
   await expect(page.getByLabel('Email')).toHaveAttribute('aria-invalid', 'true');
 });
 
-test('an owner signs in with a TOTP code, lands on the overview, and signs out', async ({ page }, info) => {
+test('an owner signs in with a password only, lands on the overview, and signs out', async ({ page }, info) => {
   await signInUi(page, uiOwner(info.project.name));
   await expect(page).toHaveURL(/\/admin$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
@@ -62,3 +62,12 @@ test('admin pages are noindex and private', async ({ page, request }) => {
   await page.goto('/admin/login');
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
 });
+
+for (const route of ['/admin/mfa', '/admin/mfa/setup']) {
+  test(`legacy ${route} redirects signed-out visitors to password login`, async ({ page }) => {
+    await page.goto(route);
+    await expect(page).toHaveURL(/\/admin\/login$/);
+    await expect(page.getByLabel('Password')).toBeVisible();
+    await expect(page.getByLabel('6-digit code')).toHaveCount(0);
+  });
+}

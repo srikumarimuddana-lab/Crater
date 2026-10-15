@@ -8,7 +8,7 @@ import { migrate, MIGRATIONS_DIR } from '../../../db/migrate.mjs';
 import { createOwner } from '../../../db/admin-create-owner.mjs';
 import { resetDatabase, TEST_DATABASE_URL } from '../helpers/repos';
 
-const NEW_TABLES = ['admin.staff_users', 'admin.staff_sessions', 'admin.pending_sign_ins', 'admin.login_attempts', 'admin.audit_log', 'commerce.order_fulfilments', 'commerce.inventory_movements', 'commerce.webhook_events'];
+const NEW_TABLES = ['admin.staff_users', 'admin.staff_sessions', 'admin.pending_sign_ins', 'admin.login_attempts', 'admin.audit_log', 'admin.account_tokens', 'admin.content_documents', 'admin.content_revisions', 'admin.media_assets', 'commerce.order_fulfilments', 'commerce.inventory_movements', 'commerce.webhook_events'];
 
 describe.skipIf(!TEST_DATABASE_URL)('migration 0004 (admin) on Postgres', () => {
   const connect = () => new pg.Pool({ connectionString: TEST_DATABASE_URL, max: 2 });
@@ -120,7 +120,7 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 0004 (admin) on Postgres', () => 
         );
       }
       await pool.query("insert into commerce.variants (id, product_id, position, sku, title, price_minor, selected_options, inventory_quantity) values (1, 2, 0, 'S1', 'v', 100, '[]', 3)");
-      expect(await migrate(pool)).toEqual(['0004_admin.sql', '0005_tax.sql']);
+      expect(await migrate(pool)).toEqual(expect.arrayContaining(['0004_admin.sql', '0005_tax.sql', '0006_password_auth.sql']));
       expect((await pool.query('select id, status, archived_at is not null as archived from commerce.products order by id')).rows).toEqual([
         { id: 1, status: 'ARCHIVED', archived: true }, { id: 2, status: 'ACTIVE', archived: false },
       ]);
@@ -200,6 +200,32 @@ describe.skipIf(!TEST_DATABASE_URL)('admin:create-owner', () => {
       expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
       expect((await pool.query("select count(*)::int as n from admin.staff_users where role = 'OWNER'")).rows[0].n).toBe(1);
     } finally {
+      await pool.end();
+    }
+  });
+});
+
+
+describe.skipIf(!TEST_DATABASE_URL)('password-only authentication migration', () => {
+  it('preserves credentials and staff while retiring secrets and sessions once', async () => {
+    const pool = new pg.Pool({ connectionString: TEST_DATABASE_URL, max: 2 });
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'crater-password-mig-'));
+    try {
+      await pool.query('drop schema if exists admin cascade; drop schema if exists commerce cascade');
+      for (const file of ['0001_init.sql', '0002_price_at_add.sql', '0003_product_archive.sql', '0004_admin.sql', '0005_tax.sql']) await copyFile(path.join(MIGRATIONS_DIR, file), path.join(dir, file));
+      await migrate(pool, { dir });
+      await pool.query("insert into admin.staff_users (email, name, role, password_hash, totp_secret_enc, mfa_enrolled_at, last_totp_step) values ('legacy@example.test', 'Legacy', 'OWNER', 'unchanged-password-hash', 'encrypted-legacy-secret', now(), 123)");
+      await pool.query("insert into admin.staff_sessions (staff_id, token_hash, created_at, last_seen_at, absolute_expires_at) values (1, repeat('a',64), now(), now(), now() + interval '12 hours')");
+      await pool.query("insert into admin.pending_sign_ins (staff_id, token_hash, kind, created_at, expires_at) values (1, repeat('b',64), 'MFA_REQUIRED', now(), now() + interval '5 minutes')");
+      await migrate(pool);
+      expect((await pool.query('select email, role, password_hash, totp_secret_enc, mfa_enrolled_at, last_totp_step from admin.staff_users')).rows).toEqual([{ email: 'legacy@example.test', role: 'OWNER', password_hash: 'unchanged-password-hash', totp_secret_enc: null, mfa_enrolled_at: null, last_totp_step: null }]);
+      expect((await pool.query('select * from admin.staff_sessions')).rows).toHaveLength(0);
+      expect((await pool.query('select * from admin.pending_sign_ins')).rows).toHaveLength(0);
+      await pool.query("insert into admin.staff_sessions (staff_id, token_hash, created_at, last_seen_at, absolute_expires_at) values (1, repeat('c',64), now(), now(), now() + interval '12 hours')");
+      expect(await migrate(pool)).toEqual([]);
+      expect((await pool.query('select * from admin.staff_sessions')).rows).toHaveLength(1);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
       await pool.end();
     }
   });

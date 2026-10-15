@@ -1,5 +1,7 @@
 # Admin dashboard requirements (brainstorm draft, cross-reviewed against `docs/admin/ux.md`)
 
+> Historical design draft. The 2026-10-14 owner instruction requires password-only access without MFA and supersedes the MFA/step-up proposals below. See the [current platform guide](../commerce-platform.md) for implemented workflows and limits.
+
 Status: draft for architect synthesis, 2026-10-09. Market: Canada, CAD. All data is SAMPLE; Stripe stays in test mode.
 Vocabulary follows Shopify Admin. IA, module names and `/admin/...` URLs are adopted from `docs/admin/ux.md` (section 2 there).
 Stripe is authoritative for money movement; our database is authoritative for catalog, stock, fulfilment, consent.

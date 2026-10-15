@@ -1,0 +1,19 @@
+import { afterEach,beforeEach,describe,it,expect,vi } from 'vitest';
+const {inbound,enqueueNotification,mutate}=vi.hoisted(()=>({inbound:vi.fn(),enqueueNotification:vi.fn(),mutate:vi.fn()}));
+vi.mock('@/lib/crm',()=>({getCrm:async()=>({inbound})}));
+vi.mock('@/lib/communications',()=>({getCommunications:async()=>({enqueueNotification})}));
+vi.mock('@/lib/operations/store',()=>({getOperationsStore:async()=>({mutate})}));
+import { POST as contact } from '@/app/api/contact/route';
+import { POST as subscribe } from '@/app/api/consent/route';
+function native(path:string,values:Record<string,string>){return new Request(`https://shop.example${path}`,{method:'POST',headers:{Origin:'https://shop.example','Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(values)});}
+const contactValues={email:'sam@example.com',subject:'Question',message:'Please help'};
+describe('progressively enhanced public forms',()=>{
+  beforeEach(()=>{vi.resetAllMocks();vi.stubEnv('SITE_URL','https://shop.example');vi.stubEnv('COMMUNICATIONS_UNSUBSCRIBE_SECRET','');mutate.mockResolvedValue(true);});
+  afterEach(()=>vi.unstubAllEnvs());
+  it('accepts a native contact POST and returns an HTML receipt with no submitted values in the URL',async()=>{const request=native('/api/contact',contactValues);const response=await contact(request);expect(response.status).toBe(200);expect(response.headers.get('content-type')).toContain('text/html');expect(await response.text()).toContain('Your message is with our team');expect(new URL(request.url).search).toBe('');expect(inbound).toHaveBeenCalledWith(expect.objectContaining({recipient:'sam@example.com',body:'Please help'}));});
+  it('keeps JSON responses for enhanced clients',async()=>{const response=await contact(new Request('https://shop.example/api/contact',{method:'POST',headers:{Origin:'https://shop.example','Content-Type':'application/json'},body:JSON.stringify(contactValues)}));expect(response.headers.get('content-type')).toContain('application/json');expect(await response.json()).toMatchObject({received:true});});
+  it('rejects oversized and unsupported native requests before persistence',async()=>{const tooLarge=await contact(native('/api/contact',{...contactValues,message:'x'.repeat(15001)}));expect(tooLarge.status).toBe(413);const unsupported=await contact(new Request('https://shop.example/api/contact',{method:'POST',headers:{Origin:'https://shop.example','Content-Type':'text/plain'},body:'email=sam@example.com'}));expect(unsupported.status).toBe(415);expect(inbound).not.toHaveBeenCalled();});
+  it('rejects cross-origin forms and persistence failures with an honest HTML error',async()=>{const request=native('/api/contact',contactValues);request.headers.set('Origin','https://attacker.example');expect((await contact(request)).status).toBe(403);inbound.mockRejectedValueOnce(new Error('private database details'));const response=await contact(native('/api/contact',contactValues));expect(response.status).toBe(503);const html=await response.text();expect(html).toContain('could not save your message');expect(html).not.toContain('private database');});
+  it('requires the native newsletter checkbox on the server',async()=>{const response=await subscribe(native('/api/consent',{email:'sam@example.com',channel:'email',source:'newsletter'}));expect(response.status).toBe(400);expect(await response.text()).toContain('email consent');expect(enqueueNotification).not.toHaveBeenCalled();});
+  it('returns actionable HTML when newsletter delivery is unconfigured, never a success receipt',async()=>{const response=await subscribe(native('/api/consent',{email:'sam@example.com',channel:'email',consent:'true',source:'newsletter'}));expect(response.status).toBe(503);const html=await response.text();expect(html).toContain('subscriptions are not available');expect(html).not.toContain('Check your email');expect(enqueueNotification).not.toHaveBeenCalled();});
+});

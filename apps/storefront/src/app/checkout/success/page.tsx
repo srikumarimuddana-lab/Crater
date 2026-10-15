@@ -1,3 +1,4 @@
+import { getPageContent } from '@/lib/content/cms';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { FocusHeading } from '@/components/commerce/focus-heading';
@@ -17,7 +18,9 @@ const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v
 
 /** Dynamic and private. Shows only what getCheckoutResult returns; the session id is never rendered. */
 export default async function CheckoutSuccessPage({ searchParams }: Props) {
-  const sessionId = first((await searchParams).session_id) ?? '';
+  const sp = await searchParams;
+  const content = await getPageContent('checkout-success', sp.preview);
+  const sessionId = first(sp.session_id) ?? '';
   let result: Awaited<ReturnType<typeof getCheckoutResult>>;
   try {
     result = sessionId ? await getCheckoutResult(sessionId) : { status: 'not_found', order: null };
@@ -28,10 +31,12 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
   const refreshHref = `/checkout/success?session_id=${encodeURIComponent(sessionId)}`;
 
   return (
-    <PageShell>
+    <PageShell preview={sp.preview}>
       <div className="page-gutter mx-auto max-w-3xl py-12 md:py-20">
+        {content.body ? <p className="mb-6">{content.body}</p> : null}
+        {content.image ? <img src={content.image} alt={content.imageAlt} className="mb-6 max-h-64 object-contain" /> : null}
         {result.status === 'paid' && result.order ? (
-          <Paid order={result.order} mode={mode} />
+          <Paid order={result.order} mode={mode} heading={content.title} />
         ) : result.status === 'processing' ? (
           <div>
             <FocusHeading>{confirmation.processing.heading}</FocusHeading>
@@ -65,16 +70,17 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
   );
 }
 
-function Paid({ order, mode }: { order: Order; mode: ReturnType<typeof commerceMode> }) {
+function Paid({ order, mode, heading }: { order: Order; mode: ReturnType<typeof commerceMode>; heading:string }) {
   const c = confirmation.paid;
   const totals: [string, string][] = [
+    ...(order.totalDiscounts && order.totalDiscounts.amount !== '0.00' ? [[`Discount${order.discountCode ? ` (${order.discountCode})` : ''}`, `−${formatMoney(order.totalDiscounts)}`] as [string,string]] : []),
     [c.subtotal, formatMoney(order.subtotalPrice)],
     [c.shipping, formatMoney(order.totalShippingPrice)],
     [c.tax, formatMoney(order.totalTax)],
   ];
   return (
     <div>
-      <FocusHeading>{c.heading}</FocusHeading>
+      <FocusHeading>{heading}</FocusHeading>
       {mode === 'stripe-test' ? <p className="mt-6 font-semibold">{c.testOrderNote}</p> : null}
       {mode === 'fixture' ? <p className="mt-6 font-semibold">{c.fixtureOrderNote}</p> : null}
       <p className="mt-6">

@@ -1,5 +1,7 @@
 # Admin and catalogue pivot: architect's plan
 
+> **2026-10-14 implementation update:** This is the historical Slice 1 plan. Password-only access, the expanded admin modules and reference design are implemented in the new change. Its TOTP proposal is superseded. See the [platform guide](../commerce-platform.md) and [verification record](../superpowers/verification/2026-10-14-commerce.md) for current behavior and limits.
+
 Status: approved direction, 2026-10-09. Inputs: `requirements.md` (BA), `ux.md` (UI engineer),
 and the owner's answers:
 

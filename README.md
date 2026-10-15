@@ -1,16 +1,11 @@
 # Crater
 
-A Claude Code development kit for a premium cosmetics/skincare ecommerce site
-with an editorial design, cinematic 3D product storytelling, and a clear purchase
-journey.
+Craters Remedy ecommerce storefront and operations console, with a shared
+reference design and a repository development kit.
 
-**Status:** `apps/storefront` has a herbal storefront (sample catalogue in
-`docs/catalogue.md`), Crater's own Storefront-API-shaped commerce backend
-(Postgres-ready, Supabase-compatible) with Stripe Checkout, and admin Slice 1 at
-`/admin` (staff sign-in with authenticator codes, roles, overview, orders and
-fulfilment, products, inventory, event log). Next: admin Slice 2 (payments,
-refunds, ledger), Stripe test keys and Supabase, then Phases 3–6; see
-`docs/implementation-plan.md` and `docs/admin/plan.md`.
+**Status (2026-10-14):** `apps/storefront` now includes the reference-designed storefront and admin, password-only staff access, editable content and image uploads, Stripe checkout/refunds, Resend/Twilio integrations, orders, CRM, inventory/purchasing, a financial ledger and sales/click analytics. The implementation is ready for code review and staging configuration; no production deployment or live provider activation is included.
+
+See the [platform guide](docs/commerce-platform.md) for workflows, setup and practical limits, and the [verification record](docs/superpowers/verification/2026-10-14-commerce.md) for checks and remaining staging requirements. The [design specification](docs/superpowers/specs/2026-10-14-complete-commerce-platform-design.md) preserves the original scope and baseline audit.
 
 ## Included
 
@@ -72,3 +67,7 @@ npm run doctor:setup
 These checks verify the development setup, not storefront performance or a live
 purchase path. Product, brand, packaging, market/policy inputs, and Stripe
 configuration are collected during the relevant application phases.
+
+## Complete commerce implementation
+
+See [the platform guide](docs/commerce-platform.md) for the connected storefront/admin workflows, provider setup, migrations, recovery jobs and current deployment limits. The design follows the approved Craters Remedy reference.

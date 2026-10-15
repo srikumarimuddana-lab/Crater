@@ -10,16 +10,15 @@ export async function getAdminSession(): Promise<AdminSession | null> {
 
 /**
  * Gate for Server Components, Server Actions and route handlers. Returns the session or throws AdminAuthError:
- * UNAUTHENTICATED (redirect to /admin/login), FORBIDDEN (403 page), STEP_UP_REQUIRED (ask for a code).
+ * UNAUTHENTICATED (redirect to /admin/login), FORBIDDEN (403 page).
  * The layout check alone is never trusted: call this in every action.
  */
-export async function requireAdmin(capability?: Capability, options: { stepUp?: boolean } = {}): Promise<AdminSession> {
+export async function requireAdmin(capability?: Capability): Promise<AdminSession> {
   const session = await getAdminSession();
   if (!session) throw new AdminAuthError('UNAUTHENTICATED');
   if (capability && !(session.capabilities.includes(capability) && roleCan(session.staff.role, capability))) {
     throw new AdminAuthError('FORBIDDEN', capability);
   }
-  if (options.stepUp && !session.steppedUp) throw new AdminAuthError('STEP_UP_REQUIRED', capability ?? null);
   return session;
 }
 

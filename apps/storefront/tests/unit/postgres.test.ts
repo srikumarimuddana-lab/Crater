@@ -2,7 +2,7 @@ import pg from 'pg';
 import { describe, expect, it } from 'vitest';
 import { migrate } from '../../db/migrate.mjs';
 import { catalogSeed } from '@/lib/commerce/catalog-seed';
-import { createPostgresRepository } from '@/lib/commerce/postgres-repository';
+import { createPostgresRepository, pgPoolOf } from '@/lib/commerce/postgres-repository';
 import { cartWith, deliver, makeHarness, paidSession, sessionEvent, V, variantQuantity } from './helpers/harness';
 import { closePoolsAfterAll, makeRepo, resetDatabase, TEST_DATABASE_URL } from './helpers/repos';
 
@@ -24,9 +24,14 @@ describe.skipIf(!TEST_DATABASE_URL)('postgres schema and locking', () => {
       expect(tables.filter((t) => t.schema === 'public')).toEqual([]);
       const names = tables.map((t) => t.name).sort();
       expect(names).toEqual([
-        'cart_lines', 'carts', 'checkouts', 'collection_products', 'collections', 'counters',
-        'inventory_movements', 'order_fulfilments', 'order_lines', 'orders', 'processed_webhook_events', 'products',
-        'schema_migrations', 'variants', 'webhook_events',
+        'analytics_checkout_attribution', 'analytics_daily', 'analytics_events',
+        'analytics_rate_buckets', 'cart_lines', 'carts', 'checkouts', 'collection_products',
+        'collections', 'communications_state', 'counters', 'finance_audit', 'finance_journals',
+        'finance_locks', 'finance_payments', 'finance_periods', 'finance_reconciliation',
+        'finance_refunds', 'inventory_movements', 'order_fulfilments', 'order_lines', 'orders',
+        'physical_returns', 'pricing_rules', 'processed_webhook_events', 'products', 'purchase_orders',
+        'schema_migrations', 'shipments', 'stock_receipts', 'stock_reservations', 'suppliers',
+        'variants', 'webhook_events',
       ]);
       expect(tables.every((t) => t.rls === true)).toBe(true);
       expect((await pool.query("select count(*)::int as n from pg_policies where schemaname = 'commerce'")).rows[0].n).toBe(0);
@@ -80,14 +85,16 @@ describe.skipIf(!TEST_DATABASE_URL)('postgres schema and locking', () => {
     try {
       await resetDatabase(pool);
       expect(await migrate(pool)).toEqual([]); // second run applies nothing
-      const rows = (await pool.query('select name from commerce.schema_migrations')).rows;
-      expect(rows).toEqual([
-        { name: '0001_init.sql' }, { name: '0002_price_at_add.sql' }, { name: '0003_product_archive.sql' }, { name: '0004_admin.sql' },
-        { name: '0005_tax.sql' },
+      const rows = (await pool.query('select name from commerce.schema_migrations order by name')).rows;
+      expect(rows.map(row => row.name)).toEqual([
+        '0001_init.sql', '0002_price_at_add.sql', '0003_product_archive.sql', '0004_admin.sql',
+        '0005_tax.sql', '0006_password_auth.sql', '0007_content_media.sql',
+        '0008_communications_crm.sql', '0009_finance.sql', '0010_inventory_operations.sql',
+        '0011_analytics.sql', '0012_checkout_reservations.sql',
       ]);
       // Concurrent runners serialize on the transaction-scoped lock and do not conflict.
       await Promise.all([migrate(pool), migrate(pool), migrate(pool)]);
-      expect((await pool.query('select count(*)::int as n from commerce.schema_migrations')).rows[0].n).toBe(5);
+      expect((await pool.query('select count(*)::int as n from commerce.schema_migrations')).rows[0].n).toBe(12);
     } finally {
       await pool.end();
     }
@@ -107,17 +114,22 @@ describe.skipIf(!TEST_DATABASE_URL)('postgres schema and locking', () => {
     }
   });
 
-  it('two paid orders racing for the last unit both succeed; stock floors at 0 and one is flagged', async () => {
+  it('preserves two paid historical sessions whose unreserved snapshots exceed available inventory', async () => {
     const h = await makeHarness({ repo: await makeRepo('postgres') });
-    await h.repo.updateVariant(V.hawthorn30, { quantity: 2 });
+    await h.repo.updateVariant(V.hawthorn30, { quantity: 4 });
     const sessions = ['cs_test_raceone0000001', 'cs_test_racetwo0000002'];
     const bodies: string[] = [];
     for (const [i, id] of sessions.entries()) {
       h.stripe.create.mockResolvedValueOnce({ id, url: `https://checkout.stripe.com/c/pay/${id}` } as never);
       const cart = await cartWith(h, [{ merchandiseId: V.hawthorn30, quantity: 2 }]);
-      await h.checkout.createCheckoutSession(cart.id);
+      expect(await h.checkout.createCheckoutSession(cart.id)).toMatchObject({ ok: true });
       bodies.push(sessionEvent('checkout.session.completed', paidSession(h, { id }), `evt_race_${i}`));
     }
+    // Deliberately emulate sessions issued before reservation support. Their payment
+    // confirmations must still produce orders even when current inventory is short.
+    await pgPoolOf(h.repo).query('delete from commerce.stock_reservations');
+    await pgPoolOf(h.repo).query('update commerce.checkouts set reservation_expires_at = null');
+    await h.repo.updateVariant(V.hawthorn30, { quantity: 2 });
     const results = await Promise.all(bodies.map((b) => deliver(h, b)));
     expect(results.map((r) => r.status)).toEqual([200, 200]);
     expect(await h.repo.countOrders()).toBe(2);

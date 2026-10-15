@@ -7,12 +7,14 @@ const eslintConfig = defineConfig([
   ...nextTs,
   globalIgnores([
     '.next/**',
+    '.next-*/**',
     'out/**',
     '.next-integration/**',
     'build/**',
     'next-env.d.ts',
     'playwright-report/**',
     'test-results/**',
+    'test-results-*/**',
   ]),
 ]);
 

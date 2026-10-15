@@ -1,0 +1,11 @@
+import Link from 'next/link';
+import { PageHeader,Card,EmptyState,TableWrap } from '@/components/admin/ui';
+import { communicationsGate, Money } from '@/lib/communications/admin-ui';
+import { getOperationsStore } from '@/lib/operations/store';
+import { ActionForm } from '@/lib/communications/form';
+import { syncOrdersAction } from '@/app/admin/_actions/communications';
+export default async function CustomersPage({searchParams}:{searchParams:Promise<{q?:string;mode?:string}>}){
+  const g=await communicationsGate();if(!g.ok)return g.view;const sp=await searchParams;const query=(sp.q??'').trim().toLowerCase().slice(0,100);const mode=sp.mode==='live'?'live':'test';
+  const state=await (await getOperationsStore()).read();const customers=state.customers.filter(c=>!c.mergedIntoId).filter(c=>`${c.email} ${c.name} ${c.tags.join(' ')}`.toLowerCase().includes(query));
+  return <><PageHeader title="Customers"/><p>Guest orders link by normalized email. Marketing consent is recorded separately from purchases.</p><form className="a-filters"><label>Search name, email or tag <input name="q" defaultValue={query}/></label><label>Order mode <select name="mode" defaultValue={mode}><option value="test">Test</option><option value="live">Live</option></select></label><button className="a-btn">Search</button></form>{g.session.staff.role!=='SUPPORT'?<Card title="Order synchronization"><ActionForm action={syncOrdersAction} label="Sync order customers"><p>Recover customer links and notification jobs from paid orders.</p></ActionForm></Card>:null}{customers.length?<TableWrap label="Customers"><table className="a-table"><thead><tr><th>Customer</th><th>Tags</th><th>{mode} orders</th><th>Lifetime net paid</th><th>Refunded</th><th>Last order</th></tr></thead><tbody>{customers.map(c=>{const orders=c.orders.filter(o=>o.mode===mode);return <tr key={c.id}><td><Link href={`/admin/customers/${c.id}`}>{c.name||c.email}</Link><p>{c.email}</p></td><td>{c.tags.join(', ')||'—'}</td><td>{orders.length}</td><td><Money minor={orders.reduce((n,o)=>n+o.totalMinor-o.refundedMinor,0)}/></td><td><Money minor={orders.reduce((n,o)=>n+o.refundedMinor,0)}/></td><td>{orders.map(o=>o.occurredAt).sort().at(-1)?.slice(0,10)??'—'}</td></tr>;})}</tbody></table></TableWrap>:<EmptyState>No matching customers. Paid orders and contact messages create customer records.</EmptyState>}</>;
+}

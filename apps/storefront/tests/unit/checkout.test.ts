@@ -84,7 +84,7 @@ describe.each(REPO_KINDS)('createCheckoutSession [%s repository]', (kind) => {
     }) as never);
 
     const r = await h.checkout.createCheckoutSession(cart.id);
-    expect(r).toEqual({ ok: true, redirectUrl: STRIPE_URL });
+    expect(r).toEqual({ ok: true, checkoutId: expect.stringMatching(/^chk_/), redirectUrl: STRIPE_URL });
     const [params, options] = lastCall(h);
     expect(params).toMatchObject({
       mode: 'payment',

@@ -3,29 +3,17 @@ import { expect, test as base, type Browser, type Page } from '@playwright/test'
 import fs from 'node:fs';
 import path from 'node:path';
 import { PROJECT_KEYS, sessionStaff, type Role, type TestStaff } from './staff';
-import { totpCode } from './totp';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Complete the real sign-in UI: password, then the TOTP code (retrying on the next 30 s step if this one was used). */
+/** Complete the password-only sign-in UI. */
 export async function signInUi(page: Page, staff: TestStaff) {
   await page.goto('/admin/login');
   await page.getByLabel('Email').fill(staff.email);
   await page.getByLabel('Password').fill(staff.password);
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page).toHaveURL(/\/admin\/mfa$/);
-  for (let attempt = 0; attempt < 3; attempt++) {
-    await page.getByLabel('6-digit code').fill(totpCode(staff.totpSecret));
-    await page.getByRole('button', { name: 'Sign in' }).click();
-    try {
-      await page.waitForURL((u) => !u.pathname.endsWith('/admin/mfa'), { timeout: 8000 });
-      return;
-    } catch {
-      // A code (or a later one) was already used for this account: wait for the next time step.
-      await sleep(30_000 - (Date.now() % 30_000) + 300);
-    }
-  }
-  throw new Error(`could not sign in as ${staff.email}`);
+  await expect(page).toHaveURL(staff.role === 'FULFILMENT' ? /\/admin\/orders$/ : /\/admin$/);
+  await expect(page.getByLabel('6-digit code')).toHaveCount(0);
 }
 
 const authDir = path.join(process.cwd(), 'test-results', '.admin-auth');
@@ -43,11 +31,11 @@ async function validState(browser: Browser, baseURL: string, file: string): Prom
 
 /**
  * One signed-in storage state per (role, viewport project), created once per run by whichever worker needs it
- * first (a TOTP step can be used once per account, so concurrent sign-ins would collide).
+ * first, avoiding concurrent writes to the shared storage-state file.
  */
 async function ensureSession(browser: Browser, baseURL: string, role: Role, projectName: string): Promise<string> {
   fs.mkdirSync(authDir, { recursive: true });
-  const key = `${role}-${PROJECT_KEYS[projectName] ?? 'x'}`;
+  const key = `${new URL(baseURL).port}-${role}-${PROJECT_KEYS[projectName] ?? 'x'}`;
   const file = path.join(authDir, `${key}.json`);
   const lock = `${file}.lock`;
   if (validated.has(key) && fs.existsSync(file)) return file;

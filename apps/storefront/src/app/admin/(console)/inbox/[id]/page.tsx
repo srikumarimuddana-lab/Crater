@@ -1,0 +1,12 @@
+import Link from 'next/link';
+import { randomUUID } from 'node:crypto';
+import { notFound } from 'next/navigation';
+import { PageHeader,Card } from '@/components/admin/ui';
+import { communicationsGate,Hidden,TextArea,Field } from '@/lib/communications/admin-ui';
+import { getOperationsStore } from '@/lib/operations/store';
+import { ActionForm } from '@/lib/communications/form';
+import { replyAction,conversationAction } from '@/app/admin/_actions/communications';
+export default async function ConversationPage({params}:{params:Promise<{id:string}>}){
+  const g=await communicationsGate();if(!g.ok)return g.view;const {id}=await params;const state=await (await getOperationsStore()).read();const c=state.conversations.find(c=>c.id===id);if(!c)notFound();
+  return <><PageHeader title={c.subject} breadcrumb={[{label:'Inbox',href:'/admin/inbox'},{label:'Conversation'}]}/><p>{c.channel} · {c.recipient} · {c.customerId?<Link href={`/admin/customers/${c.customerId}`}>Customer record</Link>:'Unlinked sender'} {c.orderId?<Link href={`/admin/orders/${c.orderId}`}>Order #{c.orderId}</Link>:null}</p><Card title="Conversation details"><ActionForm action={conversationAction}><Hidden name="id" value={id}/><Field name="owner" label="Assigned staff ID or name" value={c.owner??''}/><label>Linked customer <select name="customerId" defaultValue={c.customerId??''}><option value="">Unlinked</option>{state.customers.filter(customer=>(c.channel==='email'?customer.email:customer.phone)===c.recipient).map(customer=><option key={customer.id} value={customer.id}>{customer.name||customer.email}</option>)}</select></label><Field name="orderId" label="Linked order ID (must belong to customer)" value={c.orderId??''}/><label>State <select name="status" defaultValue={c.status}><option value="open">Open</option><option value="pending">Pending</option><option value="closed">Closed</option></select></label></ActionForm></Card><Card title="Messages">{c.messages.map(m=><article key={m.id}><h3>{m.direction==='in'?'Customer':'Staff reply'} · {m.at.slice(0,16)}</h3><p style={{whiteSpace:'pre-wrap'}}>{m.body}</p>{m.jobId?<p>Delivery: {state.jobs.find(j=>j.id===m.jobId)?.status??'pending'}</p>:null}</article>)}</Card><Card title="Reply"><ActionForm action={replyAction} label="Queue reply"><Hidden name="id" value={id}/><Hidden name="requestKey" value={randomUUID()}/><TextArea name="body" label="Message" maxLength={10000}/><p>Replies use the delivery queue and channel consent rules.</p></ActionForm></Card></>;
+}

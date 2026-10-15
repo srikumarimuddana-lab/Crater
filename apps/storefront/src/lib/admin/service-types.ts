@@ -47,6 +47,7 @@ export type InventoryLevel = {
   tracked: boolean;
   available: number | null;
   committed: number;
+  reserved: number;
   onHand: number | null;
   lowStockThreshold: number;
   /** Tracked and available <= threshold. */

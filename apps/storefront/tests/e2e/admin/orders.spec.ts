@@ -26,7 +26,7 @@ test('an unknown order and its packing slip render a not-found page, not data', 
   await expect(page.getByRole('heading', { name: 'Not found' })).toBeVisible();
 });
 
-test('overview, event log and staff pages render for an owner', async ({ page }) => {
+test('overview renders financial metrics and payment event health for an admin', async ({ page }) => {
   await page.goto('/admin');
   await expect(page.getByText('Gross sales', { exact: true })).toBeVisible();
   await expect(page.getByText('Average order value')).toBeVisible();
@@ -34,7 +34,7 @@ test('overview, event log and staff pages render for an owner', async ({ page })
   const aov = page.locator('.a-tile', { hasText: 'Average order value' }).locator('.a-big');
   await expect(aov).toHaveText('–');
   await expect(page.getByRole('table', { name: /Sales by day/ })).toBeVisible();
-  await expect(page.getByText('Webhook health')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Payment event health' })).toBeVisible();
   await page.getByRole('link', { name: '30 days' }).click();
   await expect(page).toHaveURL(/period=30d/);
   await expect(page.getByRole('link', { name: '30 days' })).toHaveAttribute('aria-current', 'page');

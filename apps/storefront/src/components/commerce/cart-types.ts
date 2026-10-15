@@ -22,8 +22,10 @@ export type CartLineView = {
 };
 
 export type CartTaxLineView = { key: string; title: string; ratePercent: string; amount: MoneyV2 };
+export type CartCheckoutQuote = { originalSubtotalMinor:number; subtotalMinor:number; discountMinor:number; discountCode:string|null; shippingMinor:number; shippingName:string|null; taxMinor:number; totalMinor:number; taxLines:CartTaxLineView[] };
 
 export type CartView = {
+  checkoutQuote?: CartCheckoutQuote | null;
   totalQuantity: number;
   subtotal: MoneyV2;
   /** Ship-to province chosen in the bag; null until the shopper picks one. */

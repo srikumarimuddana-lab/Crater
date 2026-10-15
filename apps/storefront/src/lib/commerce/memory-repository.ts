@@ -1,3 +1,4 @@
+import { quantitiesByVariant, snapshotMatchesCart } from './reservations';
 import { catalogSeed } from './catalog-seed';
 import type {
   CartRecord,
@@ -13,6 +14,7 @@ import type {
   OrderRecord,
   ProductRecord,
   RecordStatusInput,
+  StockReservationRecord,
 } from './records';
 import type { ID } from './types';
 
@@ -21,6 +23,7 @@ export type MemoryState = {
   collections: CollectionRecord[];
   carts: Map<ID, CartRecord>;
   checkouts: Map<string, CheckoutRecord>;
+  reservations: StockReservationRecord[];
   orders: OrderRecord[];
   events: Set<string>;
   orderCounter: number;
@@ -40,6 +43,7 @@ function freshState(seed: CatalogSeed): MemoryState {
     collections: structuredClone(seed.collections),
     carts: new Map(),
     checkouts: new Map(),
+    reservations: [],
     orders: [],
     events: new Set(),
     orderCounter: 1000,
@@ -67,7 +71,10 @@ function globalState(): MemoryState {
  * synchronous, so each is atomic on the single JS thread (the equivalent of the
  * Postgres transactions). Reads and writes copy records so callers cannot mutate state.
  */
-const STATE_OF = new WeakMap<object, MemoryState>();
+// Repository singletons survive development module reloads; their backing registry must too.
+const registryKey = Symbol.for('crater.commerce.memory-state-registry');
+const registryHost = globalThis as unknown as Record<symbol, WeakMap<object, MemoryState> | undefined>;
+const STATE_OF = registryHost[registryKey] ??= new WeakMap<object, MemoryState>();
 
 /** The backing state of a memory repository (admin memory repository only). Throws for any other repository. */
 export function memoryStateOf(repo: CommerceRepository): MemoryState {
@@ -78,6 +85,7 @@ export function memoryStateOf(repo: CommerceRepository): MemoryState {
 
 export function createMemoryRepository(options: { seed?: CatalogSeed; shared?: boolean } = {}): CommerceRepository {
   const state = options.shared ? globalState() : freshState(options.seed ?? catalogSeed);
+  state.reservations ??= []; // Hot reload of an existing development state.
   const clone = <T>(v: T): T => structuredClone(v);
 
   const findVariant = (id: ID) => {
@@ -144,6 +152,31 @@ export function createMemoryRepository(options: { seed?: CatalogSeed; shared?: b
     async createCheckout(checkout) {
       state.checkouts.set(checkout.id, clone(checkout));
     },
+    async reserveCheckout(checkout, expectedCartUpdatedAt, now) {
+      const cart = state.carts.get(checkout.cartId);
+      if (!cart || !snapshotMatchesCart(checkout, cart, expectedCartUpdatedAt)) return { kind: 'cart_changed' };
+      const reusable = [...state.checkouts.values()].find(row => row.cartId === checkout.cartId && row.fingerprint === checkout.fingerprint && ['created', 'session_created'].includes(row.status) && row.reservationExpiresAt && new Date(row.reservationExpiresAt) > now);
+      if (reusable) return { kind: 'reused', checkout: clone(reusable) };
+      if (!checkout.reservationExpiresAt || new Date(checkout.reservationExpiresAt) <= now) throw new Error('Reservation expiry is required.');
+      const requested = quantitiesByVariant(checkout.lines);
+      for (const [variantId, quantity] of requested) {
+        const product = state.products.find(product => product.status === 'ACTIVE' && product.variants.some(variant => variant.id === variantId));
+        const variant = product?.variants.find(variant => variant.id === variantId);
+        if (!variant || checkout.lines.some(line => line.variantId === variantId && (line.originalUnitMinor ?? line.unitMinor) !== variant.priceMinor)) return { kind: 'cart_changed' };
+        const reserved = state.reservations.filter(row => row.variantId === variantId && row.status === 'active' && new Date(row.expiresAt) > now).reduce((sum, row) => sum + row.quantity, 0);
+        if (variant.quantity !== null && variant.quantity - reserved < quantity) return { kind: 'stock_unavailable' };
+      }
+      state.checkouts.set(checkout.id, clone(checkout));
+      for (const [variantId, quantity] of requested) {
+        if (findVariant(variantId)?.quantity !== null) state.reservations.push({ checkoutId: checkout.id, variantId, quantity, expiresAt: checkout.reservationExpiresAt, status: 'active' });
+      }
+      return { kind: 'reserved', checkout: clone(checkout) };
+    },
+    async reservedQuantities(now) {
+      const quantities = new Map<ID, number>();
+      for (const row of state.reservations) if (row.status === 'active' && new Date(row.expiresAt) > now) quantities.set(row.variantId, (quantities.get(row.variantId) ?? 0) + row.quantity);
+      return quantities;
+    },
     async getCheckout(id) {
       const c = state.checkouts.get(id);
       return c ? clone(c) : null;
@@ -179,13 +212,20 @@ export function createMemoryRepository(options: { seed?: CatalogSeed; shared?: b
       // All validation passed: from here on nothing can fail, so the mutation is atomic.
       const flags = [...input.flags];
       const before = new Map<ID, { sku: string; quantity: number }>();
-      for (const line of checkout.lines) {
-        const v = findVariant(line.variantId);
-        if (!v || v.quantity === null) continue;
-        if (!before.has(v.id)) before.set(v.id, { sku: v.sku, quantity: v.quantity });
-        if (v.quantity < line.quantity) flags.push('INVENTORY_SHORT');
-        v.quantity = Math.max(v.quantity - line.quantity, 0);
+      const timely = !checkout.reservationExpiresAt || (new Date(checkout.reservationExpiresAt) > new Date(input.now) && !['expired', 'payment_failed'].includes(checkout.status));
+      if (!timely) flags.push('RESERVATION_EXPIRED');
+      for (const [variantId, requested] of quantitiesByVariant(checkout.lines)) {
+        const variant = findVariant(variantId);
+        if (!variant) { flags.push('INVENTORY_SHORT'); continue; }
+        if (variant.quantity === null) continue;
+        const otherHolds = state.reservations.filter(row => row.checkoutId !== checkout.id && row.variantId === variantId && row.status === 'active' && new Date(row.expiresAt) > new Date(input.now)).reduce((sum, row) => sum + row.quantity, 0);
+        const available = Math.max(0, variant.quantity - otherHolds);
+        const consumed = Math.min(requested, available);
+        if (consumed < requested) flags.push('INVENTORY_SHORT');
+        before.set(variant.id, { sku: variant.sku, quantity: variant.quantity });
+        variant.quantity -= consumed;
       }
+      for (const row of state.reservations) if (row.checkoutId === checkout.id) row.status = 'consumed';
       const number = ++state.orderCounter;
       const order: OrderRecord = {
         id: state.orders.length + 1,
@@ -195,6 +235,8 @@ export function createMemoryRepository(options: { seed?: CatalogSeed; shared?: b
         email: input.email,
         financialStatus: input.financialStatus,
         subtotalMinor: checkout.subtotalMinor,
+        discountMinor: checkout.discountMinor ?? 0,
+        discountCode: checkout.discountCode ?? null,
         shippingMinor: input.shippingMinor,
         taxMinor: input.taxMinor,
         totalMinor: input.totalMinor,
@@ -240,8 +282,10 @@ export function createMemoryRepository(options: { seed?: CatalogSeed; shared?: b
       if (state.events.has(input.eventId)) return 'duplicate_event';
       state.events.add(input.eventId);
       const c = state.checkouts.get(input.checkoutId);
-      if (!c || !['created', 'session_created', 'awaiting_payment'].includes(c.status)) return 'ignored';
+      if (!c || (c.stripeSessionId && c.stripeSessionId !== input.sessionId) || !['created', 'session_created', 'awaiting_payment'].includes(c.status)) return 'ignored';
+      c.stripeSessionId ??= input.sessionId;
       c.status = input.status;
+      if (input.status === 'expired' || input.status === 'payment_failed') for (const row of state.reservations) if (row.checkoutId === c.id && row.status === 'active') row.status = 'released';
       c.updatedAt = input.now;
       return 'updated';
     },

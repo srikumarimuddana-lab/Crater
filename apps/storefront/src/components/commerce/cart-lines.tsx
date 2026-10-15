@@ -246,6 +246,12 @@ function LineItem({
 /** Subtotal, tax lines and total (once a province is chosen), the shipping note and a checkout form that POSTs to the server route. */
 export function CartSummary({ cart, checkoutUrl = '/api/checkout' }: { cart: CartView; checkoutUrl?: string }) {
   const [submitted, setSubmitted] = useState(false);
+  const [discountCode, setDiscountCode] = useState('');
+  const [pricing, setPricing] = useState(false);
+  const [quoteResult, setQuoteResult] = useState<{fingerprint:string; quote?: NonNullable<CartView['checkoutQuote']>; error?:string} | null>(null);
+  const fingerprint = JSON.stringify([cart.provinceCode,cart.lines.map(l=>[l.id,l.quantity,l.unitPrice.amount])]);
+  const quote = quoteResult?.fingerprint === fingerprint && quoteResult.quote ? quoteResult.quote : cart.checkoutQuote;
+  const money = (minor:number) => ({amount:(minor/100).toFixed(2),currencyCode:'CAD' as const});
 
   // Coming back via the browser Back button restores the page from cache with the button still busy.
   useEffect(() => {
@@ -260,11 +266,13 @@ export function CartSummary({ cart, checkoutUrl = '/api/checkout' }: { cart: Car
         <div className="flex items-baseline justify-between gap-4">
           <dt className="font-semibold">{bag.subtotal}</dt>
           <dd>
-            <Price money={cart.subtotal} className="text-price" />
+            <Price money={quote ? money(quote.originalSubtotalMinor) : cart.subtotal} className="text-price" />
           </dd>
         </div>
+        {quote?.discountMinor ? <div className="flex justify-between gap-4"><dt>Discount ({quote.discountCode})</dt><dd>−<Price money={money(quote.discountMinor)} /></dd></div> : null}
+        {quote ? <div className="flex justify-between gap-4"><dt>{quote.shippingName || 'Shipping'}</dt><dd><Price money={money(quote.shippingMinor)} /></dd></div> : null}
         {cart.taxesKnown
-          ? cart.taxLines.map((t) => (
+          ? (quote?.taxLines ?? cart.taxLines).map((t) => (
               <div key={t.key} className="text-small flex items-baseline justify-between gap-4 text-walnut" data-tax-line={t.key}>
                 <dt>{taxUi.taxLabel(t.title, t.ratePercent)}</dt>
                 <dd className="tabular-nums">
@@ -277,12 +285,13 @@ export function CartSummary({ cart, checkoutUrl = '/api/checkout' }: { cart: Car
           <div className="flex items-baseline justify-between gap-4 border-t border-espresso/15 pt-2" data-testid="bag-total">
             <dt className="font-semibold">{taxCopy.totalLabel}</dt>
             <dd>
-              <Price money={cart.total} className="text-price" />
+              <Price money={quote ? money(quote.totalMinor) : cart.total} className="text-price" />
             </dd>
           </div>
         ) : null}
       </dl>
       <p className="text-small mt-1 text-walnut">{cart.taxesKnown ? taxUi.shippingNote : `${taxCopy.taxesPending} ${bag.taxShippingNote}`}</p>
+      {cart.provinceCode ? <form className="mt-4" onSubmit={async e=>{e.preventDefault();setPricing(true);try{const response=await fetch('/api/checkout/quote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({discountCode})});const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.message||result.error||'Could not update the total.');setQuoteResult({fingerprint,quote:result.quote});}catch(error){setQuoteResult({fingerprint,error:error instanceof Error?error.message:'Please try again.'});}finally{setPricing(false);}}}><label className="text-small block">Discount code<input name="code" value={discountCode} onChange={e=>setDiscountCode(e.target.value.toUpperCase())} maxLength={40} className="mt-1 w-full rounded border border-espresso/30 p-2" autoComplete="off" /></label><button type="submit" disabled={pricing} className="mt-2 underline underline-offset-4 text-small">{pricing?'Checking…':discountCode?'Apply code':'Refresh total'}</button>{quoteResult?.fingerprint===fingerprint && quoteResult.error ? <p role="alert" className="text-small mt-2">{quoteResult.error}</p> : null}{quote?.discountCode ? <p role="status" className="text-small">{quote.discountCode} applied. Totals are checked again at checkout.</p> : null}</form> : null}
       <form
         method="post"
         action={checkoutUrl}
@@ -292,9 +301,11 @@ export function CartSummary({ cart, checkoutUrl = '/api/checkout' }: { cart: Car
           else setSubmitted(true);
         }}
       >
+        <input type="hidden" name="discountCode" value={quote?.discountCode ?? ''} />
         <button
           type="submit"
           {...soft(submitted)}
+          data-track="cart.checkout"
           aria-busy={submitted || undefined}
           className={buttonClassName('primary', 'w-full aria-disabled:cursor-wait aria-disabled:opacity-80')}
         >

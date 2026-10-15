@@ -1,0 +1,7 @@
+import { ActionForm,Field,Submit } from '@/components/admin/form';
+import { Card,PageHeader } from '@/components/admin/ui';
+import { getRepository } from '@/lib/commerce/repository-factory';
+import { createCatalogOperations } from '@/lib/inventory-operations/catalog';
+import { collectionAction } from '../../_actions/operations';
+import { gate } from '../../_lib/gate';
+export default async function Collections(){const g=await gate('products:write');if(!g.ok)return g.view;const rows=await createCatalogOperations(await getRepository()).collections();return <><PageHeader title="Collections"/><div className="a-grid2">{[...rows,{id:'',handle:'',title:'',description:'',productHandles:[],version:0}].map(c=><Card key={c.id} title={c.title||'Create collection'}><ActionForm action={collectionAction}><input type="hidden" name="id" value={c.id.split('/').at(-1)??''}/><input type="hidden" name="version" value={c.version}/><Field name="handle" label="URL handle" defaultValue={c.handle}/><Field name="title" label="Title" defaultValue={c.title}/><Field name="description" label="Description" as="textarea" defaultValue={c.description}/><Field name="productHandles" label="Product handles in display order" as="textarea" defaultValue={c.productHandles.join('\n')} hint="One product handle per line. Only active products display publicly."/><Submit>Save collection</Submit></ActionForm></Card>)}</div></>;}

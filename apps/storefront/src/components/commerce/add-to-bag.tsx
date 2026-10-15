@@ -15,6 +15,7 @@ import {
   recovery,
 } from '@/lib/content/shop-copy';
 import { ActionBoundary } from './action-boundary';
+import { trackCommerceEvent } from '@/components/analytics/consent-tracker';
 import { initialCartActionState, MAX_LINE_QUANTITY, OPEN_BAG_EVENT, type OpenBagDetail } from './cart-types';
 
 const QUANTITY_CODES = new Set(['LESS_THAN', 'GREATER_THAN', 'INVALID_QUANTITY']);
@@ -81,6 +82,7 @@ function AddToBagForm({
   useEffect(() => {
     if (!added || handled.current === state.ts) return;
     handled.current = state.ts;
+    trackCommerceEvent('add_to_cart');
     const detail: OpenBagDetail = { notices: state.warnings.map((w) => cartWarnings[w.code](w.title)) };
     window.dispatchEvent(new CustomEvent(OPEN_BAG_EVENT, { detail }));
     const timer = window.setTimeout(() => setDismissedTs(state.ts), 2000);
@@ -177,6 +179,7 @@ function AddToBagForm({
       <button
         type="submit"
         ref={mainButton}
+        data-track="product.add_to_cart"
         disabled={!available}
         aria-busy={pending || undefined}
         aria-disabled={pending || undefined}

@@ -288,7 +288,7 @@ describe.each(REPO_KINDS)('admin services (%s repository)', (kind) => {
     expect((await svc.inventory.levels()).length).toBeGreaterThan(0);
   });
 
-  t('overview: definitions, store timezone buckets, AOV and webhook health', async () => {
+  t('overview: shared UTC definitions, AOV and webhook health', async () => {
     const { env, svc } = await setup();
     env.clock.now = new Date('2026-03-02T03:30:00.000Z'); // 21:30 on Mar 1 in Regina (CST, UTC-6 all year)
     await placePaidOrder(env.h, [{ merchandiseId: V.hero30, quantity: 1 }]); // $24
@@ -298,13 +298,13 @@ describe.each(REPO_KINDS)('admin services (%s repository)', (kind) => {
     env.clock.now = new Date('2026-03-02T15:00:00.000Z'); // 10:00 Mar 2
     svc.as('SUPPORT');
     const today = await svc.overview.get('TODAY');
-    expect(today).toMatchObject({ timezone: 'America/Regina', orders: 1, grossSales: { amount: '60.00' }, netSales: { amount: '60.00' }, averageOrderValue: { amount: '60.00' } });
-    expect(today.salesByDay).toEqual([{ date: '2026-03-02', orders: 1, grossSales: { amount: '60.00', currencyCode: 'CAD' } }]);
+    expect(today).toMatchObject({ timezone: 'UTC', mode: 'stripe-test', orders: 2, grossSales: { amount: '84.00' }, netSales: { amount: '84.00' }, averageOrderValue: { amount: '42.00' } });
+    expect(today.salesByDay).toEqual([{ date: '2026-03-02', orders: 2, grossSales: { amount: '84.00', currencyCode: 'CAD' } }]);
     const week = await svc.overview.get('LAST_7_DAYS');
     expect(week).toMatchObject({ orders: 2, grossSales: { amount: '84.00' }, averageOrderValue: { amount: '42.00' } });
     expect(week.salesByDay).toHaveLength(7);
-    expect(week.salesByDay.at(-1)).toMatchObject({ date: '2026-03-02', orders: 1 });
-    expect(week.salesByDay.at(-2)).toMatchObject({ date: '2026-03-01', orders: 1, grossSales: { amount: '24.00' } });
+    expect(week.salesByDay.at(-1)).toMatchObject({ date: '2026-03-02', orders: 2 });
+    expect(week.salesByDay.at(-2)).toMatchObject({ date: '2026-03-01', orders: 0, grossSales: { amount: '0.00' } });
     expect(week.salesByDay.slice(0, 5).every((d) => d.orders === 0 && d.grossSales.amount === '0.00')).toBe(true);
     expect((await svc.overview.get('LAST_30_DAYS')).salesByDay).toHaveLength(30);
     expect(week.lowStockVariants).toBeGreaterThanOrEqual(2); // sold-out chamomile 60 and hawthorn 30

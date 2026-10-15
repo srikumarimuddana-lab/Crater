@@ -1,3 +1,4 @@
+import { getPageContent } from '@/lib/content/cms';
 import type { Metadata } from 'next';
 import { loadCart } from '@/app/_lib/cart';
 import { CartLines, CartSummary } from '@/components/commerce/cart-lines';
@@ -22,6 +23,7 @@ const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v
 /** Always dynamic: it reads the private cart cookie. Query values are mapped to copy, never echoed. */
 export default async function CartPage({ searchParams }: Props) {
   const sp = await searchParams;
+  const content = await getPageContent('cart', sp.preview);
   const errorCode = first(sp.checkout_error);
   const cancelled = first(sp.checkout) === 'cancelled';
   const { cart, expired } = await loadCart();
@@ -35,11 +37,13 @@ export default async function CartPage({ searchParams }: Props) {
   const fixtureRefusal = errorCode === 'FIXTURE_MODE';
 
   return (
-    <PageShell>
+    <PageShell preview={sp.preview}>
       <div className="page-gutter py-10 md:py-16">
         <h1 id="bag-page-title" tabIndex={-1} className="!text-[clamp(2rem,1.6rem+1.4vw,2.75rem)] focus:outline-none">
-          {bag.title}
+          {content.title}
         </h1>
+        {content.body ? <p className="mt-4 text-walnut">{content.body}</p> : null}
+        {content.image ? <img className="mt-4 max-h-64 object-contain" src={content.image} alt={content.imageAlt} /> : null}
 
         {errorText ? (
           <div id="bag-error" role="alert" className="mt-8 rounded-xs border border-espresso bg-parchment px-5 py-4">

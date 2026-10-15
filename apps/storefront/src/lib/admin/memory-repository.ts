@@ -204,6 +204,14 @@ export function createMemoryAdminRepository(commerce: CommerceRepository): Admin
         return { kind: same ? 'replay' : 'conflict', order: withFulfilment(o) };
       }
       if (o.financialStatus !== 'PAID' && o.financialStatus !== 'PARTIALLY_REFUNDED') return { kind: 'not_fulfillable', financialStatus: o.financialStatus };
+      let operations = state.ext.get('inventory-operations') as import('@/lib/inventory-operations/repository').OperationalState | undefined;
+      if (!operations) { operations = { suppliers: [], purchases: [], receipts: [], shipments: [], returns: [], rules: [] }; state.ext.set('inventory-operations', operations); }
+      const previous = operations.shipments.filter(s => s.orderId === orderId).flatMap(s => s.lines);
+      const remaining = o.lines.map(l => ({ variantId: l.variantId, quantity: l.quantity - previous.filter(x => x.variantId === l.variantId).reduce((n,x) => n+x.quantity,0) })).filter(l => l.quantity > 0);
+      const key = `full-fulfilment-${orderId}`;
+      operations.shipments.push({ key, orderId, lines: remaining, carrier, trackingNumber });
+      state.ext.set(`shipment-at:${key}`, at);
+      state.ext.set(`shipment-cost:${key}`, remaining.map(l => ({ ...l, unitCostMinor: state.products.flatMap(p => p.variants).find(v => v.id === l.variantId)?.costMinor ?? null })));
       state.fulfilments.set(orderId, { orderId, carrier, trackingNumber, fulfilledAt: at, staffId });
       o.fulfilmentStatus = 'FULFILLED';
       push({ ...audit, at });
@@ -228,7 +236,11 @@ export function createMemoryAdminRepository(commerce: CommerceRepository): Admin
       const out = new Map<ID, number>();
       for (const o of state.orders) {
         if (o.fulfilmentStatus !== 'UNFULFILLED' || (o.financialStatus !== 'PAID' && o.financialStatus !== 'PARTIALLY_REFUNDED')) continue;
-        for (const l of o.lines) out.set(l.variantId, (out.get(l.variantId) ?? 0) + l.quantity);
+        const operations = state.ext.get('inventory-operations') as { shipments: { orderId: number; lines: { variantId: string; quantity: number }[] }[] } | undefined;
+        for (const l of o.lines) {
+          const shipped = operations?.shipments.filter(s => s.orderId === o.id).flatMap(s => s.lines).filter(x => x.variantId === l.variantId).reduce((n,x) => n+x.quantity,0) ?? 0;
+          out.set(l.variantId, (out.get(l.variantId) ?? 0) + Math.max(0,l.quantity-shipped));
+        }
       }
       return out;
     },
@@ -269,7 +281,8 @@ export function createMemoryAdminRepository(commerce: CommerceRepository): Admin
       if (!variant) return { kind: 'not_found' };
       if (variant.quantity === null) return { kind: 'untracked' };
       const next = variant.quantity + delta;
-      if (next < 0) return { kind: 'below_zero', available: variant.quantity };
+      const held = state.reservations.filter(r => r.variantId === gidv && r.status === 'active' && new Date(r.expiresAt) > new Date(at)).reduce((n,r) => n+r.quantity,0);
+      if (next < held) return { kind: 'below_zero', available: Math.max(0,variant.quantity-held) };
       variant.quantity = next;
       const movement: MovementRecord = {
         id: (state.movements.at(-1)?.id ?? 0) + 1,

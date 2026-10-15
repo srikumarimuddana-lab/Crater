@@ -1,0 +1,55 @@
+import { makeEnv, placePaidOrder } from './admin/helpers';
+import { V } from './helpers/harness';
+import { describe, expect, it } from 'vitest';
+import { createInventoryRepository } from '@/lib/inventory-operations/repository';
+import { createCatalogOperations } from '@/lib/inventory-operations/catalog';
+import { pgPoolOf } from '@/lib/commerce/postgres-repository';
+import { closePoolsAfterAll, makeRepo, TEST_DATABASE_URL } from './helpers/repos';
+closePoolsAfterAll();
+describe.skipIf(!TEST_DATABASE_URL)('inventory Postgres atomicity', () => {
+    it('receipt retry across repository instances creates one stock update and persists its ledger', async () => {
+        const commerce = await makeRepo('postgres'), pool = pgPoolOf(commerce), catalog = createCatalogOperations(commerce);
+        const staff = Number((await pool.query("insert into admin.staff_users(email,name,role) values('inventory@test.invalid','Inventory','OWNER') returning id")).rows[0].id);
+        const [id] = await catalog.create([{ handle: 'pg-receipt-product', title: 'Receiving', description: '', productType: 'Oil', sku: 'PG-RECEIPT', variantTitle: '30 ml', priceMinor: 1000, costMinor: 200 }], staff);
+        const p = (await commerce.listProducts({ includeInactive: true })).find(p => p.id === `gid://crater/Product/${id}`)!;
+        const a = createInventoryRepository(commerce), b = createInventoryRepository(commerce), supplier = await a.createSupplier({ name: 'PG Supplier', email: '' }, staff);
+        const po = await a.createPurchase({ supplierId: supplier.id, reference: 'PG receipt', lines: [{ variantId: p.variants[0].id, quantity: 10, unitCostMinor: 200 }] }, staff);
+        const r = { mode: 'test' as const, key: 'pg-receipt-0001', purchaseOrderId: po.id, lines: [{ variantId: p.variants[0].id, quantity: 4 }] };
+        await Promise.all([a.receive(r, staff), b.receive(r, staff)]);
+        expect((await pool.query('select count(*)::int as n from commerce.stock_receipts where request_key=$1', [r.key])).rows[0].n).toBe(1);
+        expect((await pool.query("select count(*)::int as n from commerce.inventory_movements where sku='PG-RECEIPT'")).rows[0].n).toBe(1);
+        expect((await pool.query("select inventory_quantity from commerce.variants where sku='PG-RECEIPT'")).rows[0].inventory_quantity).toBe(4);
+        await expect(b.receive({ ...r, key: 'pg-receipt-0002', lines: [{ variantId: p.variants[0].id, quantity: 7 }] }, staff)).rejects.toThrow('remaining');
+        expect((await createInventoryRepository(commerce).list()).receipts.filter(x => x.key === r.key)).toHaveLength(1);
+    });
+    it('stale gallery save cannot publish private media and successful active save publishes atomically', async () => {
+        const commerce = await makeRepo('postgres'), pool = pgPoolOf(commerce), catalog = createCatalogOperations(commerce);
+        const asset = '726093ad-5549-4029-b7fb-bac491946fe5';
+        await pool.query("insert into admin.media_assets(id,name,alt,mime,width,height,content) values($1,'Product','Product','image/webp',1,1,$2)", [asset, Buffer.from('test')]);
+        const product = (await commerce.listProducts({includeInactive:true}))[0];
+        const id = Number(product.id.split('/').at(-1));
+        const images = [{url:`/api/media/${asset}`,altText:'Product',width:1,height:1,placeholder:false}];
+        await expect(catalog.images(id,'2000-01-01T00:00:00.000Z',images)).rejects.toThrow('changed');
+        expect((await pool.query('select published from admin.media_assets where id=$1',[asset])).rows[0].published).toBe(false);
+        await pool.query("update commerce.products set status='ACTIVE',archived_at=null where id=$1",[id]);
+        await catalog.images(id,product.updatedAt,images);
+        expect((await pool.query('select published from admin.media_assets where id=$1',[asset])).rows[0].published).toBe(true);
+    });
+    it('persists partial shipment and physical return once with original cost snapshots', async () => {
+        const env = await makeEnv('postgres'), commerce = env.h.repo, pool = pgPoolOf(commerce);
+        const staff = Number((await pool.query("insert into admin.staff_users(email,name,role) values('shipping@test.invalid','Shipping','OWNER') returning id")).rows[0].id);
+        const order = await placePaidOrder(env.h,[{merchandiseId:V.hero30,quantity:2}]);
+        const inventory = createInventoryRepository(commerce);
+        const shipment={key:'shipment-pg-1',orderId:order.id,lines:[{variantId:V.hero30,quantity:1}],carrier:'Post',trackingNumber:'TRACK123'};
+        await inventory.ship(shipment,staff);
+        await createInventoryRepository(commerce).ship(shipment,staff);
+        expect((await env.admin.committedByVariant()).get(V.hero30)).toBe(1);
+        const returned={key:'return-pg-1',orderId:order.id,lines:shipment.lines,restock:true,reason:'Inspected and sellable'};
+        await inventory.receiveReturn(returned,staff);
+        await createInventoryRepository(commerce).receiveReturn(returned,staff);
+        const shipmentCost=(await pool.query('select cost_snapshot from commerce.shipments where request_key=$1',[shipment.key])).rows[0].cost_snapshot;
+        expect((await pool.query('select cost_snapshot from commerce.physical_returns where request_key=$1',[returned.key])).rows[0].cost_snapshot).toEqual(shipmentCost);
+        expect((await pool.query("select count(*)::int as n from commerce.inventory_movements where order_id=$1 and reason='RETURN_RESTOCK'",[order.id])).rows[0].n).toBe(1);
+        await expect(inventory.receiveReturn({...returned,key:'return-pg-2'},staff)).rejects.toThrow('remaining');
+    });
+});

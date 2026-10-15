@@ -38,6 +38,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   return (
     <>
       <PageHeader title="Products" />
+      {g.can('products:write') ? <p><Link className="a-btn" href="/admin/products/new">Create / import products</Link> <Link href="/admin/collections">Edit collections</Link></p> : null}
       <form method="get" action="/admin/products" className="a-filters" role="search" aria-label="Filter products">
         <div className="a-field a-search">
           <label htmlFor="q">Search</label>

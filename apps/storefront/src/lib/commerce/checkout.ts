@@ -1,3 +1,6 @@
+import { calculatePricing, InventoryError } from '@/lib/inventory-operations/model';
+import { createInventoryRepository } from '@/lib/inventory-operations/repository';
+import { priceCheckoutLines } from './checkout-pricing';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import type Stripe from 'stripe';
 import { isCartDead, lineHasPriceChange } from './cart-logic';
@@ -21,9 +24,9 @@ export type CheckoutDeps = {
 
 export type CheckoutResult = { status: 'paid' | 'processing' | 'unpaid' | 'not_found'; order: Order | null };
 
-/** A reusable checkout (and so its Stripe idempotency key) lives at most this long. */
-const REUSE_WINDOW_MS = 20 * 60 * 60 * 1000;
-const CHECKOUT_FAIL = (code: Extract<CheckoutSessionResult, { ok: false }>['code'], message: string): CheckoutSessionResult => ({ ok: false, code, message });
+/** Stripe requires at least 30 minutes from session creation. One minute covers request latency. */
+export const CHECKOUT_RESERVATION_MS = 31 * 60_000;
+const CHECKOUT_FAIL = (code: Extract<CheckoutSessionResult, { ok: false }>['code'], message: string): Extract<CheckoutSessionResult, { ok: false }> => ({ ok: false, code, message });
 
 export const cartRefOf = (cartId: ID): string => createHash('sha256').update(`crater-cart-ref:${cartId}`).digest('hex').slice(0, 32);
 
@@ -63,6 +66,8 @@ export function orderFromRecord(o: OrderRecord): Order {
     financialStatus: o.financialStatus,
     currencyCode: 'CAD',
     subtotalPrice: toMoney(o.subtotalMinor),
+    totalDiscounts: toMoney(o.discountMinor ?? 0),
+    discountCode: o.discountCode ?? null,
     totalShippingPrice: toMoney(o.shippingMinor),
     totalTax: toMoney(o.taxMinor),
     totalPrice: toMoney(o.totalMinor),
@@ -71,8 +76,8 @@ export function orderFromRecord(o: OrderRecord): Order {
       variantTitle: l.variantTitle,
       sku: l.sku,
       quantity: l.quantity,
-      originalUnitPrice: toMoney(l.unitMinor),
-      originalTotalPrice: toMoney(multiplyMinor(l.unitMinor, l.quantity)),
+      originalUnitPrice: toMoney(l.originalUnitMinor ?? l.unitMinor),
+      originalTotalPrice: toMoney(multiplyMinor(l.originalUnitMinor ?? l.unitMinor, l.quantity)),
       variantId: l.variantId,
     })),
     paymentReference: o.stripeSessionId,
@@ -105,7 +110,7 @@ export function chargedTaxLines(taxes: Stripe.Checkout.Session.TotalDetails.Brea
 
 /** Tax flags: empty when the order matches the checkout snapshot (province and amounts within the per-line tolerance). */
 export function taxFlags(
-  checkout: Pick<CheckoutRecord, 'province' | 'taxLines' | 'lines'>,
+  checkout: Pick<CheckoutRecord, 'province' | 'taxLines' | 'lines' | 'shippingMinor'>,
   charged: TaxLine[],
   chargedTotalMinor: number,
   shippingProvince: ProvinceCode | null,
@@ -113,7 +118,7 @@ export function taxFlags(
   if (!checkout.province) return []; // snapshot predates province tax: nothing to compare
   const flags: string[] = [];
   if (shippingProvince !== checkout.province) flags.push('TAX_PROVINCE_MISMATCH');
-  const tolerance = taxToleranceMinor(checkout.lines.length);
+  const tolerance = taxToleranceMinor(checkout.lines.length + ((checkout.shippingMinor ?? 0) > 0 ? 1 : 0));
   const minor = (l: TaxLine) => Math.round(Number(l.amount.amount) * 100);
   const expected = new Map(checkout.taxLines.map((l) => [l.key, minor(l)]));
   const got = new Map(charged.map((l) => [l.key, minor(l)]));
@@ -147,7 +152,71 @@ export function createCheckoutService(deps: CheckoutDeps) {
     }
   }
 
-  async function createCheckoutSession(cartId: ID): Promise<CheckoutSessionResult> {
+  async function prepareCart(cartId: ID, options: { discountCode?: string } = {}, at = now()) {
+    if (!isCartId(cartId)) return CHECKOUT_FAIL('EMPTY_CART', 'Your cart is empty.');
+    const record = await repo.getCart(cartId);
+    if (!record || isCartDead(record, at) || record.lines.length === 0) {
+      return CHECKOUT_FAIL('EMPTY_CART', 'Your cart is empty.');
+    }
+    const index = await loadIndex(repo);
+
+    // Re-validate and reprice from the authoritative catalog.
+    const lines: CheckoutLineSnapshot[] = [];
+    for (const line of record.lines) {
+      const found = index.variants.get(line.variantId);
+      const stockOk = found && (found.variant.quantity === null || (found.variant.quantity > 0 && line.quantity <= found.variant.quantity));
+      if (!found || !stockOk) {
+        return CHECKOUT_FAIL('CART_INVALID', 'Some items in your cart are no longer available in the requested quantity. Review your cart and try again.');
+      }
+      lines.push({
+        variantId: found.variant.id,
+        title: found.product.title,
+        variantTitle: found.variant.title,
+        sku: found.variant.sku,
+        quantity: line.quantity,
+        unitMinor: found.variant.priceMinor,
+      });
+    }
+    if (lines.length === 0) return CHECKOUT_FAIL('EMPTY_CART', 'Your cart is empty.');
+    // The shopper must have seen the current prices. Checked before any snapshot or Stripe call.
+    if (record.lines.some((l) => lineHasPriceChange(l, index))) {
+      return CHECKOUT_FAIL('PRICE_CHANGED', 'A price in your cart changed since you added it. Review your cart and try again.');
+    }
+    const lineTotals = lines.map((l) => multiplyMinor(l.unitMinor, l.quantity));
+    const subtotalMinor = sumMinor(lineTotals);
+    if (subtotalMinor <= 0) return CHECKOUT_FAIL('CART_INVALID', 'Your cart total is not valid.');
+    // Tax depends on the ship-to province the shopper chose in the bag. Checked after stock and price.
+    const province = record.buyerProvince ?? null;
+    if (!province) return CHECKOUT_FAIL('PROVINCE_REQUIRED', 'Choose the province you are shipping to before checkout.');
+    let pricing;
+    try {
+      const rules = (await createInventoryRepository(repo).list()).rules;
+      pricing = calculatePricing(rules, subtotalMinor, province, options.discountCode, at);
+    } catch (error) {
+      if (error instanceof InventoryError) return CHECKOUT_FAIL('CART_INVALID', error.message);
+      throw error;
+    }
+    const pricedLines = priceCheckoutLines(lines, pricing.discountMinor);
+    const shippingMinor = pricing.shipping?.amountMinor ?? 0;
+    if (pricedLines.length + (shippingMinor > 0 ? 1 : 0) > 100) return CHECKOUT_FAIL('CART_INVALID', 'This cart has too many price groups. Reduce the number of different items.');
+    const expectedTax = taxLinesFor(province, [...pricedLines.map(line => line.unitMinor * line.quantity), ...(shippingMinor > 0 ? [shippingMinor] : [])]);
+    const taxMinor = sumTaxMinor(expectedTax);
+    return { ok: true as const, record, lines: pricedLines, province, expectedTax, quote: {
+      originalSubtotalMinor: subtotalMinor, subtotalMinor: pricing.merchandiseMinor,
+      discountMinor: pricing.discountMinor, discountCode: pricing.discountCode,
+      shippingMinor, shippingName: pricing.shipping?.name ?? null,
+      taxLines: expectedTax, taxMinor, totalMinor: pricing.merchandiseMinor + shippingMinor + taxMinor,
+    } };
+  }
+
+  async function getCheckoutQuote(cartId: ID, options: { discountCode?: string } = {}) {
+    try {
+      const result = await prepareCart(cartId, options);
+      return result.ok ? { ok: true as const, quote: result.quote } : result;
+    } catch { return CHECKOUT_FAIL('PAYMENT_PROVIDER_UNAVAILABLE', 'Pricing is temporarily unavailable. Please try again.'); }
+  }
+
+  async function createCheckoutSession(cartId: ID, options: { discountCode?: string } = {}): Promise<CheckoutSessionResult> {
     const cfg = config();
     // Fixture mode never reaches Stripe, whatever else is configured.
     if (cfg.mode === 'fixture') {
@@ -165,81 +234,41 @@ export function createCheckoutService(deps: CheckoutDeps) {
     }
 
     try {
-      if (!isCartId(cartId)) return CHECKOUT_FAIL('EMPTY_CART', 'Your cart is empty.');
       const at = now();
-      const record = await repo.getCart(cartId);
-      if (!record || isCartDead(record, at) || record.lines.length === 0) {
-        return CHECKOUT_FAIL('EMPTY_CART', 'Your cart is empty.');
-      }
-      const index = await loadIndex(repo);
-
-      // Re-validate and reprice from the authoritative catalog.
-      const lines: CheckoutLineSnapshot[] = [];
-      for (const line of record.lines) {
-        const found = index.variants.get(line.variantId);
-        const stockOk = found && (found.variant.quantity === null || (found.variant.quantity > 0 && line.quantity <= found.variant.quantity));
-        if (!found || !stockOk) {
-          return CHECKOUT_FAIL('CART_INVALID', 'Some items in your cart are no longer available in the requested quantity. Review your cart and try again.');
-        }
-        lines.push({
-          variantId: found.variant.id,
-          title: found.product.title,
-          variantTitle: found.variant.title,
-          sku: found.variant.sku,
-          quantity: line.quantity,
-          unitMinor: found.variant.priceMinor,
-        });
-      }
-      if (lines.length === 0) return CHECKOUT_FAIL('EMPTY_CART', 'Your cart is empty.');
-      // The shopper must have seen the current prices. Checked before any snapshot or Stripe call.
-      if (record.lines.some((l) => lineHasPriceChange(l, index))) {
-        return CHECKOUT_FAIL('PRICE_CHANGED', 'A price in your cart changed since you added it. Review your cart and try again.');
-      }
-      const lineTotals = lines.map((l) => multiplyMinor(l.unitMinor, l.quantity));
-      const subtotalMinor = sumMinor(lineTotals);
-      if (subtotalMinor <= 0) return CHECKOUT_FAIL('CART_INVALID', 'Your cart total is not valid.');
-      // Tax depends on the ship-to province the shopper chose in the bag. Checked after stock and price.
-      const province = record.buyerProvince ?? null;
-      if (!province) return CHECKOUT_FAIL('PROVINCE_REQUIRED', 'Choose the province you are shipping to before checkout.');
-      const expectedTax = taxLinesFor(province, lineTotals);
+      const prepared = await prepareCart(cartId, options, at);
+      if (!prepared.ok) return prepared;
+      const { record, lines, province, expectedTax, quote } = prepared;
+      const subtotalMinor = quote.subtotalMinor;
       const stripe = deps.stripe(cfg.stripeSecretKey as string);
       const rateIds = await taxRateIds(stripe, cfg.stripeSecretKey as string, province, at.getTime());
       if (!rateIds) return CHECKOUT_FAIL('PAYMENT_PROVIDER_UNAVAILABLE', 'Checkout is temporarily unavailable.');
 
       const fingerprint = createHash('sha256')
-        .update(JSON.stringify([lines.map((l) => [l.variantId, l.quantity, l.unitMinor]), record.buyerEmail, 'CAD', province]))
+        .update(JSON.stringify([lines.map((l) => [l.variantId, l.quantity, l.unitMinor]), record.buyerEmail, 'CAD', province, quote.shippingMinor, quote.shippingName, quote.discountMinor, quote.discountCode]))
         .digest('hex');
 
       // Persist the frozen snapshot BEFORE calling Stripe. A repeat click on an unchanged
       // cart reuses the snapshot and therefore the idempotency key, so Stripe returns the
       // same session instead of creating a second one.
-      let checkout = await repo.findReusableCheckout(cartId, fingerprint, new Date(at.getTime() - REUSE_WINDOW_MS));
-      if (!checkout) {
-        const iso = at.toISOString();
-        const fresh: CheckoutRecord = {
-          id: newCheckoutId(),
-          cartId,
-          cartRef: cartRefOf(cartId),
-          status: 'created',
-          stripeSessionId: null,
-          fingerprint,
-          subtotalMinor,
-          buyerEmail: record.buyerEmail,
-          lines,
-          province,
-          taxLines: expectedTax,
-          createdAt: iso,
-          updatedAt: iso,
-        };
-        await repo.createCheckout(fresh);
-        checkout = fresh;
+      const iso = at.toISOString();
+      const fresh: CheckoutRecord = {
+        id: newCheckoutId(), cartId, cartRef: cartRefOf(cartId), status: 'created', stripeSessionId: null,
+        fingerprint, subtotalMinor, discountMinor: quote.discountMinor, discountCode: quote.discountCode, shippingMinor: quote.shippingMinor, shippingName: quote.shippingName, buyerEmail: record.buyerEmail, lines, province, taxLines: expectedTax,
+        reservationExpiresAt: new Date(at.getTime() + CHECKOUT_RESERVATION_MS).toISOString(),
+        createdAt: iso, updatedAt: iso,
+      };
+      const reserved = await repo.reserveCheckout(fresh, record.updatedAt, at);
+      if (!('checkout' in reserved)) {
+        return CHECKOUT_FAIL('CART_INVALID', 'Some items changed or are reserved by another checkout. Review your cart and try again.');
       }
+      const checkout = reserved.checkout;
 
       const params: Stripe.Checkout.SessionCreateParams = {
         mode: 'payment',
+        expires_at: Math.floor(new Date(checkout.reservationExpiresAt!).getTime() / 1000),
         client_reference_id: checkout.id,
         // Prices come from OUR catalog snapshot, never from the browser.
-        line_items: checkout.lines.map((l) => ({
+        line_items: [...checkout.lines.map((l) => ({
           quantity: l.quantity,
           price_data: {
             currency: 'cad',
@@ -248,7 +277,11 @@ export function createCheckoutService(deps: CheckoutDeps) {
           },
           // Fixed, exclusive tax rates for the chosen province: Stripe charges exactly what the bag showed.
           tax_rates: rateIds,
-        })),
+        })), ...((checkout.shippingMinor ?? 0) > 0 ? [{
+          quantity: 1,
+          price_data: { currency: 'cad', unit_amount: checkout.shippingMinor!, product_data: { name: `Shipping — ${checkout.shippingName ?? 'Delivery'}`, metadata: { kind: 'shipping' } } },
+          tax_rates: rateIds,
+        }] : [])],
         metadata: { cart_id: checkout.cartRef, checkout_id: checkout.id, tax_province: province },
         shipping_address_collection: { allowed_countries: ['CA'] },
         phone_number_collection: { enabled: false },
@@ -257,8 +290,8 @@ export function createCheckoutService(deps: CheckoutDeps) {
         // and then redirects to /checkout/success.
         success_url: `${cfg.siteUrl}/api/checkout/complete?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${cfg.siteUrl}/cart?checkout=cancelled`,
-        // Tax: fixed Tax Rates per line (docs/tax.md), not Stripe Tax. No shipping_options are configured yet
-        // (owner decision pending), so no shipping is charged. Do not invent rates.
+        // A named shipping line receives the same fixed province rates as merchandise.
+        // Stripe shipping_options cannot take manual tax_rates; no automatic tax is mixed in.
       };
       const session = await stripe.checkout.sessions.create(params, { idempotencyKey: `crater-${checkout.id}` });
 
@@ -266,8 +299,8 @@ export function createCheckoutService(deps: CheckoutDeps) {
         logger.warn('checkout refused: Stripe returned a non-checkout.stripe.com url', { checkout: ref(checkout.id) });
         return CHECKOUT_FAIL('PAYMENT_PROVIDER_UNAVAILABLE', 'Checkout is temporarily unavailable.');
       }
-      await repo.attachSession(checkout.id, session.id, at.toISOString());
-      return { ok: true, redirectUrl: session.url };
+      if (!(await repo.attachSession(checkout.id, session.id, at.toISOString()))) return CHECKOUT_FAIL('PAYMENT_PROVIDER_UNAVAILABLE', 'Checkout is temporarily unavailable.');
+      return { ok: true, checkoutId: checkout.id, redirectUrl: session.url };
     } catch (error) {
       rateCache = null; // a stale or archived rate id must not survive a Stripe failure
       logger.error('checkout session creation failed', error);
@@ -293,7 +326,7 @@ export function createCheckoutService(deps: CheckoutDeps) {
     if (stripeUsable(cfg)) {
       try {
         const s = await deps.stripe(cfg.stripeSecretKey as string).checkout.sessions.retrieve(sessionId);
-        return { status: s.payment_status === 'paid' ? 'processing' : 'unpaid', order: null };
+        return { status: s.payment_status === 'paid' || s.payment_status === 'no_payment_required' ? 'processing' : 'unpaid', order: null };
       } catch (error) {
         logger.error('session lookup failed', error, { session: redactSession(sessionId) });
       }
@@ -352,12 +385,12 @@ export function createCheckoutService(deps: CheckoutDeps) {
         case 'checkout.session.completed':
         case 'checkout.session.async_payment_succeeded': {
           const session = event.data.object as Stripe.Checkout.Session;
-          if (session.payment_status !== 'paid') {
+          if (session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required') {
             // Delayed payment method: the money has not arrived yet. async_payment_succeeded follows.
             const checkoutId = session.metadata?.checkout_id;
             let outcome: WebhookOutcome = 'REJECTED';
             if (isCheckoutId(checkoutId) && session.payment_status === 'unpaid') {
-              const r = await repo.recordCheckoutStatus({ eventId: event.id, eventType: event.type, checkoutId, status: 'awaiting_payment', now: at });
+              const r = await repo.recordCheckoutStatus({ eventId: event.id, eventType: event.type, sessionId: session.id, checkoutId, status: 'awaiting_payment', now: at });
               outcome = r === 'duplicate_event' ? 'DUPLICATE' : 'PROCESSED';
             }
             await track(outcome);
@@ -376,6 +409,7 @@ export function createCheckoutService(deps: CheckoutDeps) {
             const r = await repo.recordCheckoutStatus({
               eventId: event.id,
               eventType: event.type,
+              sessionId: session.id,
               checkoutId,
               status: event.type === 'checkout.session.expired' ? 'expired' : 'payment_failed',
               now: at,
@@ -409,12 +443,17 @@ export function createCheckoutService(deps: CheckoutDeps) {
     }
     // Compare Stripe's numbers with our frozen snapshot; trust neither on disagreement.
     const flags: string[] = [];
-    if (session.amount_subtotal !== checkout.subtotalMinor) flags.push('AMOUNT_MISMATCH');
+    const expectedStripeSubtotal = checkout.subtotalMinor + (checkout.shippingMinor ?? 0);
+    if (session.amount_subtotal !== expectedStripeSubtotal) flags.push('AMOUNT_MISMATCH');
+    if ((session.total_details?.amount_discount ?? 0) !== 0) flags.push('DISCOUNT_MISMATCH');
     if ((session.currency ?? '').toLowerCase() !== 'cad') flags.push('CURRENCY_MISMATCH');
     if (session.metadata?.cart_id !== checkout.cartRef) flags.push('REFERENCE_MISMATCH');
-    const shippingMinor = session.total_details?.amount_shipping ?? 0;
+    const providerShipping = session.total_details?.amount_shipping ?? 0;
+    const shippingMinor = checkout.shippingMinor ?? providerShipping;
+    if (checkout.shippingMinor !== undefined && checkout.shippingMinor !== null && providerShipping !== 0) flags.push('SHIPPING_MISMATCH');
     const taxMinor = session.total_details?.amount_tax ?? 0;
     const totalMinor = session.amount_total ?? checkout.subtotalMinor;
+    if (session.payment_status === 'no_payment_required' && totalMinor !== 0) flags.push('PAYMENT_STATUS_MISMATCH');
     if (totalMinor !== checkout.subtotalMinor + shippingMinor + taxMinor - (session.total_details?.amount_discount ?? 0)) {
       flags.push('TOTAL_MISMATCH');
     }
@@ -469,7 +508,7 @@ export function createCheckoutService(deps: CheckoutDeps) {
     return { body: { handled: false, reason: outcome.kind }, outcome: 'DUPLICATE' };
   }
 
-  return { createCheckoutSession, getCheckoutResult, sessionBelongsToCart, handleStripeWebhook };
+  return { createCheckoutSession, getCheckoutQuote, getCheckoutResult, sessionBelongsToCart, handleStripeWebhook };
 }
 
 export type CheckoutService = ReturnType<typeof createCheckoutService>;

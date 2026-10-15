@@ -1,0 +1,11 @@
+import { beforeEach, expect, it, vi } from 'vitest';
+const { quote, cartId } = vi.hoisted(() => ({ quote: vi.fn(), cartId: vi.fn() }));
+vi.mock('@/lib/commerce', () => ({ getCheckoutQuote: quote }));
+vi.mock('@/lib/commerce/cart-cookie', () => ({ getCartId: cartId }));
+vi.mock('@/lib/commerce/config', () => ({ readConfig: () => ({ siteUrl: 'https://shop.example' }) }));
+import { POST } from '@/app/api/checkout/quote/route';
+const request = (body: string, origin = 'https://shop.example') => new Request('https://shop.example/api/checkout/quote', { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body });
+beforeEach(() => { vi.resetAllMocks(); cartId.mockResolvedValue('private-cart'); quote.mockResolvedValue({ ok: true, quote: { totalMinor: 1200 } }); });
+it.each(['null', '[]', '"code"', '{', '{"discountCode":12}'])('rejects malformed quote request %s before pricing', async body => { expect((await POST(request(body))).status).toBe(400); expect(quote).not.toHaveBeenCalled(); });
+it('rejects cross-origin requests and oversized codes', async () => { expect((await POST(request('{"discountCode":"SAVE"}', 'https://other.example'))).status).toBe(403); expect((await POST(request(JSON.stringify({ discountCode: 'a'.repeat(41) })))).status).toBe(400); expect(quote).not.toHaveBeenCalled(); });
+it('prices only the private cookie cart and returns an uncached server quote', async () => { const response = await POST(request('{"discountCode":" save "}')); expect(response.status).toBe(200); expect(response.headers.get('cache-control')).toBe('private, no-store'); expect(quote).toHaveBeenCalledWith('private-cart', { discountCode: 'SAVE' }); expect(await response.json()).toEqual({ ok: true, quote: { totalMinor: 1200 } }); });

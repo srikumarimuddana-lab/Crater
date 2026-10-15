@@ -1,0 +1,10 @@
+import { PageHeader,Card,EmptyState } from '@/components/admin/ui';
+import { communicationsGate,Hidden,Field,TextArea } from '@/lib/communications/admin-ui';
+import { getOperationsStore } from '@/lib/operations/store';
+import { ActionForm } from '@/lib/communications/form';
+import { suppressionReason,interpolate } from '@/lib/communications/service';
+import { draftCampaignAction,sendCampaignAction } from '@/app/admin/_actions/communications';
+export default async function CampaignsPage(){
+  const g=await communicationsGate('manage');if(!g.ok)return g.view;const state=await (await getOperationsStore()).read();const audience=state.customers.filter(c=>!suppressionReason(state,{channel:'email',recipient:c.email,customerId:c.id,marketing:true}));
+  return <><PageHeader title="Email campaigns"/><p>{audience.length} customers currently have email marketing consent and no delivery suppression. Consent is checked again before each send.</p><Card title="Create a draft"><ActionForm action={draftCampaignAction} label="Save campaign draft"><Field name="name" label="Campaign name" required/><Field name="subject" label="Subject" required/><TextArea name="body" label="Plain-text message"/><label>Mode <select name="mode"><option value="test">Test recipients only</option><option value="live">Live (requires enabled configuration)</option></select></label></ActionForm></Card>{state.campaigns.length?state.campaigns.slice().reverse().map(c=><Card title={c.name} key={c.id}><p>{c.mode} · {c.status} · {c.status==='draft'?`${audience.length} eligible recipients`:`${c.audienceCount} queued recipients`}</p><h3>{c.subject}</h3><p style={{whiteSpace:'pre-wrap'}}>{interpolate(c.body,{name:'Sample customer'})}</p><p>A signed unsubscribe link and configured business address are appended during delivery.</p>{c.status==='draft'?<ActionForm action={sendCampaignAction} label="Send campaign to delivery queue"><Hidden name="id" value={c.id}/><Field name="confirmation" label="Type SEND after reviewing content and audience" required/></ActionForm>:null}</Card>):<EmptyState>No campaigns yet. Saving a draft never queues messages.</EmptyState>}</>;
+}

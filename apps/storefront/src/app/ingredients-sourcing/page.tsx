@@ -1,9 +1,4 @@
-import { PendingPage, pendingMetadata } from '@/components/pending-page';
-
-const TITLE = 'Ingredients & sourcing';
-
-export const metadata = pendingMetadata(TITLE);
-
-export default function Page() {
-  return <PendingPage title={TITLE} />;
-}
+import { ContentPage } from '@/components/content-page';
+import { getPublishedContent } from '@/lib/content/cms';
+export async function generateMetadata() { const c=await getPublishedContent('ingredients-sourcing'); return {title:`${c.seoTitle} — Craters Remedy`,description:c.seoDescription}; }
+export default async function Page({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) { const {preview}=await searchParams;return <ContentPage contentKey="ingredients-sourcing" preview={preview}></ContentPage>; }

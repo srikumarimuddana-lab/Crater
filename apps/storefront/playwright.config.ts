@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import { TEST_ADMIN_SECRET_KEY, allTestStaff } from './tests/e2e/admin/staff';
+import { allTestStaff } from './tests/e2e/admin/staff';
 
 const port = Number(process.env.PORT ?? 3100);
 const baseURL = `http://127.0.0.1:${port}`;
@@ -28,11 +28,11 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-    // Test-only admin environment: in-memory database, a throwaway key, and MFA-enrolled staff per role.
+    // Test-only admin environment: in-memory database, password-only staff per role.
     // ADMIN_DEV_STAFF is refused by the app unless COMMERCE_DB=memory.
     env: {
       COMMERCE_DB: 'memory',
-      ADMIN_SECRET_KEY: TEST_ADMIN_SECRET_KEY,
+      SITE_URL: baseURL,
       ADMIN_COOKIE_SECURE: 'false',
       ADMIN_DEV_STAFF: JSON.stringify(allTestStaff()),
     },
