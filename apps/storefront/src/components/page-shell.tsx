@@ -1,3 +1,4 @@
+import {ChatSlot} from './chat/slot';
 import { commerceMode } from '@/lib/commerce';
 import { PreviewBanner } from './preview-banner';
 import { SiteFooter } from './site-footer';
@@ -15,6 +16,7 @@ export function PageShell({ children, preview }: { children: React.ReactNode; pr
       </main>
       <SiteFooter preview={preview} />
       <AnalyticsConsentTracker />
+      <ChatSlot />
     </>
   );
 }

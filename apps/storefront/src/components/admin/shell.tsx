@@ -32,6 +32,8 @@ export function navFor(s: AdminSession): NavGroup[] {
       ],
     },
     { label: 'Customers', items: [
+      ...(has(s, 'appointments:read') ? [{ label: 'Appointments', href: '/admin/appointments' }] : []),
+      ...(has(s, 'chat:manage') ? [{ label: 'Automated chat', href: '/admin/chat' }] : []),
       ...(has(s, 'customers:read') ? [{ label: 'CRM', href: '/admin/customers' }, { label: 'Inbox', href: '/admin/inbox' }] : []),
       ...(has(s, 'communications:manage') ? [{ label: 'Campaigns', href: '/admin/campaigns' }, { label: 'Message templates', href: '/admin/templates' }] : []),
     ] },

@@ -63,3 +63,53 @@ Journal stories have separate editors and canonical `/journal/<slug>` pages. Exi
 The media library can edit image names/descriptions without changing immutable image bytes. Page-specific accessible descriptions remain editable in page fields. A stale metadata edit is rejected. Publishing scans only schema-declared image fields; writing an image URL as ordinary body text never publishes that asset.
 
 Global branding, support email, footer/navigation text, newsletter labels and default SEO are connected to the storefront. System errors, consent meaning and financial status labels stay code-owned. Detailed page-completion evidence: [verification record](superpowers/verification/2026-10-15-page-completion.md).
+
+## Automated chat and appointments
+
+The optional modules start disabled. Owner/Admin can edit guided chat answers,
+save private drafts, preview and publish in `/admin/chat`. The public launcher
+uses the Remedy design, keeps transcripts private to an opaque visitor session,
+and offers durable email follow-up in the CRM inbox. This is guided automation,
+not a configured AI model. `/chat` is the standalone view.
+
+Configure resources and weekly availability/date exceptions, then services, then
+the business timezone and notice/reminder/retention rules under
+`/admin/appointments/settings`. Enable only after entering actual business copy.
+The storefront adds a booking navigation link when enabled. `/book` offers public
+slots; customers reserve without an account or payment, and receive a private
+management code for rescheduling/cancellation. Native forms work without
+JavaScript; email links use a fragment exchanged by POST, with a manual code
+entry alternative. Support can manage appointments, while configuration is limited
+to Owner/Admin. The admin includes calendar/list views, filters, CSV and statuses.
+
+Apply migrations `0013_chat.sql` and `0014_booking.sql` through `db:migrate`. Set
+`BOOKING_TOKEN_ENCRYPTION_KEY` to 32 securely generated random bytes represented
+as 64 hex characters. It is server-only and must remain stable across deployments
+so stored management links can be decrypted. Do not copy the Playwright fixture
+key into a deployment. Configure the canonical `SITE_URL`, persistent Postgres,
+existing Resend variables and the existing authenticated communications worker.
+No additional provider subscription is required for guided chat/scheduling.
+
+The worker recovers chat handoffs, queues appointment confirmation/change/cancel
+emails and configured staff notices, and enqueues due reminders. Existing
+`COMMUNICATIONS_MODE`, live-send switches and exact test-recipient allowlist still
+apply. Editing `/admin/templates` changes future messages. Booking confirmation
+and email delivery have separate states: an email failure never removes a
+reservation. A send accepted before a cancellation cannot be recalled.
+
+Appointment history is linked into CRM and mode-separated aggregate counts appear
+in analytics. Anonymous click tracking remains opt-in; transcript text, contact
+fields, management codes and private receipt paths are excluded. Anonymization
+persists a recoverable cross-module request and privacy cutoffs so stale recovery
+cannot reconstruct erased contact. Transcript retention also removes the copied
+chat-handoff message from the CRM inbox while retaining unrelated staff/history
+records. Expired appointment contact/notes and bearer links are anonymized while
+aggregate status counts remain.
+
+Booking mutations use private normalized tables and a transaction-level advisory
+lock per merchant; chat uses a separate private aggregate. This favors correctness
+and simple recovery for modest single-store traffic. It is not designed for large
+call-center or multi-tenant scheduling workloads. Appointment payments/deposits,
+recurrence, group capacity, external calendar synchronization and a selected AI
+provider remain outside this release. Verification: see the
+[chat and booking record](superpowers/verification/2026-10-15-chat-booking.md).

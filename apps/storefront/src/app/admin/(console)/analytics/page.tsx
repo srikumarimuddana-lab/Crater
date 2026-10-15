@@ -1,3 +1,5 @@
+import {getBookingStore} from '@/lib/booking';
+import {interactionReport} from '@/lib/public-interactions/privacy';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PageHeader, TableWrap, EmptyState, Notice } from '@/components/admin/ui';
@@ -16,6 +18,7 @@ export default async function AnalyticsPage({searchParams}:{searchParams:SearchP
   try{report=await getAnalyticsReport({from:one(sp.from),to:one(sp.to),mode:one(sp.mode)});}
   catch(error){if(error instanceof Error&&error.message.startsWith('Choose an ordered'))return <><PageHeader title="Sales & traffic"/><Notice tone="warning">{error.message} <Link href="/admin/analytics">Reset date range</Link></Notice></>;throw error;}
   const {traffic:t,sales:s,range,mode}=report;
+  const appointmentMetrics=interactionReport((await (await getBookingStore()).read()).bookings,mode==='stripe-live'?'live':'test',range.from,range.to);
   const tiles=[
     {label:'Gross product sales',value:money(s.grossMinor),detail:'Paid order subtotals by order date. Excludes tax and shipping.'},
     {label:'Net product sales',value:money(report.netProductMinor),detail:'Gross product sales minus confirmed product refunds by refund date.'},
@@ -39,7 +42,7 @@ export default async function AnalyticsPage({searchParams}:{searchParams:SearchP
     </form>
     <p className="a-muted">Reporting dates use UTC. Currency: CAD. {mode==='fixture'?'Fixture mode is development data only.':mode==='stripe-test'?'Test transactions are separate from live sales.':'Live payment records only.'}</p>
     <dl className="a-tiles">{tiles.map(tile=><div className="a-tile" key={tile.label}><dt>{tile.label}</dt><dd className="a-big">{tile.value}</dd><dd className="a-def">{tile.detail}</dd></div>)}</dl>
-    <section className="a-card"><h2>Collection coverage</h2><p>{t.purchases} attributed paid orders; {report.unattributedOrders} paid orders without a retained consented attribution in this period.</p><p className="a-muted">Traffic describes consenting visitors only. Consent acceptance rate is unavailable because rejected visits are not tracked. No page views are treated as unique people. Raw traffic is retained for 90 days; anonymous daily counts for 24 months.</p></section>
+    <section className="a-card"><h2>Appointments</h2><p>Appointment-date counts in UTC; message mode: {mode==='stripe-live'?'live':'test'}. These are reservations, not paid orders.</p><dl className="a-tiles">{Object.entries(appointmentMetrics).map(([key,value])=><div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl></section><section className="a-card"><h2>Collection coverage</h2><p>{t.purchases} attributed paid orders; {report.unattributedOrders} paid orders without a retained consented attribution in this period.</p><p className="a-muted">Traffic describes consenting visitors only. Consent acceptance rate is unavailable because rejected visits are not tracked. No page views are treated as unique people. Raw traffic is retained for 90 days; anonymous daily counts for 24 months.</p></section>
     <section className="a-card"><h2>Operations at a glance</h2><dl className="a-tiles"><div><dt>Shipping collected</dt><dd>{money(s.shippingMinor)}</dd></div><div><dt>Tax collected</dt><dd>{money(s.taxMinor)}</dd></div><div><dt>Unfulfilled orders from period</dt><dd>{s.backlog}</dd></div><div><dt>Current low-stock variants</dt><dd>{report.lowStock}</dd></div></dl><p><Link href="/admin/integrations">Review integration delivery and configuration</Link></p></section>
     <section className="a-card"><h2>Sales by day</h2><p className="a-muted">Previous equal-length period: {money(report.previousSales.grossMinor)} gross product sales across {report.previousSales.orders} paid orders. {report.previousSales.grossMinor ? `${(((s.grossMinor-report.previousSales.grossMinor)/report.previousSales.grossMinor)*100).toFixed(1)}% change in gross product sales.` : 'No percentage comparison is available without prior sales.'}</p>
       {s.daily.length?<svg viewBox="0 0 700 180" role="img" aria-labelledby="sales-chart-title" className="a-chart"><title id="sales-chart-title">Gross product sales by day. Exact values follow in the table.</title><line x1="10" y1="160" x2="690" y2="160" stroke="currentColor"/>{s.daily.map((d,i)=>{const w=680/s.daily.length;const h=d.grossMinor/max*135;return <rect key={d.date} x={10+i*w+w*.15} y={160-h} width={Math.max(1,w*.7)} height={h} fill="currentColor"><title>{d.date}: {money(d.grossMinor)}</title></rect>;})}</svg>:null}

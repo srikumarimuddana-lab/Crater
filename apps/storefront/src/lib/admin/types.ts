@@ -34,7 +34,8 @@ export type Capability =
   | 'finance:read' | 'finance:close' | 'finance:reopen'
   | 'payments:read' | 'payments:refund' | 'analytics:read'
   | 'content:read' | 'content:write' | 'content:publish'
-  | 'customers:read' | 'customers:write' | 'communications:manage';
+  | 'customers:read' | 'customers:write' | 'communications:manage'
+  | 'chat:manage' | 'appointments:read' | 'appointments:manage' | 'appointments:configure';
 
 export type StaffUser = {
   id: ID; // gid://crater/StaffUser/<n>

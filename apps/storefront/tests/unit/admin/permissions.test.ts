@@ -8,10 +8,10 @@ const ROLES: StaffRole[] = ['OWNER', 'ADMIN', 'FULFILMENT', 'BOOKKEEPER', 'SUPPO
 // The expected matrix, written out independently of permissions.ts. A cell not listed here must be denied.
 const GRANTS: Record<StaffRole, Capability[]> = {
   OWNER: [...ALL_CAPABILITIES],
-  ADMIN: ['overview:read', 'orders:read', 'orders:read_prices', 'orders:fulfil', 'orders:internal_notes', 'products:read', 'products:write', 'products:publish', 'inventory:read', 'inventory:adjust', 'events:read', 'payments:read', 'payments:refund', 'analytics:read', 'content:read', 'content:write', 'content:publish', 'customers:read', 'customers:write', 'communications:manage'],
+  ADMIN: ['overview:read', 'orders:read', 'orders:read_prices', 'orders:fulfil', 'orders:internal_notes', 'products:read', 'products:write', 'products:publish', 'inventory:read', 'inventory:adjust', 'events:read', 'payments:read', 'payments:refund', 'analytics:read', 'content:read', 'content:write', 'content:publish', 'customers:read', 'customers:write', 'communications:manage', 'chat:manage', 'appointments:read', 'appointments:manage', 'appointments:configure'],
   FULFILMENT: ['orders:read', 'orders:fulfil', 'inventory:read', 'inventory:adjust'],
   BOOKKEEPER: ['overview:read', 'orders:read', 'orders:read_prices', 'products:read', 'inventory:read', 'audit:read', 'finance:read', 'finance:close', 'payments:read', 'analytics:read'],
-  SUPPORT: ['overview:read', 'orders:read', 'orders:read_prices', 'products:read', 'inventory:read', 'customers:read', 'customers:write'],
+  SUPPORT: ['overview:read', 'orders:read', 'orders:read_prices', 'products:read', 'inventory:read', 'customers:read', 'customers:write', 'appointments:read', 'appointments:manage'],
 };
 const CASES = ROLES.flatMap((role) => ALL_CAPABILITIES.map((cap) => [role, cap, GRANTS[role].includes(cap)] as const));
 
@@ -20,8 +20,8 @@ describe('permissions matrix (deny by default)', () => {
     expect(roleCan(role, cap)).toBe(allowed);
     expect(capabilitiesFor(role).includes(cap)).toBe(allowed);
   });
-  it('lists 26 capabilities and every grant names a real one', () => {
-    expect(ALL_CAPABILITIES).toHaveLength(26);
+  it('lists 30 capabilities and every grant names a real one', () => {
+    expect(ALL_CAPABILITIES).toHaveLength(30);
     for (const role of ROLES) for (const c of GRANTS[role]) expect(ALL_CAPABILITIES).toContain(c);
   });
   it('unknown roles, unknown capabilities and prototype keys get nothing', () => {
@@ -39,7 +39,7 @@ describe('permissions matrix (deny by default)', () => {
     expect(roleCan('FULFILMENT', 'products:read')).toBe(false); // would expose prices (types.ts has no price-free variant)
     for (const cap of ALL_CAPABILITIES.filter((c) => c.endsWith(':write') || c.endsWith(':publish') || c.endsWith(':adjust') || c.endsWith(':fulfil') || c.endsWith(':manage') || c.endsWith('internal_notes'))) {
       expect(roleCan('BOOKKEEPER', cap)).toBe(false);
-      expect(roleCan('SUPPORT', cap)).toBe(cap === 'customers:write');
+      expect(roleCan('SUPPORT', cap)).toBe(cap === 'customers:write' || cap === 'appointments:manage');
     }
     expect(ROLES.filter((r) => roleCan(r, 'staff:manage'))).toEqual(['OWNER']);
     expect(ROLES.filter((r) => roleCan(r, 'audit:read'))).toEqual(['OWNER', 'BOOKKEEPER']);

@@ -1,5 +1,5 @@
 import 'server-only';
-import { randomUUID } from 'node:crypto';
+import { randomUUID,createHash } from 'node:crypto';
 import type { Channel, Consent, Customer, Mode, OperationsState, OperationsStore } from '@/lib/operations/types';
 export function normalizeEmail(value:string):string {
   const email=value.trim().toLowerCase(); if(email.length>254||! /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Enter a valid email address.'); return email;
@@ -35,10 +35,10 @@ export function createCrm(store:OperationsStore,now=()=>new Date()) {
       clean(input.source,250);clean(input.wordingVersion,100);
       await store.mutate(s=>{const customer=findCustomer(s,input.customerId);if(customer.mergedIntoId||customer.anonymizedAt)throw new Error('Record consent on the active customer only.');const recipient=input.channel==='email'?customer.email:customer.phone;if(input.granted&&!recipient)throw new Error('Save a phone number before recording SMS consent.');if(input.eventKey&&customer.consent.some(c=>c.id===input.eventKey))return;customer.consent.push({id:input.eventKey??randomUUID(),recipient:recipient??undefined,channel:input.channel,purpose:input.purpose,granted:input.granted,source:input.source,wordingVersion:input.wordingVersion,actor:input.actor,at:now().toISOString()});s.audit.push({actor:input.actor,action:'customer.consent',target:input.customerId,at:now().toISOString()});});
     },
-    async inbound(input:{eventId:string;channel:Channel;recipient:string;subject:string;body:string;customerId?:string;orderId?:string}){
+    async inbound(input:{eventId:string;channel:Channel;recipient:string;subject:string;body:string;customerId?:string;orderId?:string;occurredAt?:string}){
       const recipient=input.channel==='email'?normalizeEmail(input.recipient):validatePhone(input.recipient); const body=clean(input.body,10000);
       return store.mutate(s=>{
-        if(s.inboundIds.includes(input.eventId))return null;s.inboundIds.push(input.eventId);
+        if(s.inboundIds.includes(input.eventId))return null;s.inboundIds.push(input.eventId);if(input.occurredAt&&s.interactionPrivacy?.some(p=>p.emailHash===createHash('sha256').update(recipient).digest('hex')&&input.occurredAt!<=p.at))return null;
         const at=now().toISOString();
         const customer=input.customerId?findCustomer(s,input.customerId):input.channel==='email'?upsertCustomer(s,recipient,at):undefined;
         if(input.channel==='sms'&&/^(STOP|STOPALL|UNSUBSCRIBE|CANCEL|END|QUIT|REVOKE|OPTOUT)$/i.test(body.trim()))s.suppressions.push({channel:'sms',recipient,reason:'STOP',at});
@@ -67,6 +67,6 @@ export function createCrm(store:OperationsStore,now=()=>new Date()) {
         s.audit.push({actor,action:'customer.merged',target:`${sourceId}->${targetId}`,at});return target;
       });
     },
-    async anonymize(id:string,actor:string){await store.mutate(s=>{findCustomer(s,id);const ids=new Set([id]);for(let pass=0;pass<s.customers.length;pass++)for(const c of s.customers)if(c.mergedIntoId&&ids.has(c.mergedIntoId))ids.add(c.id);const at=now().toISOString();for(const c of s.customers.filter(c=>ids.has(c.id))){c.email=`removed-${c.id}@invalid.example`;c.name='Anonymized customer';c.phone=null;c.notes=[];c.tags=[];c.anonymizedAt=at;for(const consent of c.consent)delete consent.recipient;}for(const j of s.jobs.filter(j=>j.customerId&&ids.has(j.customerId))){j.recipient='[removed]';j.body='[removed]';if(j.status==='pending')j.status='suppressed';}for(const t of s.conversations.filter(t=>t.customerId&&ids.has(t.customerId))){t.recipient='[removed]';t.messages=[];}s.audit.push({actor,action:'customer.anonymized',target:id,at});});},
+    async anonymize(id:string,actor:string){await store.mutate(s=>{findCustomer(s,id);const ids=new Set([id]);for(let pass=0;pass<s.customers.length;pass++)for(const c of s.customers)if(c.mergedIntoId&&ids.has(c.mergedIntoId))ids.add(c.id);const at=now().toISOString();(s.privacyRequests??=[]).push({id:randomUUID(),customerIds:[...ids],emails:s.customers.filter(c=>ids.has(c.id)).map(c=>c.email),status:'pending',at});for(const c of s.customers.filter(c=>ids.has(c.id))){const emailHash=createHash('sha256').update(c.email).digest('hex');(s.interactionPrivacy??=[]).push({emailHash,at});}for(const c of s.customers.filter(c=>ids.has(c.id))){c.email=`removed-${c.id}@invalid.example`;c.name='Anonymized customer';c.phone=null;c.notes=[];c.tags=[];c.anonymizedAt=at;for(const consent of c.consent)delete consent.recipient;}for(const j of s.jobs.filter(j=>j.customerId&&ids.has(j.customerId))){j.recipient='[removed]';j.body='[removed]';j.subject='[removed]';if(j.status==='pending')j.status='suppressed';}for(const t of s.conversations.filter(t=>t.customerId&&ids.has(t.customerId))){t.recipient='[removed]';t.messages=[];}s.audit.push({actor,action:'customer.anonymized',target:id,at});});},
   };
 }
